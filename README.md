@@ -1,4 +1,4 @@
-# jonatan-franco.github.io
+# Sobre
 
 '''
 Essa página dedica-se aos tópicos de Epistemologia da Psicologia 
