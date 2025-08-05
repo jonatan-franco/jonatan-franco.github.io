@@ -3,7 +3,8 @@ layout: default
 ---
 
 # O CAMINHO DA PSICOLOGIA CIENTÍFICA
-    (Parafraseando Engelmann). Não há outro que não seja acoimar de inapto nossos rumos tomados que nos levaram para a não observância do processo do todo-organizado. 
+
+|(Parafraseando Engelmann). Não há outro que não seja acoimar de inapto nossos rumos tomados que nos levaram para a não observância do processo do todo-organizado.|
 
 
 ## Como e por que deve-se admitir a necessidade da Matemática na Psicologia?
