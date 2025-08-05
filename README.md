@@ -1,5 +1,3 @@
-# Sobre
+# Sobre a página
 
-'''
-Essa página dedica-se aos tópicos de Epistemologia da Psicologia 
-'''
+> Essa página dedica-se aos tópicos de Epistemologia da Psicologia 
