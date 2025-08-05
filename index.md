@@ -12,7 +12,7 @@ $$f(x) = ks^x$$
 
 
 Essa é uma das funções mais elementares. Aqui trabalhamos o aspecto exponencial de uma função. Mas veja que não é apenas trabalhar um aspecto de uma função, é antes saber determinar os aspectos gerais de uma função, os 'universais'. Uma função geralmente descreve o que? Um tipo de relação. 
-Aqui estou usando relação lógica, isto é, a relação que A tem com B se faz por um operador lógico de maior, menor, igual, etc. Por exemplo, digo assim: Exy, para dizer "x explora y". Essa variavel 'x' pode indicar a classe burguesa, enquanto 'y' pode indicar a classe que é explorada e elas se   relacionam segundo a propriedade 'E', isto é, de exploração. Logo, quando digo $$f(x) := y$$, estou dizendo que x se relaciona com $$y$$ seguindo uma propriedade $$f$$. 
+Aqui estou usando relação lógica, isto é, a relação que A tem com B se faz por um operador lógico de maior, menor, igual, etc. Por exemplo, digo assim: Exy, para dizer "x explora y". Essa variavel 'x' pode indicar a classe burguesa, enquanto 'y' pode indicar a classe que é explorada e elas se   relacionam segundo a propriedade 'E', isto é, de exploração. Logo, quando digo $$f(x) := y$$, estou dizendo que $$x$$ se relaciona com $$y$$ seguindo uma propriedade $$f$$. 
 
 *Obs.: Sabemos que geralmente $$f$$ é o nome da função, mas essa analogia fica didática porque toda função segue uma regra de formação que pode ser diferente ou igual a uma outra função denominada $$g$$, por exemplo. Mantenhemos, então, para fins didáticos.*
 
