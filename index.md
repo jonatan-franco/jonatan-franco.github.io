@@ -2,6 +2,6 @@
 layout: default
 ---
 
-[Página Inicial] (/) [Artigos] (/artigos)
+[Página Inicial](/) [Artigos](/artigos)
 
 ---
