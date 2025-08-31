@@ -2,7 +2,7 @@
 layout: default
 ---
 
-[Página Inicial](/) [Artigos](/artigos)
+[Artigos](/artigos)
 ---
 
 <div class = "text-center" markdown = "1">
