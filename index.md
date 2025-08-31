@@ -5,7 +5,7 @@ layout: default
 [Página Inicial](/) [Artigos](/artigos)
 ---
 
-<div align = "center">
+<div align = "center" markdown = "1">
 
 # Jonatan Franco
 *Psicólogo, programador nas horas vagas e admirador de xadrez (Grob forever).*
