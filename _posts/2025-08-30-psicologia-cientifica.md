@@ -1,13 +1,10 @@
 ---
 layout: default
-title: "O caminho para uma Psicologia Científica"
+title: "Qual o caminho para uma Psicologia Científica?"
 ---
 
 # {{ page.title }}
 
-
-
-# QUAL O CAMINHO PARA UMA PSICOLOGIA CIENTÍFICA?
 
 |(Parafraseando Engelmann). Não há outro que não seja acoimar de inapto nossos rumos tomados que nos levaram para a não observância do processo do todo-organizado.|
 
