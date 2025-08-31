@@ -32,4 +32,4 @@ Mais do que interpretar nas entrelinhas o que uma paciente quis dizer, é se apr
 
 
 
-[Voltar para a lista de artigos](/artigos)
+[Voltar para a lista de artigos](/artigos) [Voltar para a Página Inicial](/index.md)
