@@ -4,37 +4,47 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page.title }} | Jonatan Franco</title>
-  
-  <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
   
   <script>
-    MathJax = {
-      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
-      svg: { fontCache: 'global' }
-    };
+    MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
   </script>
-  <script type="text/javascript" id="MathJax-script" async
-    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
-  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
-  <header class="site-header">
+
+  <header class="navbar">
     <nav class="container">
-      <a href="{{ '/' | relative_url }}">Início</a>
-      <a href="/psicometria">Psicometria</a>
-      <a href="/epistemologia">Epistemologia</a>
+      <a href="{{ '/' | relative_url }}" class="nav-logo">Jonatan Franco</a>
+      <div class="nav-links">
+        <a href="{{ '/' | relative_url }}">Início</a>
+        <a href="/artigos">Artigos</a>
+        <a href="/psicometria">Psicometria</a>
+        <a href="/epistemologia">Epistemologia</a>
+      </div>
     </nav>
   </header>
 
-  <main class="container">
+  {% if page.url == "/" %}
+  <section class="hero">
+    <div class="container">
+      <h1>Reflexões sobre Psicometria</h1>
+      <p>Psicologia Matemática, Epistemologia e Comportamento.</p>
+    </div>
+  </section>
+  {% endif %}
+
+  <main class="container content-area">
     <article>
-      <h1>{{ page.title }}</h1>
       {{ content }}
     </article>
   </main>
 
-  <footer class="container">
-    <p>&copy; {{ site.time | date: '%Y' }} Jonatan Franco - Psicologia & Matemática</p>
+  <footer>
+    <div class="container">
+      <p>&copy; {{ site.time | date: '%Y' }} Jonatan Franco - Psicólogo & Pesquisador</p>
+    </div>
   </footer>
+
 </body>
 </html>
