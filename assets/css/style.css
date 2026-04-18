@@ -71,3 +71,54 @@ h1 { color: var(--primary); border-bottom: 2px solid var(--bg-site); padding-bot
 
 /* Grob Forever Styling */
 em { color: var(--accent); }
+
+/* Hero Moderno */
+.hero-modern {
+  background: radial-gradient(circle at top right, #1e293b, #0f172a);
+  padding: 100px 0;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Marca d'água matemática (Opcional: use uma imagem de fórmulas no fundo) */
+.hero-modern::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png'); /* Lembra malhas de dados */
+  opacity: 0.1;
+}
+
+.highlight {
+  color: var(--accent);
+  background: linear-gradient(transparent 70%, rgba(56, 189, 248, 0.2) 0%);
+}
+
+.badge {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Cards de Apresentação (Seção Sobre) */
+.about-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: -50px; /* Efeito de elevação sobre o hero */
+  position: relative;
+  z-index: 10;
+}
+
+.card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+}
