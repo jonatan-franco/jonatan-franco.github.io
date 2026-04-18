@@ -1,8 +1,10 @@
 :root {
-  --main-dark: #0f172a;    /* Navy Profundo */
-  --accent-cyan: #0dcaf0;  /* Cyan do Bootstrap */
-  --bg-soft: #f8fafc;      /* Fundo suavizado */
-  --text-main: #334155;
+  --main-dark: #020617;     /* Fundo quase preto para dar profundidade */
+  --card-bg: rgba(15, 23, 42, 0.7); /* Azul escuro semi-transparente */
+  --accent-neon: #a855f7;   /* Roxo Neon (dos brilhos do cérebro) */
+  --accent-cyan: #22d3ee;   /* Ciano (dos monitores da imagem) */
+  --text-bright: #f1f5f9;   /* Texto quase branco */
+  --border-glow: rgba(34, 211, 238, 0.3);
 }
 
 body {
