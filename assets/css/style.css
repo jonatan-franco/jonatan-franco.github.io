@@ -26,18 +26,36 @@ h1, h2, h3, h4 {
     margin-bottom: 1.5rem;
 }
 
-.navbar {
-  background: rgba(2, 6, 23, 0.9) !important;
-  backdrop-filter: blur(15px);
-  border-bottom: 1px solid var(--border-glow);
+/* Ajuste das cores dos links na Navbar para não sumirem */
+.navbar .nav-link {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+.navbar .nav-link:hover {
+    color: var(--accent-cyan) !important;
 }
 
+/* Forçar cores claras nos títulos do Hero */
+.hero-section h1 {
+    color: #ffffff !important;
+    background: linear-gradient(to right, #ffffff, var(--accent-cyan)) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: 0 0 20px rgba(34, 211, 238, 0.2); /* Brilho sutil */
+}
+.hero-section p.lead {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Corrigir o fundo do Hero para garantir que a imagem apareça */
 .hero-section {
     min-height: 85vh;
-    background: linear-gradient(rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.9)), 
-                url('../img/brain.png.jpg');
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(rgba(2, 6, 23, 0.75), rgba(2, 6, 23, 0.9)), 
+                url('../img/brain.png.jpg') !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid var(--accent-cyan);
 }
 
 .content-card {
