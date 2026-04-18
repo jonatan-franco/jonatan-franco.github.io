@@ -75,8 +75,8 @@ h1, h2, h3, h4 {
     box-shadow: 0 0 15px rgba(34, 211, 238, 0.05);
 }
 
-.text-cyan { color: var(--accent-cyan); }
-.text-neon { color: var(--accent-neon); }
+.text-cyan { color: #22d3ee !important; }
+.text-neon { color: #a855f7 !important; }
 
 .shadow-glow { box-shadow: 0 0 20px rgba(34, 211, 238, 0.2); }
 
