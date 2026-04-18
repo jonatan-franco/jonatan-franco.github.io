@@ -1,124 +1,78 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-
-body {
-    font-family: 'Inter', sans-serif;
-    letter-spacing: -0.01em;
-}
 :root {
-  --primary: #1a365d;    /* Navy Acadêmico */
-  --accent: #3182ce;     /* Azul Link */
-  --bg-site: #f0f4f8;    /* Fundo suave (Cinza Azulado) */
-  --bg-card: #ffffff;    /* Branco puro para o texto */
-  --text: #2d3748;
+  --main-dark: #0f172a;    /* Navy Profundo */
+  --accent-cyan: #0dcaf0;  /* Cyan do Bootstrap */
+  --bg-soft: #f8fafc;      /* Fundo suavizado */
+  --text-main: #334155;
 }
 
 body {
-  background-color: var(--bg-site);
-  color: var(--text);
-  font-family: 'Inter', -apple-system, sans-serif;
-  margin: 0;
-  line-height: 1.8;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-soft);
+  color: var(--text-main);
+  line-height: 1.7;
 }
 
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-/* Navbar */
+/* Navbar Personalizada */
 .navbar {
-  background: var(--primary);
-  padding: 1rem 0;
-  color: white;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
 }
-
-.navbar .container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.navbar-brand, .nav-link {
+  color: white !important;
 }
+.fw-800 { font-weight: 800; letter-spacing: -1px; }
 
-.nav-links a {
-  color: #cbd5e0;
-  margin-left: 20px;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.nav-links a:hover { color: white; }
-
-/* Hero Section (Apenas na Home) */
-.hero {
-  background: linear-gradient(135deg, #1a365d 0%, #2a4365 100%);
-  color: white;
-  padding: 80px 0;
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-/* Área de Conteúdo */
-.content-area {
-  background: var(--bg-card);
-  padding: 40px;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-  margin-top: -20px; /* Sobrepõe levemente o hero */
-}
-
-/* Ajuste de Títulos para evitar duplicação */
-h1 { color: var(--primary); border-bottom: 2px solid var(--bg-site); padding-bottom: 10px; }
-
-/* Grob Forever Styling */
-em { color: var(--accent); }
-
-/* Hero Moderno */
-.hero-modern {
-  background: radial-gradient(circle at top right, #1e293b, #0f172a);
-  padding: 100px 0;
-  color: white;
+/* Hero Section com Estética Matemática */
+.hero-section {
+  min-height: 80vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   position: relative;
   overflow: hidden;
 }
 
-/* Marca d'água matemática (Opcional: use uma imagem de fórmulas no fundo) */
-.hero-modern::before {
+/* Marca d'água de grade (Matemática/Computação) */
+.hero-section::before {
   content: "";
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png'); /* Lembra malhas de dados */
+  width: 100%; height: 100%;
+  background-image: radial-gradient(var(--accent-cyan) 0.5px, transparent 0.5px);
+  background-size: 30px 30px;
   opacity: 0.1;
 }
 
-.highlight {
-  color: var(--accent);
-  background: linear-gradient(transparent 70%, rgba(56, 189, 248, 0.2) 0%);
-}
-
-.badge {
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-/* Cards de Apresentação (Seção Sobre) */
-.about-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  margin-top: -50px; /* Efeito de elevação sobre o hero */
-  position: relative;
-  z-index: 10;
-}
-
-.card {
+/* Container do Conteúdo (Estilo Academy) */
+.content-card {
   background: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 50px;
+  margin-top: -80px; /* Efeito de sobreposição no Hero */
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Estilização de Texto e Fórmulas */
+h1, h2, h3 { color: var(--main-dark); font-weight: 700; }
+
+blockquote {
+  border-left: 5px solid var(--accent-cyan);
+  background: #f1f5f9;
+  padding: 20px;
+  border-radius: 0 10px 10px 0;
+  font-style: italic;
+}
+
+/* Badge de Tags */
+.badge { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Imagem Hero Decorativa */
+.hero-art-container {
+    width: 100%;
+    height: 300px;
+    background: url('https://www.transparenttextures.com/patterns/circuit-board.png'); /* Padrao de circuitos */
+    opacity: 0.3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-cyan);
+    font-size: 2rem;
+    font-family: 'Courier New', monospace;
 }
