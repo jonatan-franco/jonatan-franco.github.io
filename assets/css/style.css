@@ -1,76 +1,67 @@
 :root {
-  --primary-color: #1a365d;
-  --text-color: #2d3748;
-  --bg-color: #f7fafc;
-  --accent-color: #3182ce;
-  --border-color: #e2e8f0;
+  --primary: #1a365d;    /* Navy Acadêmico */
+  --accent: #3182ce;     /* Azul Link */
+  --bg-site: #f0f4f8;    /* Fundo suave (Cinza Azulado) */
+  --bg-card: #ffffff;    /* Branco puro para o texto */
+  --text: #2d3748;
 }
 
 body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
+  background-color: var(--bg-site);
+  color: var(--text);
   font-family: 'Inter', -apple-system, sans-serif;
-  line-height: 1.6;
+  margin: 0;
+  line-height: 1.8;
 }
 
-h1, h2, h3 {
-  color: var(--primary-color);
-  font-weight: 700;
-}
-
-a {
-  color: var(--accent-color);
-  text-decoration: none;
-}
-article {
-  max-width: 720px; /* Largura ideal para leitura acadêmica */
+.container {
+  max-width: 900px;
   margin: 0 auto;
-  font-size: 1.1rem;
-  color: #2D3748;
+  padding: 0 20px;
 }
 
-/* Destaque para termos técnicos em psicologia */
-dfn {
-  font-style: normal;
-  font-weight: bold;
-  border-bottom: 1px dashed #3182CE;
-}
-code {
-  background: #edf2f7;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-}
-/* Melhoria na legibilidade de parágrafos densos */
-p {
-  margin-bottom: 1.5rem;
-  text-align: justify;
-  hyphens: auto;
-}
-
-/* Blocos de fórmulas ou definições epistemológicas */
-blockquote {
-  border-left: 4px solid var(--primary-color);
-  padding: 0.5rem 1rem;
-  background-color: #edf2f7;
-  color: var(--primary-color);
-  font-style: italic;
-  margin: 2rem 0;
-}
-
-/* Estilo para tabelas de dados (comum em psicometria) */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-}
-
-th {
-  background-color: var(--primary-color);
+/* Navbar */
+.navbar {
+  background: var(--primary);
+  padding: 1rem 0;
   color: white;
-  padding: 8px;
 }
 
-td {
-  border-bottom: 1px solid var(--border-color);
-  padding: 8px;
+.navbar .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
+
+.nav-links a {
+  color: #cbd5e0;
+  margin-left: 20px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.nav-links a:hover { color: white; }
+
+/* Hero Section (Apenas na Home) */
+.hero {
+  background: linear-gradient(135deg, #1a365d 0%, #2a4365 100%);
+  color: white;
+  padding: 80px 0;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+/* Área de Conteúdo */
+.content-area {
+  background: var(--bg-card);
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  margin-top: -20px; /* Sobrepõe levemente o hero */
+}
+
+/* Ajuste de Títulos para evitar duplicação */
+h1 { color: var(--primary); border-bottom: 2px solid var(--bg-site); padding-bottom: 10px; }
+
+/* Grob Forever Styling */
+em { color: var(--accent); }
