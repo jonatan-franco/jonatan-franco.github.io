@@ -2,6 +2,15 @@
 layout: default
 title: Home
 ---
+<div class="row">
+  <div class="col-md-4">
+    <div class="p-3 mb-2 border border-info rounded bg-dark text-cyan" style="font-family: monospace; font-size: 0.8rem;">
+      <span class="text-neon">STATUS:</span> PESQUISANDO<br>
+      <span class="text-neon">MODO:</span> EPISTEMOLOGIA<br>
+      <span class="text-neon">COORD:</span> 42.65, -3.6
+    </div>
+  </div>
+</div>
 
 <div class="about-section">
   <div class="card">
@@ -14,13 +23,4 @@ title: Home
   </div>
 </div>
 
-<div class = "text-center" markdown = "1">
 
----
-## Para Jovens Mancebos
-Você pode ver algumas publicações no Instagram que, geralmente são mais curtas e obedecem aos 2000 caracteres de um post comum.
-[Subjetivante](https://www.instagram.com/subjetivante)
-
-## Para quem anseia sentir o cheiro de artigos
-Você pode me encontrar no Research Gate, lá sempre compartilho o PDF do artigo para ajudar o proletariado. 
-[Resarch Gate](https://www.researchgate.net/profile/Jonatan-Franco?ev=hdr_xprf)
