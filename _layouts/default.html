@@ -1,11 +1,14 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page.title }} | Jonatan Franco</title>
-  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
   
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+
   <script>
     MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
   </script>
@@ -13,54 +16,59 @@
 </head>
 <body>
 
-  <header class="navbar">
-    <nav class="container">
-      <a href="{{ '/' | relative_url }}" class="nav-logo">Jonatan Franco</a>
-      <div class="nav-links">
-        <a href="{{ '/' | relative_url }}">Início</a>
-        <a href="/artigos">Artigos</a>
-        <a href="/psicometria">Psicometria</a>
-        <a href="/epistemologia">Epistemologia</a>
+  <nav class="navbar navbar-expand-lg sticky-top shadow-sm">
+    <div class="container">
+      <a class="navbar-brand fw-800" href="{{ '/' | relative_url }}">
+        JONATAN<span class="text-info">FRANCO</span>
+      </a>
+      <div class="navbar-nav ms-auto">
+        <a class="nav-link px-3" href="{{ '/' | relative_url }}">Início</a>
+        <a class="nav-link px-3" href="/artigos">Artigos</a>
+        <a class="nav-link px-3" href="/psicometria">Psicometria</a>
+        <a class="nav-link px-3" href="/epistemologia">Epistemologia</a>
       </div>
-    </nav>
-  </header>
+    </div>
+  </nav>
 
   {% if page.url == "/" %}
-  <section class="hero">
+  <header class="hero-section text-white d-flex align-items-center">
     <div class="container">
-      <h1>Reflexões sobre Psicometria</h1>
-      <p>Psicologia Matemática, Epistemologia e Comportamento.</p>
+      <div class="row align-items-center">
+        <div class="col-lg-7">
+          <span class="badge rounded-pill bg-info text-dark mb-3">Psicologia Matemática & Epistemologia</span>
+          <h1 class="display-3 fw-bold mb-4">A Ciência por trás do <span class="text-info">Invisível.</span></h1>
+          <p class="lead mb-5 opacity-75">Reflexões sobre modelos de medida, psicometria avançada e as bases lógicas da psicologia behaviorista e cognitiva.</p>
+          <div class="d-flex gap-3">
+            <a href="/artigos" class="btn btn-info btn-lg px-4 rounded-pill fw-600">Explorar Artigos</a>
+            <a href="#sobre" class="btn btn-outline-light btn-lg px-4 rounded-pill">Sobre o Projeto</a>
+          </div>
+        </div>
+        <div class="col-lg-5 d-none d-lg-block">
+            <div class="hero-art-container">
+                <div class="math-overlay">$\Psi = \int f(x) dx$</div>
+            </div>
+        </div>
+      </div>
     </div>
-  </section>
+  </header>
   {% endif %}
 
-  <main class="container content-area">
-    <article>
-      {{ content }}
-    </article>
+  <main class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <section class="content-card shadow-lg">
+          {{ content }}
+        </section>
+      </div>
+    </div>
   </main>
 
-  <footer>
-    <div class="container">
-      <p>&copy; {{ site.time | date: '%Y' }} Jonatan Franco - Psicólogo & Pesquisador</p>
+  <footer class="py-5 bg-dark text-white-50 mt-5">
+    <div class="container text-center">
+      <p class="mb-0">&copy; {{ site.time | date: '%Y' }} Jonatan Franco. Desenvolvido com rigor estatístico.</p>
     </div>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-<section class="hero-modern">
-  <div class="container hero-grid">
-    <div class="hero-text">
-      <span class="badge">Psicologia Matemática & Epistemologia</span>
-      <h1>Explorando a <span class="highlight">Estrutura Invariante</span> da Mente</h1>
-      <p>Reflexões rigorosas sobre psicometria, modelos latentes e a lógica do comportamento.</p>
-      <div class="hero-buttons">
-        <a href="/artigos" class="btn-primary">Ler Artigos</a>
-        <a href="#sobre" class="btn-secondary">Sobre o Projeto</a>
-      </div>
-    </div>
-    <div class="hero-image">
-      <img src="https://raw.githubusercontent.com/jonatan-franco/jonatan-franco.github.io/main/assets/img/brain-tech.svg" alt="Neuro-Math" onerror="this.src='https://img.icons8.com/illustrations/external-abstract-brain-geometry.png'">
-    </div>
-  </div>
-</section>
