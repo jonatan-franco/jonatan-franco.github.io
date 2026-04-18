@@ -1,42 +1,40 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minha Página</title> <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>
-      MathJax = {
-        tex: {
-          inlineMath: [['$', '$'], ['\\(', '\\)']],
-          displayMath: [['$$', '$$'], ['\\[', '\\]']]
-        }
-      };
-    </script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/primer-markdown/build/build.css">
-    <style>
-      body {
-        box-sizing: border-box;
-        min-width: 200px;
-        max-width: 980px;
-        margin: 0 auto;
-        padding: 45px;
-      }
-      .markdown-body p {
-        text-align: justify;
-      }
-      .text-center, .text-center * {
-    text-align: center !important;
-       
-      }
-    
-    </style>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }} | Jonatan Franco</title>
+  
+  <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+  
+  <script>
+    MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script type="text/javascript" id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+  </script>
 </head>
 <body>
+  <header class="site-header">
+    <nav class="container">
+      <a href="{{ '/' | relative_url }}">Início</a>
+      <a href="/psicometria">Psicometria</a>
+      <a href="/epistemologia">Epistemologia</a>
+    </nav>
+  </header>
 
-    <article class="markdown-body">
-        {{ content }}
+  <main class="container">
+    <article>
+      <h1>{{ page.title }}</h1>
+      {{ content }}
     </article>
+  </main>
 
+  <footer class="container">
+    <p>&copy; {{ site.time | date: '%Y' }} Jonatan Franco - Psicologia & Matemática</p>
+  </footer>
 </body>
 </html>
