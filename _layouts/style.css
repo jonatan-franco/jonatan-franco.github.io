@@ -22,7 +22,19 @@ a {
   color: var(--accent-color);
   text-decoration: none;
 }
+article {
+  max-width: 720px; /* Largura ideal para leitura acadêmica */
+  margin: 0 auto;
+  font-size: 1.1rem;
+  color: #2D3748;
+}
 
+/* Destaque para termos técnicos em psicologia */
+dfn {
+  font-style: normal;
+  font-weight: bold;
+  border-bottom: 1px dashed #3182CE;
+}
 code {
   background: #edf2f7;
   padding: 0.2rem 0.4rem;
