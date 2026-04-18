@@ -67,7 +67,7 @@ blockquote {
 .hero-art-container {
     width: 100%;
     height: 300px;
-    background: url('https://www.transparenttextures.com/patterns/circuit-board.png'); /* Padrao de circuitos */
+    background: url('brain.png'); /* Padrao de circuitos */
     opacity: 0.3;
     display: flex;
     align-items: center;
