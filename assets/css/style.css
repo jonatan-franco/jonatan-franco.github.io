@@ -1,78 +1,103 @@
+/* Color & Token Definition */
 :root {
-  --main-dark: #0f172a;    /* Navy Profundo */
-  --accent-cyan: #0dcaf0;  /* Cyan do Bootstrap */
-  --bg-soft: #f8fafc;      /* Fundo suavizado */
-  --text-main: #334155;
+  --bg-deep: #0A0F1C;
+  --bg-panel: rgba(17, 24, 39, 0.85);
+  --cyan: #00E5FF;
+  --purple: #8B5CF6;
+  --pink: #FF2D95;
+  --green: #22C55E;
+  --text-primary: #E5E7EB;
+  --text-secondary: #9CA3AF;
+  --border-cyan-low: rgba(0, 229, 255, 0.15);
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background-color: var(--bg-soft);
-  color: var(--text-main);
-  line-height: 1.7;
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: 'IBM Plex Sans', sans-serif;
+  overflow-x: hidden;
 }
 
-/* Navbar Personalizada */
-.navbar {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(10px);
-}
-.navbar-brand, .nav-link {
-  color: white !important;
-}
-.fw-800 { font-weight: 800; letter-spacing: -1px; }
+/* Typography Extensions */
+.font-code { font-family: 'JetBrains Mono', monospace; }
+.tracking-widest { letter-spacing: 0.2em; }
+.fw-700 { font-weight: 700; }
 
-/* Hero Section com Estética Matemática */
+.text-gradient {
+  background: linear-gradient(to right, #ffffff, var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Hero & Grid */
 .hero-section {
-  min-height: 80vh;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  position: relative;
-  overflow: hidden;
+  min-height: 85vh;
+  background: linear-gradient(rgba(10, 15, 28, 0.7), rgba(10, 15, 28, 0.95)), 
+              url('../img/brain.png.jpg');
+  background-size: cover;
+  background-position: center;
 }
 
-/* Marca d'água de grade (Matemática/Computação) */
-.hero-section::before {
-  content: "";
+.hero-grid-overlay {
   position: absolute;
-  width: 100%; height: 100%;
-  background-image: radial-gradient(var(--accent-cyan) 0.5px, transparent 0.5px);
-  background-size: 30px 30px;
-  opacity: 0.1;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-image: radial-gradient(var(--border-cyan-low) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(to bottom, black, transparent);
 }
 
-/* Container do Conteúdo (Estilo Academy) */
-.content-card {
-  background: white;
-  border-radius: 20px;
-  padding: 50px;
-  margin-top: -80px; /* Efeito de sobreposição no Hero */
-  border: 1px solid rgba(0,0,0,0.05);
+/* UI Components */
+.content-panel {
+  background: var(--bg-panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-cyan-low);
+  border-radius: 4px; /* Mais quadrado = mais industrial */
+  padding: 60px;
+  margin-top: -100px;
 }
 
-/* Estilização de Texto e Fórmulas */
-h1, h2, h3 { color: var(--main-dark); font-weight: 700; }
+.btn-cyan {
+  background-color: var(--cyan);
+  color: var(--bg-deep);
+  border: none;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+}
+
+.btn-outline-purple {
+  border: 1px solid var(--purple);
+  color: var(--purple);
+}
+
+.btn-outline-purple:hover {
+  background: var(--purple);
+  color: white;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+/* Status Dot Pulse */
+.status-dot {
+  width: 10px; height: 10px;
+  background-color: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--green);
+}
+
+.pulse { animation: pulse-animation 2s infinite; }
+@keyframes pulse-animation {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.5; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+/* Content Styles */
+h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; color: white; margin-bottom: 1.5rem; }
+.text-cyan { color: var(--cyan) !important; }
+.text-pink { color: var(--pink) !important; }
 
 blockquote {
-  border-left: 5px solid var(--accent-cyan);
-  background: #f1f5f9;
+  border-left: 2px solid var(--purple);
+  background: rgba(139, 92, 246, 0.05);
   padding: 20px;
-  border-radius: 0 10px 10px 0;
   font-style: italic;
-}
-
-/* Badge de Tags */
-.badge { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-
-/* Imagem Hero Decorativa */
-.hero-art-container {
-    width: 100%;
-    height: 300px;
-    background: url('https://www.transparenttextures.com/patterns/circuit-board.png'); /* Padrao de circuitos */
-    opacity: 0.3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent-cyan);
-    font-size: 2rem;
-    font-family: 'Courier New', monospace;
+  color: var(--text-secondary);
 }
