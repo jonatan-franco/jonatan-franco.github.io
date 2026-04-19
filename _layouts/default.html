@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-  <!-- Performance: Preconnect e Preload de Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans:wght@300;400;600&family=JetBrains+Mono&display=swap">
@@ -15,7 +14,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
 
-  <!-- Carregamento Condicional de MathJax (Performance) -->
   {% if page.math %}
   <script>
     MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
@@ -25,7 +23,6 @@
 </head>
 <body class="{% if page.collection == 'posts' %}post-page{% endif %}">
 
-  <!-- SIDEBAR LATERAL λ (APENAS EM POSTS) -->
   {% if page.collection == 'posts' %}
   <div class="lambda-sidebar d-none d-lg-flex">
     <div class="lambda-container">
@@ -64,8 +61,7 @@
           </div>
           
           <h1 class="display-1 fw-700 text-white mb-4 main-cyber-title">
-            <span class="crypt-text" id="crypt-prefix" data-final="SUBJE">SUBJE</span><br class="d-lg-none">
-            <span class="text-gradient glitch-wrapper" id="crypt-suffix" data-final="TIVANTE">TIVANTE</span>
+            <span class="text-gradient glitch-wrapper" id="main-title" data-final="SUBJETIVANTE">SUBJETIVANTE</span>
           </h1>
           
           <p class="lead text-secondary-bright mb-5">Reflexões sobre a formalização matemática da psicologia, psicometria avançada e a epistemologia dos modelos latentes.</p>
@@ -109,17 +105,15 @@
       }
 
       ready(function() {
-        // Sidebar λ (apenas se existir)
+        // Sidebar λ
         const lambdaFill = document.getElementById('lambdaFill');
         const lambdaValue = document.getElementById('lambdaValue');
         
         function updateLambdaProgress() {
           if (!lambdaFill || !lambdaValue) return;
-          
           const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
           const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
           const scrolled = (winScroll / height) * 100;
-          
           lambdaFill.style.height = scrolled + "%";
           lambdaValue.textContent = scrolled.toFixed(2);
         }
@@ -150,27 +144,35 @@
           scrambleStatus();
         }
 
-        // Math Decrypt (Título Principal)
-        const mathChars = "∑∫∏ΔΩΨΦ≈≠∞√π∂∆∇±×÷";
-        function decryptText(elementId) {
-          const target = document.getElementById(elementId);
-          if (!target) return;
-          const finalWord = target.getAttribute("data-final") || target.innerText;
+        // Decrypt do título principal (montagem)
+        const titleElement = document.getElementById('main-title');
+        if (titleElement) {
+          const finalWord = titleElement.getAttribute('data-final') || titleElement.innerText;
+          const mathChars = "∑∫∏ΔΩΨΦ≈≠∞√π∂∆∇±×÷";
           let iterations = 0;
+          
+          // Começa com placeholder aleatório
+          titleElement.innerText = finalWord.split("").map(() => mathChars[Math.floor(Math.random() * mathChars.length)]).join("");
+          
           const interval = setInterval(() => {
-            target.innerText = finalWord.split("").map((letter, index) => {
-              if (index < iterations) return finalWord[index];
-              return letter === " " ? " " : mathChars[Math.floor(Math.random() * mathChars.length)];
-            }).join("");
-            if (iterations >= finalWord.length) clearInterval(interval);
-            iterations += 1 / 3;
-          }, 40);
+            let newText = "";
+            for (let i = 0; i < finalWord.length; i++) {
+              if (i < iterations) {
+                newText += finalWord[i];
+              } else {
+                newText += mathChars[Math.floor(Math.random() * mathChars.length)];
+              }
+            }
+            titleElement.innerText = newText;
+            
+            if (iterations >= finalWord.length) {
+              clearInterval(interval);
+              // Garante que o texto final esteja correto
+              titleElement.innerText = finalWord;
+            }
+            iterations += 1/3;
+          }, 50);
         }
-        
-        setTimeout(() => {
-          decryptText("crypt-prefix");
-          decryptText("crypt-suffix");
-        }, 300);
       });
     })();
   </script>
