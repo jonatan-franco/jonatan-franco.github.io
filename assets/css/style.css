@@ -13,9 +13,56 @@
 
 body {
   background-color: var(--bg-deep);
+  background-image: 
+    linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
   color: var(--text-primary);
   font-family: 'IBM Plex Sans', sans-serif;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* =======================================
+   BARRA DE PROGRESSO (PSICOMETRIA / UX)
+   ======================================= */
+.progress-container {
+  position: fixed;
+  top: 0;
+  z-index: 1031;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.progress-bar {
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--pink));
+  width: 0%;
+  transition: width 0.1s ease;
+  box-shadow: 0 0 15px var(--cyan);
+  position: relative;
+}
+
+.progress-label {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  background: rgba(10, 15, 28, 0.8);
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border-cyan-low);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.progress-bar:hover .progress-label {
+  opacity: 1;
 }
 
 .font-code { font-family: 'JetBrains Mono', monospace; }
@@ -46,7 +93,7 @@ body {
 }
 
 /* =======================================
-   TÍTULO GLITCH (AGORA ACELERADO E LIMPO)
+   TÍTULO GLITCH (OTIMIZADO PARA GPU)
    ======================================= */
 .main-cyber-title {
   font-family: 'Space Grotesk', sans-serif;
@@ -57,14 +104,13 @@ body {
 .glitch-wrapper {
   position: relative;
   display: inline-block;
+  will-change: transform;
 }
 
-/* Base dos pseudo-elementos (cores e textos duplicados) */
 .glitch-wrapper::before, .glitch-wrapper::after {
   content: attr(data-text);
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: var(--bg-deep);
   background: linear-gradient(to right, #ffffff, var(--cyan));
   -webkit-background-clip: text;
   background-clip: text;
@@ -72,23 +118,24 @@ body {
   opacity: 0.8;
 }
 
-/* Camada de falha Vermelha/Ciano (Acelerada para 0.4s) */
 .glitch-wrapper::before {
   left: 3px; 
   text-shadow: -2px 0 var(--pink);
   clip: rect(44px, 450px, 56px, 0);
   animation: glitch-anim-1 0.4s infinite linear alternate-reverse;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
-/* Camada de falha Azul/Roxa (Acelerada para 0.6s) */
 .glitch-wrapper::after {
   left: -3px;
   text-shadow: -2px 0 var(--cyan);
   clip: rect(10px, 450px, 30px, 0);
   animation: glitch-anim-2 0.6s infinite linear alternate-reverse;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
-/* Animações caóticas */
 @keyframes glitch-anim-1 {
   0% { clip: rect(20px, 9999px, 15px, 0); transform: skew(0.3deg); }
   20% { clip: rect(80px, 9999px, 100px, 0); transform: skew(-0.3deg); }
@@ -115,6 +162,49 @@ body {
   padding: 50px;
   margin-top: -100px;
   border-radius: 4px;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+}
+
+/* Estilo de "Intervalo de Confiança" para links */
+a:not(.btn) {
+  color: var(--cyan);
+  text-decoration: none;
+  background-image: linear-gradient(var(--cyan), var(--cyan));
+  background-size: 0% 2px;
+  background-position: 0% 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  padding-bottom: 2px;
+}
+
+a:not(.btn):hover {
+  background-size: 100% 2px;
+}
+
+/* Estilo Psicométrico para Citações */
+blockquote {
+  border-left: 3px solid var(--purple);
+  background: rgba(139, 92, 246, 0.05);
+  padding: 1.5rem;
+  margin: 2rem 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  position: relative;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+blockquote::before {
+  content: "ψ";
+  font-family: 'JetBrains Mono';
+  color: var(--purple);
+  position: absolute;
+  left: -10px;
+  top: -10px;
+  background: var(--bg-deep);
+  padding: 0 10px;
+  font-size: 20px;
+  opacity: 0.8;
 }
 
 .shadow-glow { box-shadow: 0 0 20px rgba(0, 229, 255, 0.15); }
@@ -125,7 +215,48 @@ body {
 .pulse { animation: pulse 2s infinite; }
 @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.5; } }
 
-h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; color: white; }
+h1, h2, h3 { 
+  font-family: 'Space Grotesk', sans-serif; 
+  color: white; 
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  border-bottom: 1px solid var(--border-cyan-low);
+  padding-bottom: 0.5rem;
+  margin-top: 3rem;
+  display: inline-block;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
+}
+
 .text-cyan { color: var(--cyan) !important; }
 .text-pink { color: var(--pink) !important; }
 .text-neon { color: var(--purple) !important; }
+
+/* Botões Psicométricos */
+.btn-cyan {
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.btn-cyan:hover {
+  background: var(--cyan);
+  color: black;
+  box-shadow: 0 0 30px var(--cyan);
+}
+
+.btn-outline-purple {
+  border: 1px solid var(--purple);
+  color: var(--purple);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.btn-outline-purple:hover {
+  background: var(--purple);
+  color: black;
+  box-shadow: 0 0 20px var(--purple);
+}
