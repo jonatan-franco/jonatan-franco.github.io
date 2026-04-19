@@ -1,3 +1,4 @@
+/* Color & Token Definition */
 :root {
   --bg-deep: #0A0F1C;
   --bg-panel: rgba(17, 24, 39, 0.85);
@@ -44,7 +45,9 @@ body {
   mask-image: linear-gradient(to bottom, black, transparent);
 }
 
-/* Título Glitch */
+/* =======================================
+   TÍTULO GLITCH (AGORA ACELERADO E LIMPO)
+   ======================================= */
 .main-cyber-title {
   font-family: 'Space Grotesk', sans-serif;
   text-transform: uppercase;
@@ -56,6 +59,7 @@ body {
   display: inline-block;
 }
 
+/* Base dos pseudo-elementos (cores e textos duplicados) */
 .glitch-wrapper::before, .glitch-wrapper::after {
   content: attr(data-text);
   position: absolute;
@@ -68,27 +72,39 @@ body {
   opacity: 0.8;
 }
 
+/* Camada de falha Vermelha/Ciano (Acelerada para 0.4s) */
 .glitch-wrapper::before {
-  left: 2px;
+  left: 3px; 
   text-shadow: -2px 0 var(--pink);
   clip: rect(44px, 450px, 56px, 0);
-  animation: glitch-anim-1 2s infinite linear alternate-reverse;
+  animation: glitch-anim-1 0.4s infinite linear alternate-reverse;
 }
 
+/* Camada de falha Azul/Roxa (Acelerada para 0.6s) */
 .glitch-wrapper::after {
-  left: -2px;
+  left: -3px;
   text-shadow: -2px 0 var(--cyan);
   clip: rect(10px, 450px, 30px, 0);
-  animation: glitch-anim-2 3s infinite linear alternate-reverse;
+  animation: glitch-anim-2 0.6s infinite linear alternate-reverse;
 }
 
+/* Animações caóticas */
 @keyframes glitch-anim-1 {
-  0%, 100% { clip: rect(40px, 9999px, 50px, 0); transform: skew(0.1deg); }
-  5% { clip: rect(80px, 9999px, 100px, 0); }
+  0% { clip: rect(20px, 9999px, 15px, 0); transform: skew(0.3deg); }
+  20% { clip: rect(80px, 9999px, 100px, 0); transform: skew(-0.3deg); }
+  40% { clip: rect(10px, 9999px, 30px, 0); transform: skew(0.5deg); }
+  60% { clip: rect(60px, 9999px, 70px, 0); transform: skew(-0.2deg); }
+  80% { clip: rect(40px, 9999px, 50px, 0); transform: skew(0.4deg); }
+  100% { clip: rect(40px, 9999px, 50px, 0); transform: skew(0.1deg); }
 }
+
 @keyframes glitch-anim-2 {
-  0%, 100% { clip: rect(50px, 9999px, 60px, 0); transform: skew(-0.1deg); }
-  10% { clip: rect(70px, 9999px, 90px, 0); }
+  0% { clip: rect(10px, 9999px, 20px, 0); transform: skew(-0.4deg); }
+  20% { clip: rect(70px, 9999px, 90px, 0); transform: skew(0.2deg); }
+  40% { clip: rect(30px, 9999px, 40px, 0); transform: skew(-0.5deg); }
+  60% { clip: rect(50px, 9999px, 60px, 0); transform: skew(0.3deg); }
+  80% { clip: rect(10px, 9999px, 50px, 0); transform: skew(-0.2deg); }
+  100% { clip: rect(50px, 9999px, 60px, 0); transform: skew(0.1deg); }
 }
 
 /* UI Components */
