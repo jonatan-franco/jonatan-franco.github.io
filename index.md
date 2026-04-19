@@ -8,7 +8,7 @@ title: Home
     <div class="p-3 border border-cyan-low rounded bg-black-50 shadow-glow font-code small">
       <div class="text-purple mb-2">> SYS.INIT() ... OK</div>
       <span class="text-cyan">[STATUS]:</span> <span id="scramble-text" class="text-white">PESQUISANDO</span><span class="cursor-blink text-cyan">_</span><br>
-      <span class="text-cyan">[MODO]:</span> EPISTEMOLOGIA_QUALITATIVA<br>
+      <span class="text-cyan">[MODO]:</span> EPISTEMOLOGIA<br>
       <span class="text-cyan">[COORD]:</span> LAT -14.2350, LON -51.9253 (BR)<br>
     </div>
   </div>
@@ -39,4 +39,4 @@ title: Home
   </div>
 </div>
 
-> **Status da Pesquisa:** Adaptando escalas de sono (RU SATED/SCI) para a população brasileira.
+
