@@ -101,3 +101,23 @@ blockquote {
   font-style: italic;
   color: var(--text-secondary);
 }
+/* Adicione no final do style.css */
+
+.bg-black-50 {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.05);
+}
+
+/* Animação do cursor do terminal */
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
