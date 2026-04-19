@@ -3,23 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  {::nomarkdown}
+  <!-- Performance: Preconnect e Preload de Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans:wght@300;400;600&family=JetBrains+Mono&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  {:/nomarkdown}
+  
   <title>{{ page.title }} | Jonatan Franco</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
 
+  {::nomarkdown}
+  <!-- Carregamento Condicional de MathJax (Performance) -->
+  {% if page.math %}
   <script>
     MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
   </script>
   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  {% endif %}
+  {:/nomarkdown}
 </head>
 <body>
+
+  <!-- NOVA BARRA DE PROGRESSO PSICOMÉTRICA (UX) -->
+  <div class="progress-container">
+    <div class="progress-bar" id="readingProgress">
+      <span class="progress-label font-code">INITIALIZING VECTOR...</span>
+    </div>
+  </div>
 
   <nav class="navbar navbar-expand-lg sticky-top border-bottom border-cyan-low">
     <div class="container">
       <a class="navbar-brand fw-bold tracking-tighter" href="{{ '/' | relative_url }}">
-        JONATAN<span class="text-cyan">FRANCO</span><span class="ms-2 opacity-25 fw-light small">v3.5</span>
+        JONATAN<span class="text-cyan">FRANCO</span><span class="ms-2 opacity-25 fw-light small">v4.0β</span>
       </a>
       <div class="navbar-nav ms-auto font-code small">
         <a class="nav-link px-3" href="{{ '/' | relative_url }}">[ HOME ]</a>
@@ -78,11 +98,29 @@
   
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-      // 1. Terminal Scramble (Widget de Status)
+      // 1. Barra de Progresso (Leitura Psicométrica)
+      const progressBar = document.getElementById('readingProgress');
+      const progressLabel = document.querySelector('.progress-label');
+      
+      window.addEventListener('scroll', () => {
+        const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = (winScroll / height) * 100;
+        progressBar.style.width = scrolled + "%";
+        
+        // Atualiza o texto conforme a "carga fatorial"
+        if (scrolled > 0.5) {
+          progressLabel.textContent = `LOADING λ: ${Math.round(scrolled * 10) / 10}%`;
+        } else {
+          progressLabel.textContent = `INITIALIZING VECTOR...`;
+        }
+      });
+
+      // 2. Terminal Scramble (Widget de Status) - Otimizado
       const statusTarget = document.getElementById("scramble-text");
       if (statusTarget) {
         const finalStatus = "PESQUISANDO";
-        const statusChars = "0123456789!@#$%^&*";
+        const statusChars = "ΨΔΩΣΦΠΘΛΞ";
         function scrambleStatus() {
           let iterations = 0;
           const interval = setInterval(() => {
@@ -90,14 +128,17 @@
               if (index < iterations) return finalStatus[index];
               return statusChars[Math.floor(Math.random() * statusChars.length)];
             }).join("");
-            if (iterations >= finalStatus.length) { clearInterval(interval); setTimeout(scrambleStatus, 5000); }
-            iterations += 1 / 3;
-          }, 40);
+            if (iterations >= finalStatus.length) { 
+              clearInterval(interval); 
+              setTimeout(scrambleStatus, 8000); 
+            }
+            iterations += 1 / 2;
+          }, 50);
         }
         scrambleStatus();
       }
 
-      // 2. Math Decrypt (Título Principal)
+      // 3. Math Decrypt (Título Principal) - Mantido com estética
       const mathChars = "∑∫∏ΔΩΨΦ≈≠∞√π∂∆∇±×÷";
       function decryptText(elementId) {
         const target = document.getElementById(elementId);
@@ -110,11 +151,15 @@
             return letter === " " ? " " : mathChars[Math.floor(Math.random() * mathChars.length)];
           }).join("");
           if (iterations >= finalWord.length) clearInterval(interval);
-          iterations += 1 / 4;
-        }, 50);
+          iterations += 1 / 3;
+        }, 40);
       }
-      decryptText("crypt-prefix");
-      decryptText("crypt-suffix");
+      
+      // Delay para o título não piscar antes de carregar a fonte
+      setTimeout(() => {
+        decryptText("crypt-prefix");
+        decryptText("crypt-suffix");
+      }, 300);
     });
   </script>
 </body>
