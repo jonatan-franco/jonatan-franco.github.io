@@ -24,7 +24,16 @@
   {% endif %}
 </head>
 <body>
-
+<!-- SIDEBAR PSICOMÉTRICA (FATOR λ) - visível apenas em telas grandes -->
+<div class="lambda-sidebar d-none d-lg-flex">
+  <div class="lambda-container">
+    <div class="lambda-symbol">λ</div>
+    <div class="lambda-track">
+      <div class="lambda-fill" id="lambdaFill"></div>
+    </div>
+    <div class="lambda-value font-code" id="lambdaValue">0.00</div>
+  </div>
+</div>
   <!-- NOVA BARRA DE PROGRESSO PSICOMÉTRICA (UX) -->
   <div class="progress-container">
     <div class="progress-bar" id="readingProgress">
@@ -58,8 +67,8 @@
           </div>
           
           <h1 class="display-1 fw-700 text-white mb-4 main-cyber-title">
-            <span class="crypt-text" id="crypt-prefix" data-final="SUBJE">SUBJE</span><br class="d-lg-none">
-            <span class="text-gradient glitch-wrapper" data-text="LATENTE" id="crypt-suffix">TIVANTE</span>
+            <span class="crypt-text" id="crypt-prefix" data-final="SUBJE">SUBJETIVANTE</span><br class="d-lg-none">
+            <span class="text-gradient glitch-wrapper" data-text="LATENTE" id="crypt-suffix">SUBJETIVANTE</span>
           </h1>
           
           <p class="lead text-secondary-bright mb-5">Reflexões sobre a formalização matemática da psicologia, psicometria avançada e a epistemologia dos modelos latentes.</p>
@@ -158,5 +167,24 @@
       }, 300);
     });
   </script>
+  // 4. Lambda Factor Loading Sidebar
+  const lambdaFill = document.getElementById('lambdaFill');
+  const lambdaValue = document.getElementById('lambdaValue');
+  
+  function updateLambdaProgress() {
+    if (!lambdaFill || !lambdaValue) return;
+    
+    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = (winScroll / height) * 100;
+    
+    lambdaFill.style.height = scrolled + "%";
+    lambdaValue.textContent = scrolled.toFixed(2);
+  }
+  
+  window.addEventListener('scroll', updateLambdaProgress);
+  window.addEventListener('resize', updateLambdaProgress);
+  // Inicializa
+  updateLambdaProgress();
 </body>
 </html>

@@ -13,9 +13,10 @@
 
 body {
   background-color: var(--bg-deep);
+  /* Grade de matriz de correlação (mais visível agora) */
   background-image: 
-    linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(0, 229, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.06) 1px, transparent 1px);
   background-size: 40px 40px;
   color: var(--text-primary);
   font-family: 'IBM Plex Sans', sans-serif;
@@ -260,3 +261,76 @@ h2 {
   color: black;
   box-shadow: 0 0 20px var(--purple);
 }
+
+/* =======================================
+   SIDEBAR DE CARGA FATORIAL (λ) 
+   ======================================= */
+   .lambda-sidebar {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1040;
+    flex-direction: column;
+    align-items: center;
+    width: 60px;
+    pointer-events: none;
+  }
+  
+  .lambda-container {
+    background: rgba(10, 15, 28, 0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-cyan-low);
+    border-radius: 30px;
+    padding: 15px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 0 30px rgba(0, 229, 255, 0.1);
+  }
+  
+  .lambda-symbol {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--cyan);
+    text-shadow: 0 0 15px var(--cyan);
+    margin-bottom: 10px;
+  }
+  
+  .lambda-track {
+    width: 4px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+  }
+  
+  .lambda-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(to top, var(--pink), var(--purple), var(--cyan));
+    box-shadow: 0 0 15px var(--cyan);
+    transition: height 0.1s ease;
+    border-radius: 4px;
+  }
+  
+  .lambda-value {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--cyan);
+    text-shadow: 0 0 5px var(--cyan);
+    letter-spacing: 1px;
+  }
+  
+  /* Ajuste para não sobrepor em mobile */
+  @media (max-width: 991px) {
+    .lambda-sidebar {
+      display: none !important;
+    }
+  }
