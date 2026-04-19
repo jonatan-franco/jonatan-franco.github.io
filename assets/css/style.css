@@ -13,7 +13,7 @@
 
 body {
   background-color: var(--bg-deep);
-  /* Grade de matriz de correlação (agora visível) */
+  /* Grade de matriz de correlação */
   background-image: 
     linear-gradient(rgba(0, 229, 255, 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 229, 255, 0.06) 1px, transparent 1px);
@@ -22,48 +22,6 @@ body {
   font-family: 'IBM Plex Sans', sans-serif;
   overflow-x: hidden;
   position: relative;
-}
-
-/* =======================================
-   BARRA DE PROGRESSO SUPERIOR
-   ======================================= */
-.progress-container {
-  position: fixed;
-  top: 0;
-  z-index: 1031;
-  width: 100%;
-  height: 3px;
-  background: transparent;
-  pointer-events: none;
-}
-
-.progress-bar {
-  height: 3px;
-  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--pink));
-  width: 0%;
-  transition: width 0.1s ease;
-  box-shadow: 0 0 15px var(--cyan);
-  position: relative;
-}
-
-.progress-label {
-  position: absolute;
-  right: 10px;
-  top: 8px;
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--cyan);
-  background: rgba(10, 15, 28, 0.8);
-  padding: 2px 8px;
-  border-radius: 20px;
-  border: 1px solid var(--border-cyan-low);
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-}
-
-.progress-bar:hover .progress-label {
-  opacity: 1;
 }
 
 /* =======================================
@@ -180,7 +138,6 @@ body {
   will-change: transform;
 }
 
-/* AGORA USA data-final PARA CONSISTÊNCIA */
 .glitch-wrapper::before, .glitch-wrapper::after {
   content: attr(data-final);
   position: absolute;

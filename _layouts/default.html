@@ -25,13 +25,6 @@
 </head>
 <body class="{% if page.collection == 'posts' %}post-page{% endif %}">
 
-  <!-- BARRA DE PROGRESSO SUPERIOR (PSICOMÉTRICA) -->
-  <div class="progress-container">
-    <div class="progress-bar" id="readingProgress">
-      <span class="progress-label font-code">INITIALIZING VECTOR...</span>
-    </div>
-  </div>
-
   <!-- SIDEBAR LATERAL λ (APENAS EM POSTS) -->
   {% if page.collection == 'posts' %}
   <div class="lambda-sidebar d-none d-lg-flex">
@@ -107,7 +100,6 @@
   
   <script>
     (function() {
-      // Garantir que o DOM está pronto
       function ready(fn) {
         if (document.readyState !== 'loading') {
           fn();
@@ -117,23 +109,7 @@
       }
 
       ready(function() {
-        // 1. Barra de Progresso Superior
-        const progressBar = document.getElementById('readingProgress');
-        const progressLabel = document.querySelector('.progress-label');
-        
-        function updateProgressBar() {
-          const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-          const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-          const scrolled = (winScroll / height) * 100;
-          if (progressBar) {
-            progressBar.style.width = scrolled + "%";
-            if (progressLabel) {
-              progressLabel.textContent = `LOADING λ: ${scrolled.toFixed(1)}%`;
-            }
-          }
-        }
-
-        // 2. Sidebar λ (apenas se existir)
+        // Sidebar λ (apenas se existir)
         const lambdaFill = document.getElementById('lambdaFill');
         const lambdaValue = document.getElementById('lambdaValue');
         
@@ -148,21 +124,11 @@
           lambdaValue.textContent = scrolled.toFixed(2);
         }
 
-        // Unificar listeners
-        window.addEventListener('scroll', function() {
-          updateProgressBar();
-          updateLambdaProgress();
-        });
-        window.addEventListener('resize', function() {
-          updateProgressBar();
-          updateLambdaProgress();
-        });
-        
-        // Inicializar
-        updateProgressBar();
+        window.addEventListener('scroll', updateLambdaProgress);
+        window.addEventListener('resize', updateLambdaProgress);
         updateLambdaProgress();
 
-        // 3. Terminal Scramble (Widget de Status)
+        // Terminal Scramble (Widget de Status)
         const statusTarget = document.getElementById("scramble-text");
         if (statusTarget) {
           const finalStatus = "PESQUISANDO";
@@ -184,7 +150,7 @@
           scrambleStatus();
         }
 
-        // 4. Math Decrypt (Título Principal) - Agora usando data-final
+        // Math Decrypt (Título Principal)
         const mathChars = "∑∫∏ΔΩΨΦ≈≠∞√π∂∆∇±×÷";
         function decryptText(elementId) {
           const target = document.getElementById(elementId);
