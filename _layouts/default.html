@@ -19,13 +19,13 @@
   <nav class="navbar navbar-expand-lg sticky-top border-bottom border-cyan-low">
     <div class="container">
       <a class="navbar-brand fw-bold tracking-tighter" href="{{ '/' | relative_url }}">
-        JONATAN<span class="text-cyan">FRANCO</span><span class="ms-2 opacity-25 fw-light">v3.0</span>
+        JONATAN<span class="text-cyan">FRANCO</span><span class="ms-2 opacity-25 fw-light small">v3.5</span>
       </a>
-      <div class="navbar-nav ms-auto">
-        <a class="nav-link px-3" href="{{ '/' | relative_url }}">Início</a>
-        <a class="nav-link px-3" href="/artigos">Artigos</a>
-        <a class="nav-link px-3" href="/projetos">Projetos</a>
-        <a class="nav-link px-3" href="/epistemologia">Epistemologia</a>
+      <div class="navbar-nav ms-auto font-code small">
+        <a class="nav-link px-3" href="{{ '/' | relative_url }}">[ HOME ]</a>
+        <a class="nav-link px-3" href="/artigos">[ RESEARCH ]</a>
+        <a class="nav-link px-3" href="/projetos">[ PROJECTS ]</a>
+        <a class="nav-link px-3" href="/epistemologia">[ EPISTEME ]</a>
       </div>
     </div>
   </nav>
@@ -35,15 +35,20 @@
     <div class="hero-grid-overlay"></div>
     <div class="container position-relative z-index-2">
       <div class="row align-items-center">
-        <div class="col-lg-7 text-center text-lg-start">
+        <div class="col-lg-10 text-center text-lg-start">
           <div class="d-flex align-items-center justify-content-center justify-content-lg-start mb-3">
             <div class="status-dot pulse me-2"></div>
-            <span class="font-code text-cyan small tracking-widest">QUANTIFYING MIND • MODELING REALITY</span>
+            <span class="font-code text-cyan small tracking-widest uppercase">Quantifying Mind • Modeling Reality</span>
           </div>
-          <h1 class="display-2 fw-700 text-white mb-4">COGNITIVE <span class="text-gradient">SYSTEMS</span></h1>
+          
+          <h1 class="display-1 fw-700 text-white mb-4 main-cyber-title">
+            <span class="crypt-text" id="crypt-prefix" data-final="SÍNTESE">SÍNTESE</span><br class="d-lg-none">
+            <span class="text-gradient glitch-wrapper" data-text="LATENTE" id="crypt-suffix">LATENTE</span>
+          </h1>
+          
           <p class="lead text-secondary-bright mb-5">Reflexões sobre a formalização matemática da psicologia, psicometria avançada e a epistemologia dos modelos latentes.</p>
           <div class="d-flex gap-3 justify-content-center justify-content-lg-start">
-            <a href="/artigos" class="btn btn-cyan rounded-0 px-4 py-2 fw-bold">VIEW ANALYSIS</a>
+            <a href="/artigos" class="btn btn-cyan rounded-0 px-4 py-2 fw-bold shadow-glow">VIEW ANALYSIS</a>
             <a href="#sobre" class="btn btn-outline-purple rounded-0 px-4 py-2 fw-bold">THEORY</a>
           </div>
         </div>
@@ -73,28 +78,43 @@
   
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-      const target = document.getElementById("scramble-text");
-      if (!target) return;
-      
-      const finalWord = "PESQUISANDO";
-      const chars = "0123456789!@#$%^&*";
-      
-      function scramble() {
+      // 1. Terminal Scramble (Widget de Status)
+      const statusTarget = document.getElementById("scramble-text");
+      if (statusTarget) {
+        const finalStatus = "PESQUISANDO";
+        const statusChars = "0123456789!@#$%^&*";
+        function scrambleStatus() {
+          let iterations = 0;
+          const interval = setInterval(() => {
+            statusTarget.innerText = finalStatus.split("").map((letter, index) => {
+              if (index < iterations) return finalStatus[index];
+              return statusChars[Math.floor(Math.random() * statusChars.length)];
+            }).join("");
+            if (iterations >= finalStatus.length) { clearInterval(interval); setTimeout(scrambleStatus, 5000); }
+            iterations += 1 / 3;
+          }, 40);
+        }
+        scrambleStatus();
+      }
+
+      // 2. Math Decrypt (Título Principal)
+      const mathChars = "∑∫∏ΔΩΨΦ≈≠∞√π∂∆∇±×÷";
+      function decryptText(elementId) {
+        const target = document.getElementById(elementId);
+        if (!target) return;
+        const finalWord = target.getAttribute("data-final") || target.innerText;
         let iterations = 0;
         const interval = setInterval(() => {
           target.innerText = finalWord.split("").map((letter, index) => {
             if (index < iterations) return finalWord[index];
-            return chars[Math.floor(Math.random() * chars.length)];
+            return letter === " " ? " " : mathChars[Math.floor(Math.random() * mathChars.length)];
           }).join("");
-          
-          if (iterations >= finalWord.length) {
-            clearInterval(interval);
-            setTimeout(scramble, 4000); // Repete o efeito a cada 4 segundos
-          }
-          iterations += 1 / 3; // Velocidade da revelação das letras
-        }, 40);
+          if (iterations >= finalWord.length) clearInterval(interval);
+          iterations += 1 / 4;
+        }, 50);
       }
-      scramble();
+      decryptText("crypt-prefix");
+      decryptText("crypt-suffix");
     });
   </script>
 </body>

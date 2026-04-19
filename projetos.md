@@ -36,19 +36,6 @@ title: Projetos & Modelos
     </div>
   </div>
 
-  <div class="col-md-6">
-    <div class="card bg-panel border-cyan-low h-100 p-4 shadow-sm">
-      <div class="d-flex justify-content-between align-items-start mb-3">
-        <span class="badge bg-green text-dark font-code small">DATABASE</span>
-      </div>
-      <h4 class="text-white">Master Project Database</h4>
-      <p class="small text-secondary">Estruturação de banco de dados relacionais para projetos de mestrado, focando em integridade e normalização de dados psicométricos.</p>
-      <div class="mt-auto pt-3 border-top border-cyan-low">
-        <div class="font-code small text-cyan">TECH: SQL / RSQLite</div>
-        <a href="#" class="btn btn-link p-0 mt-2 text-decoration-none font-code text-pink">DOCUMENTATION _</a>
-      </div>
-    </div>
-  </div>
 
   <div class="col-md-6">
     <div class="card bg-panel border-dashed h-100 p-4 d-flex align-items-center justify-content-center opacity-50">
