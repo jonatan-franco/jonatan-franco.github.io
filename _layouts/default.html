@@ -72,7 +72,7 @@
           
           <h1 class="display-1 fw-700 text-white mb-4 main-cyber-title">
             <span class="crypt-text" id="crypt-prefix" data-final="SUBJE">SUBJE</span><br class="d-lg-none">
-            <span class="text-gradient glitch-wrapper" data-text="LATENTE" id="crypt-suffix">TIVANTE</span>
+            <span class="text-gradient glitch-wrapper" id="crypt-suffix" data-final="TIVANTE">TIVANTE</span>
           </h1>
           
           <p class="lead text-secondary-bright mb-5">Reflexões sobre a formalização matemática da psicologia, psicometria avançada e a epistemologia dos modelos latentes.</p>
@@ -184,7 +184,7 @@
           scrambleStatus();
         }
 
-        // 4. Math Decrypt (Título Principal)
+        // 4. Math Decrypt (Título Principal) - Agora usando data-final
         const mathChars = "∑∫∏ΔΩΨΦ≈≠∞√π∂∆∇±×÷";
         function decryptText(elementId) {
           const target = document.getElementById(elementId);
