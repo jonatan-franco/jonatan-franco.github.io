@@ -381,3 +381,141 @@ h2 {
     align-items: center;
     gap: 8px; /* ou 12px */
   }
+
+  /* =======================================
+   BOTÕES DE INTERAÇÃO (CURTIR / COMPARTILHAR)
+   ======================================= */
+.like-section {
+  display: flex;
+  align-items: center;
+}
+
+.like-btn {
+  background: transparent;
+  border: 1px solid var(--border-cyan-low);
+  border-radius: 40px;
+  padding: 8px 20px;
+  color: var(--cyan);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.like-btn:hover {
+  border-color: var(--pink);
+  box-shadow: 0 0 15px rgba(255, 45, 149, 0.3);
+}
+
+.like-btn.liked {
+  border-color: var(--pink);
+  background: rgba(255, 45, 149, 0.1);
+  color: var(--pink);
+}
+
+.like-btn i {
+  transition: transform 0.1s ease;
+}
+
+.like-btn:active i {
+  transform: scale(1.3);
+}
+
+.like-count {
+  font-size: 1rem;
+  min-width: 2em;
+  text-align: center;
+}
+
+.like-label {
+  letter-spacing: 1px;
+}
+
+.share-section-header {
+  display: flex;
+  align-items: center;
+}
+
+.share-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid var(--border-cyan-low);
+  color: var(--cyan);
+  font-size: 1.1rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.share-btn:hover {
+  background: var(--cyan);
+  color: black;
+  border-color: var(--cyan);
+  box-shadow: 0 0 15px var(--cyan);
+  transform: translateY(-2px);
+}
+
+.copy-btn {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+.copy-btn:hover {
+  background: var(--purple);
+  color: black;
+  box-shadow: 0 0 15px var(--purple);
+}
+
+.share-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-cyan-low);
+  margin: 0 10px;
+}
+
+/* Toast de confirmação */
+.copy-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(10, 15, 28, 0.95);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  padding: 12px 24px;
+  border-radius: 40px;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.copy-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Comentários Giscus */
+.comments-section {
+  margin-top: 2rem;
+}
+#giscus-container {
+  min-height: 200px;
+  border-radius: 4px;
+}
