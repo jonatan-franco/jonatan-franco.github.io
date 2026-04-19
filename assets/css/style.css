@@ -138,7 +138,6 @@ body {
   cursor: default;
 }
 
-/* Pseudo-elementos só aparecem no hover */
 .glitch-wrapper::before,
 .glitch-wrapper::after {
   content: attr(data-final);
@@ -281,6 +280,7 @@ h2 {
 .text-cyan { color: var(--cyan) !important; }
 .text-pink { color: var(--pink) !important; }
 .text-neon { color: var(--purple) !important; }
+.text-green { color: var(--green) !important; }
 
 .btn-cyan {
   background: rgba(0, 229, 255, 0.1);
@@ -310,79 +310,6 @@ h2 {
 }
 
 /* =======================================
-   BOTÕES DE COMPARTILHAMENTO (SUBSTACK STYLE)
-   ======================================= */
-   .share-section {
-    margin-top: 3rem;
-    padding-top: 2rem;
-  }
-  
-  .share-buttons {
-    display: flex;
-    gap: 12px;
-  }
-  
-  .share-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(0, 229, 255, 0.05);
-    border: 1px solid var(--border-cyan-low);
-    color: var(--cyan);
-    font-size: 1.2rem;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    cursor: pointer;
-  }
-  
-  .share-btn:hover {
-    background: var(--cyan);
-    color: black;
-    border-color: var(--cyan);
-    box-shadow: 0 0 15px var(--cyan);
-    transform: translateY(-2px);
-  }
-  
-  /* Toast de confirmação de cópia */
-  .copy-toast {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: rgba(10, 15, 28, 0.95);
-    border: 1px solid var(--cyan);
-    color: var(--cyan);
-    padding: 12px 24px;
-    border-radius: 40px;
-    box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
-    backdrop-filter: blur(8px);
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    pointer-events: none;
-    z-index: 9999;
-  }
-  
-  .copy-toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  .share-divider {
-    width: 1px;
-    height: 30px;
-    background: var(--border-cyan-low);
-    margin: 0 12px;
-  }
-  .share-buttons {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* ou 12px */
-  }
-
-  /* =======================================
    BOTÕES DE INTERAÇÃO (CURTIR / COMPARTILHAR)
    ======================================= */
 .like-section {
@@ -519,3 +446,9 @@ h2 {
   min-height: 200px;
   border-radius: 4px;
 }
+
+/* Ajustes para cards em outras páginas */
+.bg-panel { background: var(--bg-panel); }
+.border-dashed { border: 2px dashed rgba(0, 229, 255, 0.1); }
+.border-left-neon { border-left: 3px solid var(--purple); }
+.bg-purple { background-color: var(--purple); }
