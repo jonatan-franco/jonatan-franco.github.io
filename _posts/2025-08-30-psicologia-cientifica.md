@@ -1,6 +1,7 @@
 ---
 layout: default
 title: "Qual o caminho para uma Psicologia Científica?"
+math: true
 ---
 
 # {{ page.title }}
