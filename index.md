@@ -16,7 +16,6 @@ title: Home
 
 
 
-> **Status da Pesquisa:** Adaptando escalas de sono (RU SATED/SCI) para a população brasileira.
 <div class="row g-4 mb-5" id="sobre">
   <div class="col-md-4">
     <div class="p-4 border border-cyan-low bg-black-50 h-100">
