@@ -105,28 +105,30 @@
           {{ content }}
           
           <!-- Bloco de Compartilhamento (apenas em posts) -->
-          {% if page.collection == 'posts' %}
-          <div class="share-section mt-5 pt-4 border-top border-cyan-low">
-            <div class="d-flex align-items-center justify-content-between flex-wrap">
-              <span class="font-code text-cyan me-3"><i class="fas fa-share-alt me-2"></i>COMPARTILHAR ESTA ANÁLISE</span>
-              <div class="share-buttons">
-                <button class="share-btn" onclick="copyPageUrl()" title="Copiar link">
-                  <i class="fas fa-link"></i>
-                </button>
-                <a href="https://twitter.com/intent/tweet?url={{ site.url }}{{ page.url | url_encode }}&text={{ page.title | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no X/Twitter">
-                  <i class="fab fa-x-twitter"></i>
-                </a>
-                <a href="https://www.facebook.com/sharer/sharer.php?u={{ site.url }}{{ page.url | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no Facebook">
-                  <i class="fab fa-facebook-f"></i>
-                </a>
-                <a href="https://www.linkedin.com/shareArticle?mini=true&url={{ site.url }}{{ page.url | url_encode }}&title={{ page.title | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no LinkedIn">
-                  <i class="fab fa-linkedin-in"></i>
-                </a>
-              </div>
-            </div>
-            <div id="copy-toast" class="copy-toast font-code small">Link copiado para a área de transferência</div>
-          </div>
-          {% endif %}
+          <!-- Bloco de Compartilhamento (apenas em posts) -->
+{% if page.collection == 'posts' %}
+<div class="share-section mt-5 pt-4 border-top border-cyan-low">
+  <div class="d-flex align-items-center justify-content-between flex-wrap">
+    <span class="font-code text-cyan me-3"><i class="fas fa-share-alt me-2"></i>COMPARTILHAR ESTA ANÁLISE</span>
+    <div class="share-buttons">
+      <button class="share-btn copy-btn" onclick="copyPageUrl()" title="Copiar link">
+        <i class="fas fa-link"></i>
+      </button>
+      <div class="share-divider"></div>
+      <a href="https://twitter.com/intent/tweet?url={{ site.url | default: 'https://jonatan-franco.github.io' }}{{ page.url | url_encode }}&text={{ page.title | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no X/Twitter">
+        <i class="fab fa-x-twitter"></i>
+      </a>
+      <a href="https://www.facebook.com/sharer/sharer.php?u={{ site.url | default: 'https://jonatan-franco.github.io' }}{{ page.url | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no Facebook">
+        <i class="fab fa-facebook-f"></i>
+      </a>
+      <a href="https://www.instagram.com/" target="_blank" class="share-btn" title="Compartilhar no Instagram (link copiado para legenda)" onclick="shareToInstagram(event)">
+        <i class="fab fa-instagram"></i>
+      </a>
+    </div>
+  </div>
+  <div id="copy-toast" class="copy-toast font-code small">Link copiado para a área de transferência</div>
+</div>
+{% endif %}
         </article>
       </div>
     </div>
@@ -234,3 +236,36 @@
   </script>
 </body>
 </html>
+
+// Função global para copiar URL (toast aparece apenas aqui)
+function copyPageUrl() {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    const toast = document.getElementById('copy-toast');
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2000);
+  });
+}
+
+// Função para compartilhar no Instagram (copia link e instruções)
+function shareToInstagram(event) {
+  event.preventDefault();
+  const url = window.location.href;
+  const title = document.title.split('|')[0].trim();
+  const message = `"${title}" - leia mais em: ${url}`;
+  
+  navigator.clipboard.writeText(message).then(() => {
+    const toast = document.getElementById('copy-toast');
+    toast.textContent = 'Texto copiado! Cole na legenda do Instagram.';
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      toast.textContent = 'Link copiado para a área de transferência'; // restaura
+    }, 3000);
+  });
+  
+  // Opcional: abrir Instagram (não há share URL direto, só app)
+  // window.open('https://www.instagram.com/', '_blank');
+}

@@ -369,3 +369,15 @@ h2 {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  .share-divider {
+    width: 1px;
+    height: 30px;
+    background: var(--border-cyan-low);
+    margin: 0 12px;
+  }
+  .share-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* ou 12px */
+  }
