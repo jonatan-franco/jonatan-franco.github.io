@@ -9,13 +9,13 @@ math: true
 **Jonatan Franco**  
 *Mestrando em Psicologia Clínica (IPUSP) e Psicólogo Clínico – CRP 14/11474*
 
----
+
 
 ## 1. Sobre Dados
 
 Falar que "os dados provam" alguma coisa é uma mera repetição sem sentido, pois **dado** é apenas o *contradomínio de uma função **f***. O que prova algo é a **informação**, isto é, a ligação (a função) contextualizada entre o evento de um espaço amostral e o número (o dado) que uma agente de conhecimento produz — mas não só: o quanto ela explicita a regra de formação (conhecimento justificado) da função em questão. Isto sim, é prova.
 
----
+
 
 ## 2. Sobre Distribuição Conjunta e Associação
 
@@ -53,7 +53,7 @@ Entretanto, outra possível conclusão seria: da amostra de pessoas que cursam F
 
 Vemos então que a existência e a força de associação entre duas variáveis categóricas (mas o mesmo vale para contínuas) dependem do objetivo de análise de quem pesquisa e a que pergunta se responde. A matemática nada tem de "exata", no sentido lato, e pode facilmente ser manipulada para mostrar o que queremos ver, confirmando nossos vieses, dado o nível de desonestidade ou de ignorância.
 
----
+
 
 ## 3. Sobre Lift Ratio
 
@@ -77,7 +77,6 @@ Aqui nós estamos calculando a perda tendo como valor de referência o dinheiro 
 
 Parece uma contradição que haja uma perda de 60% e 150% ao mesmo tempo, mas a dialética é justamente a aparição de uma contradição aparente gerada para uma condição que foi imposta no modelo: a isso damos o nome de *enquadramento*, ou *framing*. O cenário de perda é maior para o framing do indivíduo do que para o framing da empresa. Os dados podem contar histórias diferentes a depender da intenção de quem as conta.
 
----
 
 **Como citar este artigo:**  
 Franco, J. (2026). Divulgação e Formação Científica: Probabilidade, Dialética e Framing. *Blog Subjetivante*. Disponível em: https://jonatan-franco.github.io/artigos/divulgacao-cientifica
