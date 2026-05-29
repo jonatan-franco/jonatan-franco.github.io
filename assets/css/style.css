@@ -453,3 +453,12 @@ h2 {
 .border-left-neon { border-left: 3px solid var(--purple); }
 .bg-purple { background-color: var(--purple); }
 
+html {
+  scroll-padding-top: 70px; /* altura da navbar */
+}
+
+@media (max-width: 768px) {
+  html {
+    scroll-padding-top: 56px;
+  }
+}

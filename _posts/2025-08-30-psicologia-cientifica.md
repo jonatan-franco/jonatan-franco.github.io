@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: article
 title: "Qual o caminho para uma Psicologia Científica?"
 math: true
 ---
