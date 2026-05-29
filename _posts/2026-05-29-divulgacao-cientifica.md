@@ -4,6 +4,7 @@ title: "Divulgação e Formação Científica: Probabilidade, Dialética e Frami
 author: "Jonatan Franco"
 affiliation: "Mestrando em Psicologia Clínica (IPUSP) | CRP 14/11474"
 math: true
+date: 2026-05-29
 ---
 
 **Jonatan Franco**  
