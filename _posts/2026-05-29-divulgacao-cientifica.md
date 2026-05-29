@@ -47,7 +47,7 @@ Uma conclusão possível da nossa análise seria: dentro do grupo de mulheres qu
 
 $$P(F \mid M) \simeq P(CS \mid M)$$
 
-Entretanto, outra possível conclusão seria: da amostra de pessoas que cursam Física, $P(M | F)$ $<$ $P(H | F)$. Ou seja, se sorteássemos uma pessoa que estuda Física, do total considerado, a probabilidade de ser homem é maior do que a de ser mulher. Poderíamos concluir que o curso é uma variável que afeta a probabilidade de surgir uma mulher na amostra, e a razão é que o ambiente favorece a aparição de homens. Do mesmo modo, seria diferente se fixássemos o 100% como a soma de todas as categorias, e a proporção marginal seria outra[^3].
+Entretanto, outra possível conclusão seria: da amostra de pessoas que cursam Física, $P(M \mid F) < P(H \mid F)$. Ou seja, se sorteássemos uma pessoa que estuda Física, do total considerado, a probabilidade de ser homem é maior do que a de ser mulher. Poderíamos concluir que o curso é uma variável que afeta a probabilidade de surgir uma mulher na amostra, e a razão é que o ambiente favorece a aparição de homens. Do mesmo modo, seria diferente se fixássemos o 100% como a soma de todas as categorias, e a proporção marginal seria outra[^3].
 
 [^3]: F<sub>abs</sub> = (1/100) Σ *f*<sub>ij</sub>, sendo *f*<sub>ij</sub> a frequência relativa do par das categorias *i* e *j*: (masc, fis) + (fem, fis) + (masc, cs) + (fem, cs) = Total.
 
