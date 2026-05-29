@@ -3,7 +3,6 @@ layout: article
 title: "Divulgação e Formação Científica: Probabilidade, Dialética e Framing"
 author: "Jonatan Franco"
 affiliation: "Mestrando em Psicologia Clínica (IPUSP) | CRP 14/11474"
-date: "Maio 2026"
 math: true
 ---
 
