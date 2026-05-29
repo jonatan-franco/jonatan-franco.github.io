@@ -1,0 +1,172 @@
+/* Variáveis de tema */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --accent: #8B5CF6;
+  --accent-light: rgba(139, 92, 246, 0.1);
+  --highlight-bg: #fef3c7;
+  --highlight-text: #92400e;
+  --toolbar-bg: #ffffff;
+  --toolbar-border: #e2e8f0;
+  --toolbar-text: #1a202c;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0A0F1C;
+  --bg-secondary: #111827;
+  --text-primary: #E5E7EB;
+  --text-secondary: #9CA3AF;
+  --accent: #00E5FF;
+  --accent-light: rgba(0, 229, 255, 0.08);
+  --highlight-bg: rgba(0, 229, 255, 0.2);
+  --highlight-text: #00E5FF;
+  --toolbar-bg: #111827;
+  --toolbar-border: rgba(0, 229, 255, 0.15);
+  --toolbar-text: #E5E7EB;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Barra de ferramentas fixa */
+.article-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  height: 56px;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--toolbar-border);
+  backdrop-filter: blur(12px);
+}
+
+.article-title-toolbar {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--toolbar-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  text-align: center;
+  margin: 0 1rem;
+}
+
+.toolbar-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--toolbar-text);
+  font-size: 1rem;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.toolbar-btn:hover {
+  background: var(--accent-light);
+}
+
+.font-size-controls {
+  display: flex;
+  gap: 4px;
+}
+
+/* Conteúdo principal */
+.article-content {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+/* Tipografia do artigo */
+.article-content h1 { font-size: 2.2rem; margin: 2rem 0 1rem; font-family: 'Space Grotesk', sans-serif; }
+.article-content h2 { font-size: 1.7rem; margin: 2rem 0 0.8rem; font-family: 'Space Grotesk', sans-serif; border-bottom: 1px solid var(--toolbar-border); padding-bottom: 0.3rem; }
+.article-content h3 { font-size: 1.3rem; margin: 1.5rem 0 0.5rem; }
+.article-content p { margin-bottom: 1.2rem; }
+.article-content a { color: var(--accent); text-decoration: underline; }
+.article-content pre {
+  background: var(--bg-secondary);
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border: 1px solid var(--toolbar-border);
+}
+.article-content code {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg-secondary);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.article-content blockquote {
+  border-left: 4px solid var(--accent);
+  padding-left: 1rem;
+  color: var(--text-secondary);
+  margin: 1.5rem 0;
+  font-style: italic;
+}
+.article-content img { max-width: 100%; border-radius: 8px; }
+
+/* Highlights salvos */
+mark {
+  background-color: var(--highlight-bg);
+  color: inherit;
+  padding: 0.1em 0.2em;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+/* Tooltip de highlight */
+.highlight-tooltip {
+  position: absolute;
+  display: none;
+  z-index: 1100;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.highlight-tooltip button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+}
+
+/* Tamanhos de fonte */
+[data-font-size="small"] .article-content { font-size: 0.95rem; }
+[data-font-size="large"] .article-content { font-size: 1.25rem; }
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .article-toolbar { padding: 0 0.5rem; }
+  .article-title-toolbar { font-size: 0.85rem; margin: 0 0.5rem; }
+  .toolbar-btn { font-size: 0.85rem; padding: 0.3rem 0.5rem; }
+  .article-content { max-width: 100%; padding: 0 1rem; margin: 1rem auto; }
+  .article-content h1 { font-size: 1.7rem; }
+  .article-content h2 { font-size: 1.3rem; }
+}
