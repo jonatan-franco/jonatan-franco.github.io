@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <title>{{ page.title }} | {{ site.title | default: "Jonatan Franco" }}</title>
+  <meta name="description" content="{{ page.excerpt | strip_html | truncate: 160 | default: site.description }}">
+  
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+  <meta property="og:title" content="{{ page.title }} | {{ site.title }}">
+  <meta property="og:description" content="{{ page.excerpt | strip_html | truncate: 160 | default: site.description }}">
+  <meta property="og:image" content="{{ site.url }}/assets/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;600&family=JetBrains+Mono&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="{{ '/assets/css/article.css' | relative_url }}">
+  
+  {% if page.math %}
+  <script>
+    MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  {% endif %}
+</head>
+<body>
+  <div class="article-app">
+    <!-- Barra de leitura minimalista (fixa no topo) -->
+    <header class="article-toolbar">
+      <button class="toolbar-btn" onclick="window.location.href='{{ '/artigos' | relative_url }}'" title="Voltar para Artigos">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <span class="article-title-toolbar">{{ page.title }}</span>
+      <div class="toolbar-actions">
+        <button class="toolbar-btn" id="themeToggle" title="Alternar tema claro/escuro">
+          <i class="fas fa-moon"></i>
+        </button>
+        <div class="font-size-controls">
+          <button class="toolbar-btn" id="fontDecrease" title="Diminuir fonte">A-</button>
+          <button class="toolbar-btn" id="fontReset" title="Fonte normal">A</button>
+          <button class="toolbar-btn" id="fontIncrease" title="Aumentar fonte">A+</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteúdo do artigo -->
+    <main class="article-content" id="articleContent">
+      <article>
+        {{ content }}
+      </article>
+    </main>
+  </div>
+
+  <!-- Tooltip flutuante para highlight -->
+  <div class="highlight-tooltip" id="highlightTooltip">
+    <button id="highlightBtn"><i class="fas fa-highlighter"></i> Marcar texto</button>
+  </div>
+
+  <script src="{{ '/assets/js/article.js' | relative_url }}"></script>
+</body>
+</html>
