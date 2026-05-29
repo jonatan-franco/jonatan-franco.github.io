@@ -170,3 +170,8 @@ mark {
   .article-content h1 { font-size: 1.7rem; }
   .article-content h2 { font-size: 1.3rem; }
 }
+
+.article-content article {
+  text-align: justify;
+  text-justify: inter-word;
+}
