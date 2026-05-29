@@ -10,13 +10,13 @@ math: true
 *Mestrando em Psicologia Clínica (IPUSP) e Psicólogo Clínico – CRP 14/11474*
 
 
-
+---
 ## 1. Sobre Dados
 
 Falar que "os dados provam" alguma coisa é uma mera repetição sem sentido, pois **dado** é apenas o *contradomínio de uma função **f***. O que prova algo é a **informação**, isto é, a ligação (a função) contextualizada entre o evento de um espaço amostral e o número (o dado) que uma agente de conhecimento produz — mas não só: o quanto ela explicita a regra de formação (conhecimento justificado) da função em questão. Isto sim, é prova.
 
 
-
+---
 ## 2. Sobre Distribuição Conjunta e Associação
 
 Primeiro, distribuição conjunta trata do comportamento de duas variáveis quando são combinadas. Podemos pensar no comportamento de duas variáveis categóricas (etnia e escolaridade, por exemplo) ou contínuas (peso [massa] e altura). A associação se trata, portanto, de uma medida de força de relação entre duas ou mais variáveis.
