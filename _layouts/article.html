@@ -23,6 +23,127 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="{{ '/assets/css/article.css' | relative_url }}">
   
+  <!-- CSS adicional para o modal de citação (caso não esteja no article.css) -->
+  <style>
+    /* ========== MODAL DE CITAÇÃO ========== */
+    .cite-modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cite-modal-content {
+      background: var(--bg-panel, #111827);
+      border: 1px solid var(--cyan, #00E5FF);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 650px;
+      box-shadow: 0 0 40px rgba(0,229,255,0.2);
+      animation: fadeInUp 0.2s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .cite-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid var(--border-cyan-low, rgba(0,229,255,0.15));
+    }
+
+    .cite-modal-header h3 {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.3rem;
+      color: var(--cyan, #00E5FF);
+    }
+
+    .cite-close {
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      color: var(--text-secondary, #9CA3AF);
+      transition: color 0.2s;
+    }
+    .cite-close:hover { color: var(--pink, #FF2D95); }
+
+    /* Abas */
+    .cite-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-cyan-low, rgba(0,229,255,0.15));
+      padding: 0 1.5rem;
+      gap: 1rem;
+    }
+
+    .cite-tab {
+      background: none;
+      border: none;
+      padding: 0.8rem 0.2rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary, #9CA3AF);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .cite-tab.active {
+      color: var(--cyan, #00E5FF);
+      border-bottom-color: var(--cyan, #00E5FF);
+    }
+    .cite-tab:hover:not(.active) {
+      color: var(--purple, #8B5CF6);
+    }
+
+    /* Conteúdo das abas */
+    .cite-tab-content {
+      display: none;
+      padding: 1.8rem 1.5rem;
+    }
+    .cite-tab-content.active { display: block; }
+
+    .cite-citation-box {
+      background: rgba(0,0,0,0.5);
+      border-left: 3px solid var(--purple, #8B5CF6);
+      padding: 1rem;
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-primary, #E5E7EB);
+      margin-bottom: 1rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 6px;
+    }
+
+    .cite-copy-btn {
+      background: var(--purple, #8B5CF6);
+      border: none;
+      color: white;
+      padding: 8px 18px;
+      font-size: 0.8rem;
+      font-family: 'Space Grotesk', sans-serif;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .cite-copy-btn:hover {
+      background: var(--cyan, #00E5FF);
+      color: black;
+      box-shadow: 0 0 10px var(--cyan, #00E5FF);
+    }
+  </style>
+  
   {% if page.math %}
   <script>
     MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
@@ -31,57 +152,6 @@
   {% endif %}
 </head>
 <body>
-  <script>
-(function() {
-  // Captura os dados do front matter via Liquid
-  const title = "{{ page.title | escape }}";
-  const author = "{{ page.author | default: site.title }}";
-  const date = new Date("{{ page.date | date: '%Y-%m-%d' }}");
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const url = "{{ site.url }}{{ page.url }}";
-  const siteName = "{{ site.title }}";
-
-  // Formatação APA
-  const apa = `${author} (${year}). ${title}. ${siteName}. Recuperado em ${day}/${month}/${year} de ${url}`;
-  
-  // Formatação ABNT (exemplo: SOBRENOME, Nome. Título. Site, ano. Disponível em: URL. Acesso em: data.)
-  const lastName = author.split(' ').pop(); // Pega o último sobrenome
-  const firstName = author.split(' ')[0];
-  const abnt = `${lastName.toUpperCase()}, ${firstName}. ${title}. ${siteName}, ${year}. Disponível em: ${url}. Acesso em: ${day} ${getMonthName(date.getMonth())}. ${year}.`;
-  
-  function getMonthName(monthIndex) {
-    const meses = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
-    return meses[monthIndex];
-  }
-
-  // Preenche os modais
-  document.getElementById('apaCitation').innerText = apa;
-  document.getElementById('abntCitation').innerText = abnt;
-
-  // Controle do modal
-  const modal = document.getElementById('citeModal');
-  const btn = document.getElementById('citeBtn');
-  const span = document.getElementsByClassName('cite-close')[0];
-
-  btn.onclick = function() { modal.style.display = "block"; }
-  span.onclick = function() { modal.style.display = "none"; }
-  window.onclick = function(event) { if (event.target == modal) modal.style.display = "none"; }
-
-  // Copiar para área de transferência
-  document.querySelectorAll('.copy-cite').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const targetId = this.getAttribute('data-target');
-      const text = document.getElementById(targetId).innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        this.textContent = 'Copiado!';
-        setTimeout(() => this.textContent = 'Copiar', 2000);
-      });
-    });
-  });
-})();
-</script>
   <div class="article-app">
     <!-- Barra de leitura minimalista (fixa no topo) -->
     <header class="article-toolbar">
@@ -90,6 +160,10 @@
       </button>
       <span class="article-title-toolbar">{{ page.title }}</span>
       <div class="toolbar-actions">
+        <!-- Botão de citação (ícone de aspas) -->
+        <button class="toolbar-btn" id="citeToolbarBtn" title="Citar este artigo">
+          <i class="fas fa-quote-right"></i>
+        </button>
         <button class="toolbar-btn" id="themeToggle" title="Alternar tema claro/escuro">
           <i class="fas fa-moon"></i>
         </button>
@@ -114,33 +188,133 @@
     <button id="highlightBtn"><i class="fas fa-highlighter"></i> Marcar texto</button>
   </div>
 
-  <script src="{{ '/assets/js/article.js' | relative_url }}"></script>
-</body>
-</html>
-
-<!-- Botão de citação -->
-<div class="cite-section mt-5 pt-3 border-top border-cyan-low text-center">
-  <button class="btn btn-outline-cyan cite-btn" id="citeBtn">
-    <i class="fas fa-quote-left me-2"></i>Citar este artigo
-  </button>
-</div>
-
-<!-- Modal de citações (oculto inicialmente) -->
-<div id="citeModal" class="cite-modal">
-  <div class="cite-modal-content">
-    <span class="cite-close">&times;</span>
-    <h4 class="font-code text-cyan mb-3">📚 Formato de citação</h4>
-    
-    <div class="mb-4">
-      <h6 class="text-white">APA 7ª edição</h6>
-      <div class="bg-black p-3 border border-cyan-low rounded small" id="apaCitation"></div>
-      <button class="btn btn-sm copy-cite mt-2" data-target="apaCitation">Copiar APA</button>
-    </div>
-    
-    <div class="mb-4">
-      <h6 class="text-white">ABNT NBR 6023</h6>
-      <div class="bg-black p-3 border border-cyan-low rounded small" id="abntCitation"></div>
-      <button class="btn btn-sm copy-cite mt-2" data-target="abntCitation">Copiar ABNT</button>
+  <!-- MODAL DE CITAÇÃO (com abas APA/ABNT) -->
+  <div id="citeModal" class="cite-modal">
+    <div class="cite-modal-content">
+      <div class="cite-modal-header">
+        <h3><i class="fas fa-quote-left me-2"></i>Citar este artigo</h3>
+        <span class="cite-close">&times;</span>
+      </div>
+      
+      <!-- Abas -->
+      <div class="cite-tabs">
+        <button class="cite-tab active" data-tab="apa">APA 7ª ed.</button>
+        <button class="cite-tab" data-tab="abnt">ABNT NBR 6023</button>
+      </div>
+      
+      <!-- Conteúdo APA -->
+      <div id="apaTab" class="cite-tab-content active">
+        <div class="cite-citation-box" id="apaCitation"></div>
+        <button class="cite-copy-btn" data-target="apaCitation">Copiar citação</button>
+      </div>
+      
+      <!-- Conteúdo ABNT -->
+      <div id="abntTab" class="cite-tab-content">
+        <div class="cite-citation-box" id="abntCitation"></div>
+        <button class="cite-copy-btn" data-target="abntCitation">Copiar citação</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- Arquivos JS externos (highlight, tema, fonte) -->
+  <script src="{{ '/assets/js/article.js' | relative_url }}"></script>
+
+  <!-- Script próprio para o modal de citação -->
+  <script>
+    (function() {
+      // Aguarda o DOM estar pronto
+      document.addEventListener('DOMContentLoaded', function() {
+        // Dados do artigo via Liquid
+        const title = "{{ page.title | escape }}";
+        const author = "{{ page.author | default: site.title }}";
+        const dateStr = "{{ page.date | date: '%Y-%m-%d' }}";
+        let date;
+        try {
+          date = new Date(dateStr);
+          if (isNaN(date.getTime())) throw new Error('Data inválida');
+        } catch(e) {
+          date = new Date(); // fallback
+        }
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const url = "{{ site.url }}{{ page.url }}";
+        const siteName = "{{ site.title }}";
+
+        // Formatação APA
+        const apa = `${author} (${year}). ${title}. ${siteName}. Recuperado em ${day}/${month}/${year} de ${url}`;
+        
+        // Formatação ABNT
+        const nameParts = author.trim().split(/\s+/);
+        const lastName = nameParts.pop();
+        const firstName = nameParts[0] || '';
+        const meses = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
+        const mesExtenso = meses[date.getMonth()];
+        const abnt = `${lastName.toUpperCase()}, ${firstName}. ${title}. ${siteName}, ${year}. Disponível em: ${url}. Acesso em: ${day} ${mesExtenso}. ${year}.`;
+
+        // Preencher as caixas
+        const apaBox = document.getElementById('apaCitation');
+        const abntBox = document.getElementById('abntCitation');
+        if (apaBox) apaBox.innerText = apa;
+        if (abntBox) abntBox.innerText = abnt;
+
+        // Controle do modal
+        const modal = document.getElementById('citeModal');
+        const openBtn = document.getElementById('citeToolbarBtn');
+        const closeSpan = document.querySelector('.cite-close');
+        if (openBtn && modal) {
+          openBtn.onclick = function() {
+            modal.style.display = 'flex';
+          };
+        }
+        if (closeSpan) {
+          closeSpan.onclick = function() {
+            modal.style.display = 'none';
+          };
+        }
+        window.onclick = function(event) {
+          if (event.target === modal) modal.style.display = 'none';
+        };
+
+        // Abas
+        const tabs = document.querySelectorAll('.cite-tab');
+        const tabContents = document.querySelectorAll('.cite-tab-content');
+        tabs.forEach(tab => {
+          tab.addEventListener('click', function() {
+            const tabId = this.getAttribute('data-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            tabContents.forEach(content => content.classList.remove('active'));
+            const activeTab = document.getElementById(`${tabId}Tab`);
+            if (activeTab) activeTab.classList.add('active');
+          });
+        });
+
+        // Função de copiar
+        const copyButtons = document.querySelectorAll('.cite-copy-btn');
+        copyButtons.forEach(btn => {
+          btn.addEventListener('click', async function() {
+            const targetId = this.getAttribute('data-target');
+            const textElement = document.getElementById(targetId);
+            if (!textElement) return;
+            const text = textElement.innerText;
+            try {
+              await navigator.clipboard.writeText(text);
+              const originalText = this.innerText;
+              this.innerText = '✓ Copiado!';
+              setTimeout(() => {
+                this.innerText = originalText;
+              }, 2000);
+            } catch (err) {
+              this.innerText = 'Erro!';
+              setTimeout(() => {
+                this.innerText = 'Copiar';
+              }, 2000);
+            }
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
