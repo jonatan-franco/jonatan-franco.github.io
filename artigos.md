@@ -9,7 +9,7 @@ Aqui você encontrará algumas reflexões sobre o campo da Psicologia.
 ## Discussões epistemológicas
 
 * [**O caminho para uma Psicologia Científica**]({% post_url 2025-08-30-psicologia-cientifica %})
-* [**Probabilidade, Dialética e Framing**]({% post_url distrib %})
+* [**Probabilidade, Dialética e Framing**]({% post_url 2026-05-29-divulgacao-cientifica %})
 * **Em breve:** A relação entre formação e informação pela perspectiva de Vera Stela Telles.
 
 [Voltar para a Página Inicial](/index.md)
