@@ -31,6 +31,57 @@
   {% endif %}
 </head>
 <body>
+  <script>
+(function() {
+  // Captura os dados do front matter via Liquid
+  const title = "{{ page.title | escape }}";
+  const author = "{{ page.author | default: site.title }}";
+  const date = new Date("{{ page.date | date: '%Y-%m-%d' }}");
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const url = "{{ site.url }}{{ page.url }}";
+  const siteName = "{{ site.title }}";
+
+  // Formatação APA
+  const apa = `${author} (${year}). ${title}. ${siteName}. Recuperado em ${day}/${month}/${year} de ${url}`;
+  
+  // Formatação ABNT (exemplo: SOBRENOME, Nome. Título. Site, ano. Disponível em: URL. Acesso em: data.)
+  const lastName = author.split(' ').pop(); // Pega o último sobrenome
+  const firstName = author.split(' ')[0];
+  const abnt = `${lastName.toUpperCase()}, ${firstName}. ${title}. ${siteName}, ${year}. Disponível em: ${url}. Acesso em: ${day} ${getMonthName(date.getMonth())}. ${year}.`;
+  
+  function getMonthName(monthIndex) {
+    const meses = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
+    return meses[monthIndex];
+  }
+
+  // Preenche os modais
+  document.getElementById('apaCitation').innerText = apa;
+  document.getElementById('abntCitation').innerText = abnt;
+
+  // Controle do modal
+  const modal = document.getElementById('citeModal');
+  const btn = document.getElementById('citeBtn');
+  const span = document.getElementsByClassName('cite-close')[0];
+
+  btn.onclick = function() { modal.style.display = "block"; }
+  span.onclick = function() { modal.style.display = "none"; }
+  window.onclick = function(event) { if (event.target == modal) modal.style.display = "none"; }
+
+  // Copiar para área de transferência
+  document.querySelectorAll('.copy-cite').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const targetId = this.getAttribute('data-target');
+      const text = document.getElementById(targetId).innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        this.textContent = 'Copiado!';
+        setTimeout(() => this.textContent = 'Copiar', 2000);
+      });
+    });
+  });
+})();
+</script>
   <div class="article-app">
     <!-- Barra de leitura minimalista (fixa no topo) -->
     <header class="article-toolbar">
@@ -66,3 +117,30 @@
   <script src="{{ '/assets/js/article.js' | relative_url }}"></script>
 </body>
 </html>
+
+<!-- Botão de citação -->
+<div class="cite-section mt-5 pt-3 border-top border-cyan-low text-center">
+  <button class="btn btn-outline-cyan cite-btn" id="citeBtn">
+    <i class="fas fa-quote-left me-2"></i>Citar este artigo
+  </button>
+</div>
+
+<!-- Modal de citações (oculto inicialmente) -->
+<div id="citeModal" class="cite-modal">
+  <div class="cite-modal-content">
+    <span class="cite-close">&times;</span>
+    <h4 class="font-code text-cyan mb-3">📚 Formato de citação</h4>
+    
+    <div class="mb-4">
+      <h6 class="text-white">APA 7ª edição</h6>
+      <div class="bg-black p-3 border border-cyan-low rounded small" id="apaCitation"></div>
+      <button class="btn btn-sm copy-cite mt-2" data-target="apaCitation">Copiar APA</button>
+    </div>
+    
+    <div class="mb-4">
+      <h6 class="text-white">ABNT NBR 6023</h6>
+      <div class="bg-black p-3 border border-cyan-low rounded small" id="abntCitation"></div>
+      <button class="btn btn-sm copy-cite mt-2" data-target="abntCitation">Copiar ABNT</button>
+    </div>
+  </div>
+</div>

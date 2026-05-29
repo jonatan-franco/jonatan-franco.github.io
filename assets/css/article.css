@@ -175,3 +175,59 @@ mark {
   text-align: justify;
   text-justify: inter-word;
 }
+/* Modal de citação */
+.cite-modal {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.8);
+  backdrop-filter: blur(5px);
+}
+
+.cite-modal-content {
+  background-color: var(--bg-panel);
+  margin: 10% auto;
+  padding: 2rem;
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 700px;
+  box-shadow: 0 0 30px rgba(0,229,255,0.2);
+  position: relative;
+}
+
+.cite-close {
+  color: var(--cyan);
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.cite-close:hover { color: var(--pink); }
+
+.cite-btn {
+  background: transparent;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  transition: all 0.2s;
+}
+.cite-btn:hover {
+  background: var(--cyan);
+  color: black;
+  box-shadow: 0 0 15px var(--cyan);
+}
+
+.copy-cite {
+  background: var(--purple);
+  border: none;
+  color: white;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.copy-cite:hover { background: var(--pink); }
