@@ -1,7 +1,3 @@
----
-layout: default
----
-
 # Meus Artigos
 
 Aqui você encontrará algumas reflexões sobre o campo da Psicologia. 
