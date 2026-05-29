@@ -39,7 +39,7 @@ Se eu fixo a coluna das pessoas do sexo masculino, vejo que, de 60 homens, 66% e
 
 Veja como é perfeitamente possível e razoável concluirmos que, ao fixarmos a variável *curso*, dos indivíduos que fazem Física, a minoria é mulher (38%), simplesmente porque estou considerando que o curso é o evento de interesse, cujas realizações se dão em "Física" e "Ciências Sociais". Se, entretanto, escolhermos observar a variável *sexo = masculino*, conto todas as realizações para o evento "Fazer Física" e depois "Fazer Ciências Sociais".
 
-Dentro de cada evento (*Sexo* vs *Curso*) temos tamanhos diferentes de observações: $N_{Homens} = 60$ vs $N_{Mulheres} = 50$, mas as proporções são parecidas (60% e 50%, respectivamente), quando consideramos a probabilidade de cursar Física, isto é, $P(F \zmid H)$ e $P(F \mid M)$[^2], dado que o total considerado é o curso de Física.
+Dentro de cada evento (*Sexo* vs *Curso*) temos tamanhos diferentes de observações: $N_{Homens} = 60$ vs $N_{Mulheres} = 50$, mas as proporções são parecidas (60% e 50%, respectivamente), quando consideramos a probabilidade de cursar Física, isto é, $P(F \mid H)$ e $P(F \mid M)$[^2], dado que o total considerado é o curso de Física.
 
 [^2]: F: Física; H: Homem; M: Mulher.
 
