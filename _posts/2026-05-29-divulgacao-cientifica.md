@@ -23,11 +23,11 @@ Primeiro, distribuição conjunta trata do comportamento de duas variáveis quan
 
 Veja a tabela abaixo.
 
-| **Curso**         | **Masculino** | **Feminino** | **Total** |
-|-------------------|---------------|--------------|-----------|
-| Física            | 40            | 25           | 65        |
-| Ciências Sociais  | 20            | 25           | 45        |
-| **Total**         | 60            | 60           | 120       |
+| Curso               | Masculino | Feminino | Total |
+|:--------------------|----------:|---------:|------:|
+| Física              | 40        | 25       | 65    |
+| Ciências Sociais    | 20        | 25       | 45    |
+| **Total**           | 60        | 60       | 120   |
 
 **Tabela 1.** Distribuição dos alunos por curso e sexo.
 
@@ -39,13 +39,13 @@ Se eu fixo a coluna das pessoas do sexo masculino, vejo que, de 60 homens, 66% e
 
 Veja como é perfeitamente possível e razoável concluirmos que, ao fixarmos a variável *curso*, dos indivíduos que fazem Física, a minoria é mulher (38%), simplesmente porque estou considerando que o curso é o evento de interesse, cujas realizações se dão em "Física" e "Ciências Sociais". Se, entretanto, escolhermos observar a variável *sexo = masculino*, conto todas as realizações para o evento "Fazer Física" e depois "Fazer Ciências Sociais".
 
-Dentro de cada evento (*Sexo* vs *Curso*) temos tamanhos diferentes de observações: *N*<sub>Homens</sub> = 60 vs *N*<sub>Mulheres</sub> = 50, mas as proporções são parecidas (60% e 50%, respectivamente), quando consideramos a probabilidade de cursar Física, isto é, *P*(F | H) e *P*(F | M)[^2], dado que o total considerado é o curso de Física.
+Dentro de cada evento (*Sexo* vs *Curso*) temos tamanhos diferentes de observações: $N_{Homens} = 60$ vs $N_{Mulheres} = 50$, mas as proporções são parecidas (60% e 50%, respectivamente), quando consideramos a probabilidade de cursar Física, isto é, $P(F | H)$ e $P(F | M)$[^2], dado que o total considerado é o curso de Física.
 
 [^2]: F: Física; H: Homem; M: Mulher.
 
 Uma conclusão possível da nossa análise seria: dentro do grupo de mulheres que estudam, não há predileção por curso, já que observamos que
 
-$$ P(F \mid M) \simeq P(CS \mid M) $$
+$$ P(F \mid M) \approx P(CS \mid M) $$
 
 Entretanto, outra possível conclusão seria: da amostra de pessoas que cursam Física, *P*(M | F) < *P*(H | F). Ou seja, se sorteássemos uma pessoa que estuda Física, do total considerado, a probabilidade de ser homem é maior do que a de ser mulher. Poderíamos concluir que o curso é uma variável que afeta a probabilidade de surgir uma mulher na amostra, e a razão é que o ambiente favorece a aparição de homens. Do mesmo modo, seria diferente se fixássemos o 100% como a soma de todas as categorias, e a proporção marginal seria outra[^3].
 
