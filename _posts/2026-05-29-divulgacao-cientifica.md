@@ -45,7 +45,7 @@ Dentro de cada evento (*Sexo* vs *Curso*) temos tamanhos diferentes de observaç
 
 Uma conclusão possível da nossa análise seria: dentro do grupo de mulheres que estudam, não há predileção por curso, já que observamos que
 
-$$ P(F \mid M) \approx P(CS \mid M) $$
+$$P(F \mid M) \simeq P(CS \mid M)$$
 
 Entretanto, outra possível conclusão seria: da amostra de pessoas que cursam Física, *P*(M | F) < *P*(H | F). Ou seja, se sorteássemos uma pessoa que estuda Física, do total considerado, a probabilidade de ser homem é maior do que a de ser mulher. Poderíamos concluir que o curso é uma variável que afeta a probabilidade de surgir uma mulher na amostra, e a razão é que o ambiente favorece a aparição de homens. Do mesmo modo, seria diferente se fixássemos o 100% como a soma de todas as categorias, e a proporção marginal seria outra[^3].
 
