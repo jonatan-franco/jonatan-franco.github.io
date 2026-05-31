@@ -60,7 +60,7 @@
       return;
     }
     // Verifica se a seleção está dentro do conteúdo do artigo
-    if (!articleContent.contains(selection.anchorNode)) {
+    if (!articleContent || !articleContent.contains(selection.anchorNode)) {
       tooltip.style.display = 'none';
       return;
     }
@@ -100,24 +100,26 @@
   });
 
   // Remover highlight ao clicar em um mark existente
-  articleContent.addEventListener('click', (e) => {
-    if (e.target.tagName === 'MARK') {
-      if (confirm('Remover esta marcação?')) {
-        const text = e.target.textContent;
-        const textNode = document.createTextNode(text);
-        e.target.parentNode.replaceChild(textNode, e.target);
-        saveHighlights();
+  if (articleContent) {
+    articleContent.addEventListener('click', (e) => {
+      if (e.target.tagName === 'MARK') {
+        if (confirm('Remover esta marcação?')) {
+          const text = e.target.textContent;
+          const textNode = document.createTextNode(text);
+          e.target.parentNode.replaceChild(textNode, e.target);
+          saveHighlights();
+        }
       }
-    }
-  });
+    });
+  }
 
   function saveHighlights() {
+    if (!articleContent) return;
     const marks = articleContent.querySelectorAll('mark[data-highlight]');
     const highlights = [];
     marks.forEach(mark => {
       highlights.push({
         text: mark.textContent,
-        // Guardamos posição relativa (pode ser frágil, mas suficiente)
         xpath: getXPathForElement(mark)
       });
     });
@@ -130,7 +132,6 @@
     try {
       const highlights = JSON.parse(data);
       highlights.forEach(h => {
-        // Tenta encontrar o nó pelo XPath e aplicar highlight
         const element = getElementByXPath(h.xpath);
         if (element && element.textContent === h.text) {
           const mark = document.createElement('mark');
@@ -142,7 +143,6 @@
     } catch (e) {}
   }
 
-  // Funções auxiliares XPath
   function getXPathForElement(element) {
     if (element.id !== '') return '//*[@id="' + element.id + '"]';
     if (element === document.body) return '/html/body';
@@ -156,6 +156,10 @@
   }
 
   function getElementByXPath(xpath) {
-    return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+    try {
+      return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+    } catch(e) {
+      return null;
+    }
   }
 })();

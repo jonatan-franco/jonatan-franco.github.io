@@ -255,7 +255,6 @@
 </head>
 <body>
   <div class="article-app">
-    <!-- Toolbar -->
     <header class="article-toolbar">
       <button class="toolbar-btn" onclick="window.location.href='{{ '/artigos' | relative_url }}'" title="Voltar para Artigos">
         <i class="fas fa-arrow-left"></i>
@@ -276,13 +275,11 @@
       </div>
     </header>
 
-    <!-- Conteúdo do artigo -->
     <main class="article-content" id="articleContent">
       <article>
         {{ content }}
       </article>
 
-      <!-- SEÇÃO DE INTERAÇÕES (Curtir + Compartilhar + Comentários) -->
       <div class="post-interactions">
         <div class="d-flex align-items-center justify-content-between flex-wrap border-bottom border-cyan-low pb-4 mb-4">
           <div class="like-section">
@@ -303,17 +300,16 @@
               <a href="#" id="shareTwitter" target="_blank" class="share-btn" title="Compartilhar no X/Twitter">
                 <i class="fab fa-x-twitter"></i>
               </a>
-              <button id="shareFacebook" target="_blank" class="share-btn" title="Compartilhar no Facebook">
+              <a href="#" id="shareFacebook" target="_blank" class="share-btn" title="Compartilhar no Facebook">
                 <i class="fab fa-facebook-f"></i>
-              </button>
-              <button id="shareLinkedIn" target="_blank" class="share-btn" title="Compartilhar no LinkedIn">
+              </a>
+              <a href="#" id="shareLinkedIn" target="_blank" class="share-btn" title="Compartilhar no LinkedIn">
                 <i class="fab fa-linkedin-in"></i>
-              </button>
+              </a>
             </div>
           </div>
         </div>
         
-        <!-- Comentários Giscus -->
         <div class="comments-section mt-4">
           <h4 class="font-code text-cyan mb-3"><i class="far fa-comment-dots me-2"></i>COMENTÁRIOS & DISCUSSÃO</h4>
           <div id="giscus-container" class="bg-black p-3 border border-cyan-low">
@@ -338,13 +334,11 @@
     </main>
   </div>
 
-  <!-- Tooltip highlight -->
   <div class="highlight-tooltip" id="highlightTooltip">
     <button id="highlightBtn"><i class="fas fa-highlighter"></i> Marcar texto</button>
   </div>
 
-  <!-- Modal de Citação -->
-  <div id="citeModal" class="cite-modal">
+  <div id="citeModal" class="cite-modal" role="dialog" aria-modal="true">
     <div class="cite-modal-content">
       <div class="cite-modal-header">
         <h3><i class="fas fa-quote-left me-2"></i>Citar este artigo</h3>
@@ -367,7 +361,7 @@
 
   <div id="copy-toast" class="copy-toast">Link copiado!</div>
 
-  <script src="{{ '/assets/js/article.js' | relative_url }}"></script>
+  <script src="{{ '/assets/js/article.js' | relative_url }}" defer></script>
 
   <script>
     (function() {
@@ -390,7 +384,7 @@
         const siteName = "{{ site.title }}";
         const apa = `${author} (${year}). ${title}. ${siteName}. Recuperado em ${day}/${month}/${year} de ${url}`;
         const nameParts = author.trim().split(/\s+/);
-        const lastName = nameParts.pop();
+        const lastName = nameParts.pop() || '';
         const firstName = nameParts[0] || '';
         const meses = ['jan.','fev.','mar.','abr.','mai.','jun.','jul.','ago.','set.','out.','nov.','dez.'];
         const abnt = `${lastName.toUpperCase()}, ${firstName}. ${title}. ${siteName}, ${year}. Disponível em: ${url}. Acesso em: ${day} ${meses[date.getMonth()]}. ${year}.`;
@@ -401,10 +395,17 @@
         const modal = document.getElementById('citeModal');
         const openBtn = document.getElementById('citeToolbarBtn');
         const closeSpan = document.querySelector('.cite-close');
-        openBtn.onclick = () => modal.style.display = 'flex';
-        closeSpan.onclick = () => modal.style.display = 'none';
+        if(openBtn) openBtn.onclick = () => modal.style.display = 'flex';
+        if(closeSpan) closeSpan.onclick = () => modal.style.display = 'none';
         window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
         
+        // Fechar modal com tecla ESC
+        document.addEventListener('keydown', function(event) {
+          if (event.key === "Escape" && modal.style.display === 'flex') {
+            modal.style.display = 'none';
+          }
+        });
+
         // Abas
         document.querySelectorAll('.cite-tab').forEach(tab => {
           tab.addEventListener('click', function() {
@@ -435,42 +436,49 @@
         let count = parseInt(localStorage.getItem(pageKey + '_count')) || 0;
         
         function updateLikeUI() {
-          likeCountSpan.textContent = count;
-          if (liked) {
-            likeIcon.className = 'fas fa-heart';
-            likeBtn.classList.add('liked');
-          } else {
-            likeIcon.className = 'far fa-heart';
-            likeBtn.classList.remove('liked');
+          if(likeCountSpan) likeCountSpan.textContent = count;
+          if(likeIcon && likeBtn) {
+            if (liked) {
+              likeIcon.className = 'fas fa-heart';
+              likeBtn.classList.add('liked');
+            } else {
+              likeIcon.className = 'far fa-heart';
+              likeBtn.classList.remove('liked');
+            }
           }
         }
         updateLikeUI();
         
-        likeBtn.addEventListener('click', function() {
-          liked = !liked;
-          count = liked ? count + 1 : Math.max(0, count - 1);
-          localStorage.setItem(pageKey + '_liked', liked);
-          localStorage.setItem(pageKey + '_count', count);
-          updateLikeUI();
-        });
+        if(likeBtn) {
+          likeBtn.addEventListener('click', function() {
+            liked = !liked;
+            count = liked ? count + 1 : Math.max(0, count - 1);
+            localStorage.setItem(pageKey + '_liked', liked);
+            localStorage.setItem(pageKey + '_count', count);
+            updateLikeUI();
+          });
+        }
 
         // ========== COMPARTILHAR ==========
- // ========== COMPARTILHAR ==========
-const currentUrl = encodeURIComponent(window.location.href);
-const currentTitle = encodeURIComponent(document.title.split('|')[0].trim());
+        const currentUrl = encodeURIComponent(window.location.href);
+        const currentTitle = encodeURIComponent(document.title.split('|')[0].trim());
 
-document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?url=${currentUrl}&text=${currentTitle}`;
-document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`;
-document.getElementById('shareLinkedIn').href = `https://www.linkedin.com/sharing/share-offsite/?url=${currentUrl}`;
+        if(document.getElementById('shareTwitter')) document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?url=${currentUrl}&text=${currentTitle}`;
+        if(document.getElementById('shareFacebook')) document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`;
+        if(document.getElementById('shareLinkedIn')) document.getElementById('shareLinkedIn').href = `https://www.linkedin.com/sharing/share-offsite/?url=${currentUrl}`;
 
-document.getElementById('copyPageUrlBtn').addEventListener('click', async function() {
-  await navigator.clipboard.writeText(window.location.href);
-  const toast = document.getElementById('copy-toast');
-  toast.textContent = 'Link copiado!';
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2000);
-});
-
+        const copyBtn = document.getElementById('copyPageUrlBtn');
+        if(copyBtn) {
+          copyBtn.addEventListener('click', async function() {
+            await navigator.clipboard.writeText(window.location.href);
+            const toast = document.getElementById('copy-toast');
+            if(toast) {
+              toast.textContent = 'Link copiado!';
+              toast.classList.add('show');
+              setTimeout(() => toast.classList.remove('show'), 2000);
+            }
+          });
+        }
       });
     })();
   </script>

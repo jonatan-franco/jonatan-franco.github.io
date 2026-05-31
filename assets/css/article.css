@@ -2,6 +2,7 @@
 :root {
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
+  --bg-panel: #ffffff;
   --text-primary: #1a202c;
   --text-secondary: #4a5568;
   --accent: #8B5CF6;
@@ -11,11 +12,16 @@
   --toolbar-bg: #ffffff;
   --toolbar-border: #e2e8f0;
   --toolbar-text: #1a202c;
+  --cyan: #00E5FF;
+  --purple: #8B5CF6;
+  --pink: #FF2D95;
+  --border-cyan-low: rgba(0, 229, 255, 0.15);
 }
 
 [data-theme="dark"] {
   --bg-primary: #0A0F1C;
   --bg-secondary: #111827;
+  --bg-panel: rgba(17, 24, 39, 0.85);
   --text-primary: #E5E7EB;
   --text-secondary: #9CA3AF;
   --accent: #00E5FF;
@@ -175,6 +181,7 @@ mark {
   text-align: justify;
   text-justify: inter-word;
 }
+
 /* Modal de citação */
 .cite-modal {
   display: none;
