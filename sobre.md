@@ -24,13 +24,13 @@ description: "Pesquisador independente em psicometria, modelagem de variáveis l
   <div class="col-md-7">
     <div class="card bg-panel border-cyan-low h-100 p-4 shadow-sm">
       <h4 class="font-code text-cyan mb-3">// DECLARAÇÃO DE PESQUISA</h4>
-      <p>Sou um pesquisador dedicado à interseção entre <strong>psicologia, matemática e epistemologia</strong>. Minha investigação concentra-se na formalização de construtos psicológicos através de modelos de variáveis latentes, com especial interesse na Teoria de Resposta ao Item (TRI), análise fatorial confirmatória e psicofísica computacional.</p>
+      <p>Mestrando em <strong> Psicologia Clínica (IP-USP) e Psicólogo Clínico. <strong>. Meu foco de pesquisa é na formalização de construtos psicológicos através de modelos psicométricos, com especial interesse na Teoria de Resposta ao Item (TRI), Análise Fatorial Exploratória e Confirmatória, Modelos de Rede. Além disso, estudo modos de integrar matemática e psicologia como projeto particular. <p>
       
-      <p>Acredito que o avanço da psicologia como ciência depende de uma fundamentação metodológica rigorosa. Por isso, meu trabalho também explora os pressupostos epistemológicos subjacentes à quantificação do comportamento e à noção de causalidade em modelos psicométricos.</p>
+      <p>Acredito que o avanço da psicologia como ciência depende de uma fundamentação metodológica e teórica rigorosa. Por isso, meu trabalho também explora os pressupostos epistemológicos subjacentes à quantificação e à noção de causalidade em modelos psicométricos.</p>
       
       <div class="mt-3 p-3 bg-black">
         <h5 class="font-code text-neon">// FILIAÇÃO TEÓRICA</h5>
-        <p class="mb-0 small">Influenciado pela tradição da Análise Experimental do Comportamento, pela psicometria moderna (Borsboom, Mellenbergh) e pela filosofia da ciência (Popper, Lakatos, Bunge).</p>
+        <p class="mb-0 small">Influenciado pela tradição da Análise Experimental do Comportamento, pela Psicometria e pela filosofia da ciência.</p>
       </div>
     </div>
   </div>
@@ -42,16 +42,12 @@ description: "Pesquisador independente em psicometria, modelagem de variáveis l
       <h4 class="font-code text-cyan mb-3">// FORMAÇÃO & TRAJETÓRIA</h4>
       <ul class="list-unstyled">
         <li class="mb-3 d-flex">
-          <span class="font-code text-neon me-3">[2023—]</span>
-          <div><strong>Pesquisa Independente em Psicometria</strong><br><span class="small opacity-75">Desenvolvimento e validação de instrumentos, simulações Monte Carlo, análise de dados com R.</span></div>
+          <span class="font-code text-neon me-3">[2020—2025]</span>
+          <div><strong>Bacharelado em Psicologia</strong><br><span class="small opacity-75">.</span></div>
         </li>
         <li class="mb-3 d-flex">
-          <span class="font-code text-neon me-3">[2021—2023]</span>
-          <div><strong>Formação em Psicologia</strong><br><span class="small opacity-75">Ênfase em processos de avaliação psicológica e métodos quantitativos.</span></div>
-        </li>
-        <li class="mb-3 d-flex">
-          <span class="font-code text-neon me-3">[2018—2021]</span>
-          <div><strong>Estudos em Filosofia da Mente e Lógica</strong><br><span class="small opacity-75">Interesse na formalização do discurso psicológico e problemas da consciência.</span></div>
+          <span class="font-code text-neon me-3">[2026-atual]</span>
+          <div><strong>Mestrado em Psicologia Clínica [IP-USP]</strong><br><span class="small opacity-75"> Validação Psicométrica em escalas que mensuram saúde do sono.</span></div>
         </li>
       </ul>
     </div>
