@@ -455,28 +455,21 @@
         });
 
         // ========== COMPARTILHAR ==========
-        const currentUrl = encodeURIComponent(window.location.href);
-        const currentTitle = encodeURIComponent(document.title);
-        document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?url=${currentUrl}&text=${currentTitle}`;
-        document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`;
-        
-        document.getElementById('copyPageUrlBtn').addEventListener('click', async function() {
-          await navigator.clipboard.writeText(window.location.href);
-          const toast = document.getElementById('copy-toast');
-          toast.textContent = 'Link copiado!';
-          toast.classList.add('show');
-          setTimeout(() => toast.classList.remove('show'), 2000);
-        });
-        
-        document.getElementById('shareLinkedIn').addEventListener('click', function(e) {
-          e.preventDefault();
-          const url = encodeURIComponent(window.location.href);
-          const title = encodeURIComponent(document.title.split('|')[0].trim());
-          const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
-          window.open(linkedinUrl, '_blank');
-        });
-      });
-    })();
+ // ========== COMPARTILHAR ==========
+const currentUrl = encodeURIComponent(window.location.href);
+const currentTitle = encodeURIComponent(document.title.split('|')[0].trim());
+
+document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?url=${currentUrl}&text=${currentTitle}`;
+document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`;
+document.getElementById('shareLinkedIn').href = `https://www.linkedin.com/sharing/share-offsite/?url=${currentUrl}`;
+
+document.getElementById('copyPageUrlBtn').addEventListener('click', async function() {
+  await navigator.clipboard.writeText(window.location.href);
+  const toast = document.getElementById('copy-toast');
+  toast.textContent = 'Link copiado!';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+});
   </script>
 </body>
 </html>
