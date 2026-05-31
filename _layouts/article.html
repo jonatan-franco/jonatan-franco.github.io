@@ -306,9 +306,9 @@
               <a href="#" id="shareFacebook" target="_blank" class="share-btn" title="Compartilhar no Facebook">
                 <i class="fab fa-facebook-f"></i>
               </a>
-              <button id="shareInstagram" class="share-btn" title="Compartilhar no Instagram Story">
-                <i class="fab fa-instagram"></i>
-              </button>
+              <a href="#" id="shareLinkedIn" target="_blank" class="share-btn" title="Compartilhar no LinkedIn">
+                <i class="fab fa-linkedin-in"></i>
+              </a>
             </div>
           </div>
         </div>
@@ -468,15 +468,12 @@
           setTimeout(() => toast.classList.remove('show'), 2000);
         });
         
-        document.getElementById('shareInstagram').addEventListener('click', async function(e) {
+        document.getElementById('shareLinkedIn').addEventListener('click', function(e) {
           e.preventDefault();
-          const message = `"${document.title.split('|')[0].trim()}"\n\nLeia mais em: ${window.location.href}`;
-          await navigator.clipboard.writeText(message);
-          const toast = document.getElementById('copy-toast');
-          toast.textContent = 'Texto copiado! Abra o Instagram e cole no story.';
-          toast.classList.add('show');
-          setTimeout(() => toast.classList.remove('show'), 4000);
-          window.open('https://www.instagram.com/', '_blank');
+          const url = encodeURIComponent(window.location.href);
+          const title = encodeURIComponent(document.title.split('|')[0].trim());
+          const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+          window.open(linkedinUrl, '_blank');
         });
       });
     })();
