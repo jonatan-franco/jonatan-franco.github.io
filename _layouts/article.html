@@ -210,6 +210,20 @@
       background: var(--purple);
       color: black;
     }
+    /* Estilo do Botão de Partilha Nativo */
+    .share-native-btn {
+      width: auto;
+      padding: 0 20px;
+      border-radius: 40px;
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+    }
+    .share-native-btn:hover {
+      background: var(--cyan);
+      color: black;
+      box-shadow: 0 0 15px var(--cyan);
+    }
     .share-divider {
       width: 1px;
       height: 24px;
@@ -256,7 +270,7 @@
 <body>
   <div class="article-app">
     <header class="article-toolbar">
-      <button class="toolbar-btn" onclick="window.location.href='{{ '/artigos' | relative_url }}'" title="Voltar para Artigos">
+      <button class="toolbar-btn" id="backBtnToolbar" title="Voltar">
         <i class="fas fa-arrow-left"></i>
       </button>
       <span class="article-title-toolbar">{{ page.title }}</span>
@@ -293,27 +307,14 @@
           <div class="share-section-header">
             <span class="font-code text-cyan me-3"><i class="fas fa-share-alt me-2"></i>COMPARTILHAR</span>
             <div class="share-buttons">
-<div class="share-buttons">
-  <button id="nativeShareBtn" class="share-btn share-native-btn" title="Partilhar Artigo">
-    <i class="fas fa-share-nodes"></i>
-    <span class="ms-2 font-code small">PARTILHAR</span>
-  </button>
-  <div class="share-divider"></div>
-  <button class="share-btn copy-btn" id="copyPageUrlBtn" title="Copiar link manual">
-    <i class="fas fa-link"></i>
-  </button>
-</div>
-
+              <button id="nativeShareBtn" class="share-btn share-native-btn" title="Partilhar Artigo">
+                <i class="fas fa-share-nodes"></i>
+                <span class="ms-2 font-code small">PARTILHAR</span>
+              </button>
               <div class="share-divider"></div>
-              <a href="#" id="shareTwitter" target="_blank" class="share-btn" title="Compartilhar no X/Twitter">
-                <i class="fab fa-x-twitter"></i>
-              </a>
-              <a href="#" id="shareFacebook" target="_blank" class="share-btn" title="Compartilhar no Facebook">
-                <i class="fab fa-facebook-f"></i>
-              </a>
-              <a href="#" id="shareLinkedIn" target="_blank" class="share-btn" title="Compartilhar no LinkedIn">
-                <i class="fab fa-linkedin-in"></i>
-              </a>
+              <button class="share-btn copy-btn" id="copyPageUrlBtn" title="Copiar link manual">
+                <i class="fas fa-link"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -467,13 +468,34 @@
           });
         }
 
-        // ========== COMPARTILHAR ==========
-        const currentUrl = encodeURIComponent(window.location.href);
-        const currentTitle = encodeURIComponent(document.title.split('|')[0].trim());
+        // ========== COMPARTILHAR (WEB SHARE API) ==========
+        const currentUrl = window.location.href;
+        const currentTitle = document.title.split('|')[0].trim();
 
-        if(document.getElementById('shareTwitter')) document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?url=${currentUrl}&text=${currentTitle}`;
-        if(document.getElementById('shareFacebook')) document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`;
-        if(document.getElementById('shareLinkedIn')) document.getElementById('shareLinkedIn').href = `https://www.linkedin.com/sharing/share-offsite/?url=${currentUrl}`;
+        const nativeShareBtn = document.getElementById('nativeShareBtn');
+        if(nativeShareBtn) {
+          nativeShareBtn.addEventListener('click', async () => {
+            if (navigator.share) {
+              try {
+                await navigator.share({
+                  title: currentTitle,
+                  text: 'Leia esta análise interessante:',
+                  url: currentUrl
+                });
+              } catch (err) {
+                console.log('Partilha cancelada ou falhou.', err);
+              }
+            } else {
+              await navigator.clipboard.writeText(currentUrl);
+              const toast = document.getElementById('copy-toast');
+              if(toast) {
+                toast.textContent = 'Navegador não suporta partilha nativa. Link copiado!';
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+              }
+            }
+          });
+        }
 
         const copyBtn = document.getElementById('copyPageUrlBtn');
         if(copyBtn) {
@@ -487,6 +509,19 @@
             }
           });
         }
+
+        // ========== BOTÃO VOLTAR INTELIGENTE ==========
+        const backBtn = document.getElementById('backBtnToolbar');
+        if (backBtn) {
+          backBtn.addEventListener('click', function() {
+            if (document.referrer.includes(window.location.host)) {
+              window.history.back();
+            } else {
+              window.location.href = "{{ '/artigos' | relative_url }}";
+            }
+          });
+        }
+
       });
     })();
   </script>
