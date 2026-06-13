@@ -100,63 +100,6 @@
         <article class="content-panel shadow-2xl">
           {{ content }}
           
-          {% if page.collection == 'posts' %}
-          <div class="post-interactions mt-5">
-            <div class="d-flex align-items-center justify-content-between flex-wrap border-bottom border-cyan-low pb-4 mb-4">
-              <div class="like-section">
-                <button class="like-btn" id="likeButton" onclick="toggleLike()">
-                  <i class="far fa-heart" id="likeIcon"></i>
-                  <span class="like-count font-code" id="likeCount">0</span>
-                </button>
-                <span class="like-label font-code text-cyan ms-2">APOIAR ESTA ANÁLISE</span>
-              </div>
-              
-              <div class="share-section-header">
-                <span class="font-code text-cyan me-3"><i class="fas fa-share-alt me-2"></i>COMPARTILHAR</span>
-                <div class="share-buttons">
-                  <button class="share-btn copy-btn" onclick="copyPageUrl()" title="Copiar link">
-                    <i class="fas fa-link"></i>
-                  </button>
-                  <div class="share-divider"></div>
-                  <a href="https://twitter.com/intent/tweet?url={{ site.url }}{{ page.url | url_encode }}&text={{ page.title | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no X/Twitter">
-                    <i class="fab fa-x-twitter"></i>
-                  </a>
-                  <a href="https://www.facebook.com/sharer/sharer.php?u={{ site.url }}{{ page.url | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no Facebook">
-                    <i class="fab fa-facebook-f"></i>
-                  </a>
-                  <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ site.url }}{{ page.url | url_encode }}" target="_blank" class="share-btn" title="Compartilhar no LinkedIn">
-                    <i class="fab fa-linkedin-in"></i>
-                  </a>
-                </div>
-              </div>
-            </div>
-            
-            <div class="comments-section mt-4">
-              <h4 class="font-code text-cyan mb-3"><i class="far fa-comment-dots me-2"></i>COMENTÁRIOS & DISCUSSÃO</h4>
-              <div id="giscus-container" class="bg-black p-3 border border-cyan-low">
-                <script src="https://giscus.app/client.js"
-                        data-repo="jonatan-franco/jonatan-franco.github.io"
-                        data-repo-id="R_kgDOPY80rQ"
-                        data-category="General"
-                        data-category-id="DIC_kwDOPY80rc4C7Lcl"
-                        data-mapping="pathname"
-                        data-strict="0"
-                        data-reactions-enabled="1"
-                        data-emit-metadata="0"
-                        data-input-position="top"
-                        data-theme="dark"
-                        data-lang="pt"
-                        crossorigin="anonymous"
-                        async>
-                </script>
-              </div>
-            </div>
-          </div>
-          {% endif %}
-        </article>
-      </div>
-    </div>
-  </main>
 
   <footer class="py-5 border-top border-cyan-low mt-5 bg-black">
     <div class="container text-center font-code small opacity-50">
