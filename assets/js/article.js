@@ -176,4 +176,57 @@ document.addEventListener('DOMContentLoaded', () => {
     try { return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue; } 
     catch(e) { return null; }
   }
+  // ================== SUMÁRIO AUTOMÁTICO (TOC) ==================
+  const article = document.querySelector('#articleContent article');
+  const tocNav = document.getElementById('toc');
+  const sidebar = document.querySelector('.article-sidebar');
+
+  if (article && tocNav) {
+    // Procura todos os H2 e H3 dentro do texto do artigo
+    const headers = article.querySelectorAll('h2, h3');
+    
+    if (headers.length > 0) {
+      headers.forEach((header, index) => {
+        // Se o título não tiver um ID natural, damos-lhe um
+        if (!header.id) {
+          header.id = 'secao-' + index;
+        }
+        
+        // Criamos o link para o menu
+        const link = document.createElement('a');
+        link.href = '#' + header.id;
+        link.textContent = header.textContent;
+        // Adicionamos classes para o CSS saber se é h2 ou h3
+        link.className = 'toc-link ' + header.tagName.toLowerCase();
+        
+        tocNav.appendChild(link);
+      });
+
+      // API Intersection Observer (Observa que título está no ecrã ao fazer scroll)
+      const observerOptions = {
+        root: null,
+        rootMargin: '0px 0px -80% 0px', // Ativa o link quando o título chega perto do topo
+        threshold: 0
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            // Remove a classe "active" de todos
+            document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+            // Pinta de vermelho o link correspondente ao título no ecrã
+            const activeLink = document.querySelector(`.toc-link[href="#${entry.target.id}"]`);
+            if (activeLink) activeLink.classList.add('active');
+          }
+        });
+      }, observerOptions);
+
+      // Começa a observar todos os títulos
+      headers.forEach(header => observer.observe(header));
+    } else {
+      // Se o artigo for muito pequeno e não tiver títulos, esconde a barra lateral
+      if (sidebar) sidebar.style.display = 'none';
+      document.querySelector('.article-layout-container').style.gridTemplateColumns = '1fr';
+    }
+  }
 });
