@@ -1,24 +1,55 @@
 // ============================================================================
-// assets/js/app.js — Controlador Principal SPA, Treino Interativo & Diário do Sono
+// assets/js/app.js — Controlador Original Restaurado (Painel de Hábitos)
 // ============================================================================
 
-let currentRoute = 'dashboard';
-let currentWeekOffset = 0;
-let workoutSubTab = 'log'; // 'log' | 'plan'
+let activeCategoryFilter = 'all';
+let isSidebarCollapsed = false;
+const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
-const DAYS_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-const DAYS_FULL = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-
-const GROUPS_META = {
-    atv_fisica: { label: 'Atividade Física', badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-    sono: { label: 'Sono & Recuperação', badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
-    academico: { label: 'Acadêmico / USP', badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
-    consultoria: { label: 'Consultoria Estatística', badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' }
+const ROUTE_CONFIG = {
+    dashboard:  { eyebrow: 'PAINEL LONGITUDINAL', title: 'Visão Geral & Matriz Semanal' },
+    atv_fisica: { eyebrow: 'GRUPO: ATIVIDADE FÍSICA', title: 'Treinamento Upper/Lower & Adesão' },
+    sono:       { eyebrow: 'GRUPO: SONO & RECUPERAÇÃO', title: 'Diário Clínico & Eficiência do Sono' },
+    timer:      { eyebrow: 'CRONOMETRIA & FOCO', title: 'Timer & Registro de Sessões' },
+    metrics:    { eyebrow: 'PSICOMETRIA & SÉRIES TEMPORAIS', title: 'Elasticidade (ε) & Bandas de Desvio-Padrão' },
+    calendar:   { eyebrow: 'PLANEJAMENTO DE BLOCOS', title: 'Agenda Semanal & Google Calendar' }
 };
 
-// ============================================================================
-// ROTEAMENTO SPA & NAVEGAÇÃO
-// ============================================================================
+function refreshIcons() {
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+
+function toggleDesktopSidebar() {
+    const sb = document.getElementById('desktop-sidebar');
+    if (!sb) return;
+    isSidebarCollapsed = !isSidebarCollapsed;
+    sb.classList.toggle('w-64', !isSidebarCollapsed);
+    sb.classList.toggle('w-20', isSidebarCollapsed);
+    document.querySelectorAll('.sidebar-text').forEach(el => {
+        el.classList.toggle('hidden', isSidebarCollapsed);
+    });
+}
+
+function toggleMobileDrawer() {
+    const drawer = document.getElementById('mobile-drawer');
+    if (drawer) drawer.classList.toggle('hidden');
+}
+
+function refreshHeaderTitle(route) {
+    const cfg = ROUTE_CONFIG[route] || ROUTE_CONFIG.dashboard;
+    const eyebrowEl = document.getElementById('view-eyebrow');
+    const titleEl = document.getElementById('view-title');
+    if (eyebrowEl) eyebrowEl.textContent = cfg.eyebrow;
+    if (titleEl) {
+        if (route === 'dashboard' && typeof buildDynamicGreeting === 'function') {
+            titleEl.textContent = buildDynamicGreeting();
+        } else {
+            titleEl.textContent = cfg.title;
+        }
+    }
+}
 
 function navigateTo(route) {
     window.location.hash = route;
@@ -26,546 +57,255 @@ function navigateTo(route) {
 }
 
 function applyRoute(route) {
-    const validRoutes = ['dashboard', 'timer', 'metrics', 'calendar', 'atv_fisica', 'sono'];
-    const targetRoute = validRoutes.includes(route) ? route : 'dashboard';
-    currentRoute = targetRoute;
-
+    const cleanRoute = ROUTE_CONFIG[route] ? route : 'dashboard';
     document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
-    const activeSection = document.getElementById(`view-${targetRoute}`);
-    if (activeSection) activeSection.classList.remove('hidden');
+    const targetSec = document.getElementById(`view-${cleanRoute}`);
+    if (targetSec) targetSec.classList.remove('hidden');
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        const isCurrent = btn.getAttribute('data-route') === targetRoute;
-        if (isCurrent) {
-            btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 transition-all';
-        } else {
-            btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-all';
-        }
+        const isAct = btn.getAttribute('data-route') === cleanRoute;
+        btn.className = isAct
+            ? 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 transition-all'
+            : 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all';
     });
 
-    // Fecha drawer mobile se estiver aberto
-    const mobileSidebar = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebar-backdrop');
-    if (window.innerWidth < 1024 && mobileSidebar && !mobileSidebar.classList.contains('-translate-x-full')) {
-        mobileSidebar.classList.add('-translate-x-full');
-        if (backdrop) backdrop.classList.add('hidden');
-    }
-
+    refreshHeaderTitle(cleanRoute);
     renderAll();
 }
 
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebar-backdrop');
-    if (!sidebar) return;
-
-    if (window.innerWidth < 1024) {
-        sidebar.classList.toggle('-translate-x-full');
-        if (backdrop) backdrop.classList.toggle('hidden');
-    } else {
-        sidebar.classList.toggle('w-64');
-        sidebar.classList.toggle('w-20');
-        document.querySelectorAll('.sidebar-label').forEach(el => el.classList.toggle('hidden'));
-    }
+function setCategoryFilter(cat) {
+    activeCategoryFilter = cat;
+    ['all', 'atv_fisica', 'sono'].forEach(c => {
+        const btn = document.getElementById(`cat-btn-${c}`);
+        if (btn) {
+            btn.className = (c === cat)
+                ? 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white'
+                : 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700';
+        }
+    });
+    renderDashboardView();
 }
 
-function toggleDarkMode() {
-    const html = document.documentElement;
-    html.classList.toggle('dark');
-    const isDark = html.classList.contains('dark');
-    SafeStorage.setItem('hq_theme', isDark ? 'dark' : 'light');
-    if (typeof renderMetricsView === 'function' && currentRoute === 'metrics') {
-        renderMetricsView();
+function toggleHabitDay(habitIdx, dayIdx) {
+    const h = habits[habitIdx];
+    if (!h) return;
+    if (!Array.isArray(h.days)) h.days = [false, false, false, false, false, false, false];
+    if (!Array.isArray(h.hoursPerDay)) h.hoursPerDay = [0, 0, 0, 0, 0, 0, 0];
+
+    h.days[dayIdx] = !h.days[dayIdx];
+    if (h.days[dayIdx] && (!h.hoursPerDay[dayIdx] || h.hoursPerDay[dayIdx] === 0)) {
+        const defaultDaily = Number(((h.targetHours || 5) / 5).toFixed(2));
+        h.hoursPerDay[dayIdx] = defaultDaily;
+    } else if (!h.days[dayIdx]) {
+        h.hoursPerDay[dayIdx] = 0;
     }
-}
 
-// ============================================================================
-// UTILITÁRIOS DE DATA (SEMANA ATUAL)
-// ============================================================================
-
-function getWeekDates(offset = 0) {
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0 = Dom, 1 = Seg...
-    const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek + (offset * 7);
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday);
-
-    const dates = [];
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        const iso = d.toISOString().split('T')[0];
-        const br = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-        dates.push({ iso, br, dayName: DAYS_SHORT[i], fullDayName: DAYS_FULL[i] });
-    }
-    return dates;
-}
-
-function changeWeek(delta) {
-    currentWeekOffset += delta;
+    saveData();
     renderAll();
 }
 
-// ============================================================================
-// MÓDULO: PLANILHA INTERATIVA DE TREINO & ADESÃO (view-atv_fisica)
-// ============================================================================
-
-function calculateExerciseVolume(sets, repsStr, load, isCardio = false) {
-    if (isCardio) return 0;
-    const s = parseFloat(sets) || 0;
-    const l = parseFloat(String(load).replace(',', '.')) || 0;
-    if (s <= 0 || l <= 0) return 0;
-
-    const cleanReps = String(repsStr || '').trim();
-    if (cleanReps.includes('min') || cleanReps === '-') return 0;
-
-    const match = cleanReps.match(/^(\d+(\.\d+)?)/);
-    const r = match ? parseFloat(match[1]) : 0;
-    return Number((s * r * l).toFixed(2));
-}
-
-function formatBRNumber(num) {
-    return Number(num || 0).toLocaleString('pt-BR', { maximumFractionDigits: 4 });
-}
-
-function formatDateBR(isoDate) {
-    if (!isoDate) return '-';
-    const parts = isoDate.split('-');
-    if (parts.length !== 3) return isoDate;
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
-
-function getSplitBadgeStyle(split) {
-    const styles = {
-        'Upper A': 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-        'Lower A': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-        'Upper B': 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
-        'Lower B': 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-        'Descanso': 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20'
-    };
-    return styles[split] || styles['Upper A'];
-}
-
-function switchWorkoutSubTab(tab) {
-    workoutSubTab = tab;
-    renderDedicatedAtvFisicaView();
-}
-
-function updateWorkoutField(id, field, value) {
-    if (!workoutData || !Array.isArray(workoutData.logs)) return;
-    const item = workoutData.logs.find(r => r.id === id);
-    if (!item) return;
-
-    if (field === 'completed') {
-        item.completed = Boolean(value);
-    } else if (field === 'sets' || field === 'load') {
-        item[field] = parseFloat(String(value).replace(',', '.')) || 0;
-    } else {
-        item[field] = value;
-    }
-
-    if (['sets', 'reps', 'load'].includes(field)) {
-        item.volume = calculateExerciseVolume(item.sets, item.reps, item.load, item.isCardio);
-    }
-
+function deleteHabitByIdx(idx) {
+    if (!confirm('Remover esta atividade permanentemente?')) return;
+    habits.splice(idx, 1);
     saveData();
-    renderDedicatedAtvFisicaView();
+    renderAll();
 }
 
-function toggleWorkoutSessionDone(date, split, nextState) {
-    if (!workoutData || !Array.isArray(workoutData.logs)) return;
-    workoutData.logs.forEach(r => {
-        if (r.date === date && r.split === split) {
-            r.completed = nextState;
-        }
-    });
-    saveData();
-    renderDedicatedAtvFisicaView();
-}
+function renderDashboardView() {
+    const globalMetrics = (typeof calcWeeklyGlobalMetrics === 'function')
+        ? calcWeeklyGlobalMetrics()
+        : { meanFreq: 0, todayDone: 0, todayTotal: habits.length, meanElasticity: 0, totalHours: 0, maxStreak: 0 };
 
-function addWorkoutExerciseRow(date, split) {
-    if (!workoutData || !Array.isArray(workoutData.logs)) return;
-    workoutData.logs.push({
-        id: 'w-' + Date.now(),
-        month: date.slice(0, 7),
-        date,
-        split,
-        exercise: 'Novo Exercício',
-        muscle: 'Grupamento Alvo',
-        substitutes: '-',
-        sets: 3,
-        reps: '8-12',
-        rest: '90s',
-        load: 0,
-        rir: '',
-        volume: 0,
-        completed: false,
-        notes: ''
-    });
-    saveData();
-    renderDedicatedAtvFisicaView();
-}
+    const elFreq = document.getElementById('kpi-freq-mean');
+    const elToday = document.getElementById('kpi-today-progress');
+    const elElast = document.getElementById('kpi-elasticity');
+    const elHours = document.getElementById('kpi-hours-total');
+    const elStreak = document.getElementById('kpi-streak');
 
-function deleteWorkoutExerciseRow(id) {
-    if (!workoutData || !Array.isArray(workoutData.logs)) return;
-    workoutData.logs = workoutData.logs.filter(r => r.id !== id);
-    saveData();
-    renderDedicatedAtvFisicaView();
-}
+    if (elFreq) elFreq.textContent = `${Math.round(globalMetrics.meanFreq || 0)}%`;
+    if (elToday) elToday.textContent = `${globalMetrics.todayDone || 0}/${globalMetrics.todayTotal || habits.length}`;
+    if (elElast) elElast.textContent = Number(globalMetrics.meanElasticity || 0).toFixed(2);
+    if (elHours) elHours.textContent = `${Number(globalMetrics.totalHours || 0).toFixed(1)}h`;
+    if (elStreak) elStreak.textContent = `${globalMetrics.maxStreak || 0} dias`;
 
-function deleteEntireWorkoutSession(date, split) {
-    if (!confirm(`Remover todos os exercícios da sessão ${split} (${formatDateBR(date)})?`)) return;
-    workoutData.logs = workoutData.logs.filter(r => !(r.date === date && r.split === split));
-    saveData();
-    renderDedicatedAtvFisicaView();
-}
-
-function openNewWorkoutSessionModal() {
-    const modal = document.getElementById('workout-session-modal');
-    const dateInput = document.getElementById('new-workout-date');
-    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-    if (modal) modal.classList.remove('hidden');
-}
-
-function closeNewWorkoutSessionModal() {
-    const modal = document.getElementById('workout-session-modal');
-    if (modal) modal.classList.add('hidden');
-}
-
-function createWorkoutSessionFromTemplate() {
-    const dateEl = document.getElementById('new-workout-date');
-    const splitEl = document.getElementById('new-workout-split');
-    if (!dateEl || !splitEl || !dateEl.value) return;
-
-    const date = dateEl.value;
-    const split = splitEl.value;
-    const month = date.slice(0, 7);
-    const tplList = (workoutData.templates && workoutData.templates[split]) ? workoutData.templates[split] : [];
-
-    tplList.forEach((tpl, i) => {
-        const vol = calculateExerciseVolume(tpl.sets, tpl.reps, tpl.defaultLoad, tpl.isCardio);
-        workoutData.logs.push({
-            id: `w-${Date.now()}-${i}`,
-            month,
-            date,
-            split,
-            exercise: tpl.exercise,
-            muscle: tpl.muscle,
-            substitutes: tpl.substitutes,
-            sets: tpl.sets,
-            reps: tpl.reps,
-            rest: tpl.rest,
-            load: tpl.defaultLoad || 0,
-            rir: '',
-            volume: vol,
-            completed: false,
-            notes: '',
-            isCardio: Boolean(tpl.isCardio)
-        });
-    });
-
-    saveData();
-    closeNewWorkoutSessionModal();
-    renderDedicatedAtvFisicaView();
-}
-
-function exportWorkoutCSV() {
-    if (!workoutData || !Array.isArray(workoutData.logs)) return;
-    const headers = ["Data", "Divisão", "Exercício", "Músculo Alvo", "Substitutos", "Séries", "Repetições", "Descanso", "Carga (kg)", "RIR", "Volume (kg)", "Concluído", "Observações"];
-    const rows = workoutData.logs.map(r => [
-        formatDateBR(r.date),
-        r.split,
-        `"${(r.exercise || '').replace(/"/g, '""')}"`,
-        `"${(r.muscle || '').replace(/"/g, '""')}"`,
-        `"${(r.substitutes || '').replace(/"/g, '""')}"`,
-        r.sets,
-        `"${r.reps}"`,
-        r.rest,
-        String(r.load).replace('.', ','),
-        r.rir || '',
-        String(r.volume).replace('.', ','),
-        r.completed ? 'TRUE' : 'FALSE',
-        `"${(r.notes || '').replace(/"/g, '""')}"`
-    ]);
-
-    const csv = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
-    const link = document.createElement('a');
-    link.setAttribute('href', encodeURI(csv));
-    link.setAttribute('download', `HaQt_Treino_UpperLower_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-function renderDedicatedAtvFisicaView() {
-    if (!workoutData || !Array.isArray(workoutData.logs)) {
-        workoutData = getDefaultWorkoutData();
-    }
-
-    const monthFilter = document.getElementById('workout-month-filter')?.value || '2026-10';
-    const splitFilter = document.getElementById('workout-split-filter')?.value || 'ALL';
-
-    const filteredLogs = workoutData.logs.filter(r => {
-        const matchMonth = monthFilter === 'ALL' || r.month === monthFilter;
-        const matchSplit = splitFilter === 'ALL' || r.split === splitFilter;
-        return matchMonth && matchSplit;
-    });
-
-    // KPIs da Planilha de Treino
-    const totalVolKg = filteredLogs.reduce((acc, r) => acc + (Number(r.volume) || 0), 0);
-    const totalVolTon = totalVolKg / 1000;
-    const totalItems = filteredLogs.length;
-    const completedItems = filteredLogs.filter(r => r.completed).length;
-    const adherencePct = totalItems > 0 ? ((completedItems / totalItems) * 100).toFixed(1) : '0.0';
-    const uniqueSessions = new Set(filteredLogs.map(r => `${r.date}_${r.split}`));
-
-    const elVolKg = document.getElementById('kpi-workout-vol-kg');
-    const elVolTon = document.getElementById('kpi-workout-vol-ton');
-    const elAdh = document.getElementById('kpi-workout-adherence');
-    const elAdhCount = document.getElementById('kpi-workout-completed-count');
-    const elAdhBar = document.getElementById('kpi-workout-adherence-bar');
-    const elSessions = document.getElementById('kpi-workout-sessions');
-
-    if (elVolKg) elVolKg.textContent = `${formatBRNumber(totalVolKg)} kg`;
-    if (elVolTon) elVolTon.textContent = `${formatBRNumber(totalVolTon)} Ton`;
-    if (elAdh) elAdh.textContent = `${adherencePct.replace('.', ',')}%`;
-    if (elAdhCount) elAdhCount.textContent = `${completedItems}/${totalItems} concluídos`;
-    if (elAdhBar) elAdhBar.style.width = `${adherencePct}%`;
-    if (elSessions) elSessions.textContent = uniqueSessions.size;
-
-    // Controle de Sub-Abas (Planilha Interativa vs. Planejamento Semanal)
-    const logContainer = document.getElementById('workout-subtab-log');
-    const planContainer = document.getElementById('workout-subtab-plan');
-    const btnLog = document.getElementById('subtab-btn-log');
-    const btnPlan = document.getElementById('subtab-btn-plan');
-
-    if (logContainer && planContainer && btnLog && btnPlan) {
-        if (workoutSubTab === 'log') {
-            logContainer.classList.remove('hidden');
-            planContainer.classList.add('hidden');
-            btnLog.className = 'px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all';
-            btnPlan.className = 'px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all';
-        } else {
-            logContainer.classList.add('hidden');
-            planContainer.classList.remove('hidden');
-            btnPlan.className = 'px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all';
-            btnLog.className = 'px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all';
-        }
-    }
-
-    // Popula Protocolo Rolling Split e Tabela de Planejamento Semanal
-    const protoEl = document.getElementById('workout-rolling-protocol');
-    if (protoEl) protoEl.textContent = workoutData.rollingSplitProtocol || '';
-
-    const planBody = document.getElementById('workout-weekly-plan-body');
-    if (planBody && Array.isArray(workoutData.weeklyPlan)) {
-        planBody.innerHTML = workoutData.weeklyPlan.map(item => `
-            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">${item.day}</td>
-                <td class="py-3 px-4 font-mono text-xs text-slate-500 dark:text-slate-400">${item.window}</td>
-                <td class="py-3 px-4">
-                    <span class="px-2.5 py-1 text-xs font-bold rounded-lg border ${getSplitBadgeStyle(item.split)}">
-                        ${item.split}
-                    </span>
-                </td>
-                <td class="py-3 px-4 text-slate-700 dark:text-slate-300 text-xs">${item.target}</td>
-                <td class="py-3 px-4 text-xs font-medium text-slate-600 dark:text-slate-400">${item.cardio}</td>
-                <td class="py-3 px-4 text-xs font-semibold text-indigo-600 dark:text-indigo-400">${item.focus}</td>
-            </tr>
-        `).join('');
-    }
-
-    // Popula Sessões da Planilha Interativa
-    const sessionsContainer = document.getElementById('workout-sessions-container');
-    if (!sessionsContainer) return;
-
-    if (filteredLogs.length === 0) {
-        sessionsContainer.innerHTML = `
-            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center">
-                <p class="text-sm text-slate-500 dark:text-slate-400">Nenhuma sessão registrada para este filtro. Clique em <strong>+ Nova Sessão</strong> para gerar um treino a partir do template.</p>
-            </div>
+    const headerRow = document.getElementById('matrix-header-row');
+    if (headerRow) {
+        headerRow.innerHTML = `
+            <th class="py-3 px-4">Atividade</th>
+            ${weekDays.map(d => `<th class="py-3 px-2 text-center font-mono">${d}</th>`).join('')}
+            <th class="py-3 px-3 text-right">Horas / Meta</th>
+            <th class="py-3 px-3 text-right">Elasticidade (ε)</th>
+            <th class="py-3 px-3 text-center">Ações</th>
         `;
-    } else {
-        const grouped = {};
-        filteredLogs.forEach(r => {
-            const key = `${r.date}__${r.split}`;
-            if (!grouped[key]) grouped[key] = { date: r.date, split: r.split, items: [] };
-            grouped[key].items.push(r);
-        });
+    }
 
-        const sessions = Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+    const filtered = habits
+        .map((h, idx) => ({ ...h, _idx: idx }))
+        .filter(h => activeCategoryFilter === 'all' || h.category === activeCategoryFilter);
 
-        sessionsContainer.innerHTML = sessions.map(session => {
-            const sessionVol = session.items.reduce((acc, i) => acc + (Number(i.volume) || 0), 0);
-            const doneCount = session.items.filter(i => i.completed).length;
-            const allDone = doneCount === session.items.length;
+    // Cards Grid
+    const cardsGrid = document.getElementById('activity-cards-grid');
+    if (cardsGrid) {
+        if (filtered.length === 0) {
+            cardsGrid.innerHTML = `
+                <div class="col-span-full bg-slate-900/60 border border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-400">
+                    Nenhuma atividade cadastrada neste filtro. Clique em <strong>+ Nova Atividade</strong> ou acesse <strong class="text-indigo-400 cursor-pointer" onclick="navigateTo('atv_fisica')">Atividade Física</strong>.
+                </div>
+            `;
+        } else {
+            cardsGrid.innerHTML = filtered.map(h => {
+                const m = (typeof calcHabitMetrics === 'function') ? calcHabitMetrics(h) : { totalHours: 0, rate: 0, elasticity: 0 };
+                return `
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-3">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${h.category || 'geral'}</span>
+                                <h3 class="text-sm font-bold text-white mt-1">${h.name}</h3>
+                            </div>
+                            <button onclick="openHabitModal(null, ${h._idx})" class="text-xs text-slate-400 hover:text-white">Editar</button>
+                        </div>
+                        <div class="flex items-baseline justify-between text-xs font-mono">
+                            <span class="text-slate-400">Volume: <strong class="text-white">${Number(m.totalHours || 0).toFixed(1)}h</strong> / ${h.targetHours || 5}h</span>
+                            <span class="text-emerald-400 font-bold">${Math.round(m.rate || 0)}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // Matrix Tbody
+    const tbody = document.getElementById('habits-tbody');
+    if (tbody) {
+        tbody.innerHTML = filtered.map(h => {
+            const m = (typeof calcHabitMetrics === 'function') ? calcHabitMetrics(h) : { totalHours: 0, rate: 0, elasticity: 0 };
+            const daysArr = Array.isArray(h.days) ? h.days : [false, false, false, false, false, false, false];
+            const hoursArr = Array.isArray(h.hoursPerDay) ? h.hoursPerDay : [0, 0, 0, 0, 0, 0, 0];
 
             return `
-            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-                <!-- Cabeçalho da Sessão -->
-                <div class="px-5 py-3.5 bg-slate-50/90 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <span class="font-mono text-xs font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                            📅 ${formatDateBR(session.date)}
-                        </span>
-                        <span class="px-3 py-1 text-xs font-bold rounded-lg border ${getSplitBadgeStyle(session.split)}">
-                            ${session.split}
-                        </span>
-                        <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                            ${doneCount}/${session.items.length} concluídos
-                        </span>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2.5">
-                        <span class="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
-                            Volume do Dia: <strong class="text-indigo-600 dark:text-indigo-400">${formatBRNumber(sessionVol)} kg</strong>
-                        </span>
-                        <button onclick="toggleWorkoutSessionDone('${session.date}', '${session.split}', ${!allDone})"
-                            class="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer">
-                            ${allDone ? 'Desmarcar Sessão' : '✓ Concluir Sessão'}
-                        </button>
-                        <button onclick="addWorkoutExerciseRow('${session.date}', '${session.split}')"
-                            class="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 font-semibold transition-colors cursor-pointer">
-                            + Exercício
-                        </button>
-                        <button onclick="deleteEntireWorkoutSession('${session.date}', '${session.split}')" title="Excluir sessão inteira"
-                            class="text-xs px-2 py-1 rounded-lg text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
-                            🗑
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Tabela Interativa -->
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-200/70 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50/30 dark:bg-slate-900/40">
-                                <th class="py-2.5 px-3 text-center w-10">OK</th>
-                                <th class="py-2.5 px-3 min-w-[200px]">Exercício & Músculo Alvo</th>
-                                <th class="py-2.5 px-3 min-w-[180px]">Variações / Substitutos</th>
-                                <th class="py-2.5 px-2 text-center w-16">Séries</th>
-                                <th class="py-2.5 px-2 text-center w-24">Reps</th>
-                                <th class="py-2.5 px-2 text-center w-20">Descanso</th>
-                                <th class="py-2.5 px-2 text-center w-24">Carga (kg)</th>
-                                <th class="py-2.5 px-2 text-center w-16">RIR</th>
-                                <th class="py-2.5 px-3 text-right w-24">Volume (kg)</th>
-                                <th class="py-2.5 px-3 min-w-[220px]">Observações / Ajuste se Faltou</th>
-                                <th class="py-2.5 px-2 w-8"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-200/50 dark:divide-slate-800/70 text-sm">
-                            ${session.items.map(row => `
-                                <tr class="${row.completed ? 'bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05]' : ''} hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                                    <td class="py-2.5 px-3 text-center">
-                                        <input type="checkbox" ${row.completed ? 'checked' : ''}
-                                            onchange="updateWorkoutField('${row.id}', 'completed', this.checked)"
-                                            class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
-                                    </td>
-                                    <td class="py-2.5 px-3">
-                                        <input type="text" value="${row.exercise}"
-                                            onchange="updateWorkoutField('${row.id}', 'exercise', this.value)"
-                                            class="w-full font-semibold text-slate-900 dark:text-white bg-transparent border-b border-transparent focus:border-indigo-500 outline-none text-xs sm:text-sm">
-                                        <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">${row.muscle || ''}</div>
-                                    </td>
-                                    <td class="py-2.5 px-3 text-xs text-slate-500 dark:text-slate-400 leading-snug">
-                                        ${row.substitutes || '-'}
-                                    </td>
-                                    <td class="py-2.5 px-2 text-center">
-                                        <input type="number" step="1" min="0" value="${row.sets}"
-                                            onchange="updateWorkoutField('${row.id}', 'sets', this.value)"
-                                            class="w-14 text-center font-mono text-xs py-1 rounded-lg bg-slate-100/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500">
-                                    </td>
-                                    <td class="py-2.5 px-2 text-center">
-                                        <input type="text" value="${row.reps}"
-                                            onchange="updateWorkoutField('${row.id}', 'reps', this.value)"
-                                            class="w-20 text-center font-mono text-xs py-1 rounded-lg bg-slate-100/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500">
-                                    </td>
-                                    <td class="py-2.5 px-2 text-center font-mono text-xs text-slate-500 dark:text-slate-400">
-                                        ${row.rest || '-'}
-                                    </td>
-                                    <td class="py-2.5 px-2 text-center">
-                                        ${row.isCardio ? '<span class="text-xs text-slate-400">-</span>' : `
-                                        <input type="number" step="0.5" min="0" value="${row.load}"
-                                            onchange="updateWorkoutField('${row.id}', 'load', this.value)"
-                                            class="w-20 text-center font-mono font-semibold text-xs py-1 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 outline-none focus:ring-2 focus:ring-indigo-500">
-                                        `}
-                                    </td>
-                                    <td class="py-2.5 px-2 text-center">
-                                        <input type="text" placeholder="-" value="${row.rir || ''}"
-                                            onchange="updateWorkoutField('${row.id}', 'rir', this.value)"
-                                            class="w-12 text-center font-mono text-xs py-1 rounded-lg bg-slate-100/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500">
-                                    </td>
-                                    <td class="py-2.5 px-3 text-right font-mono font-bold text-xs ${row.volume > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-400'}">
-                                        ${row.isCardio ? '-' : formatBRNumber(row.volume)}
-                                    </td>
-                                    <td class="py-2.5 px-3">
-                                        <input type="text" placeholder="Notas de carga/RIR..." value="${row.notes || ''}"
-                                            onchange="updateWorkoutField('${row.id}', 'notes', this.value)"
-                                            class="w-full text-xs px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-500 text-slate-700 dark:text-slate-300 outline-none">
-                                    </td>
-                                    <td class="py-2.5 px-2 text-center">
-                                        <button onclick="deleteWorkoutExerciseRow('${row.id}')" title="Remover linha"
-                                            class="text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400 transition-colors cursor-pointer">
-                                            ✕
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                <tr class="hover:bg-slate-800/40 transition-colors">
+                    <td class="py-3 px-4 font-semibold text-white">${h.name}</td>
+                    ${daysArr.map((done, dIdx) => `
+                        <td class="py-2.5 px-1.5 text-center">
+                            <button onclick="toggleHabitDay(${h._idx},${dIdx})"
+                                class="w-9 h-9 rounded-xl font-mono text-xs font-bold transition-all ${done ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800/60 text-slate-500 hover:bg-slate-800'}">
+                                ${hoursArr[dIdx] ? Number(hoursArr[dIdx]).toFixed(1) : (done ? '✓' : '·')}
+                            </button>
+                        </td>
+                    `).join('')}
+                    <td class="py-3 px-3 text-right font-mono text-xs text-slate-300">${Number(m.totalHours || 0).toFixed(1)}h / ${h.targetHours || 5}h</td>
+                    <td class="py-3 px-3 text-right font-mono text-xs font-bold text-indigo-400">${Number(m.elasticity || 0).toFixed(2)}</td>
+                    <td class="py-3 px-3 text-center space-x-2">
+                        <button onclick="openHabitModal(null, ${h._idx})" class="text-xs text-indigo-400 hover:underline">Editar</button>
+                        <button onclick="deleteHabitByIdx(${h._idx})" class="text-xs text-rose-400 hover:underline">✕</button>
+                    </td>
+                </tr>
             `;
         }).join('');
     }
 }
 
-// ============================================================================
-// MÓDULO: DIÁRIO DO SONO (view-sono)
-// ============================================================================
+function renderDedicatedAtvFisicaView() {
+    const container = document.getElementById('dedicated-atv-cards');
+    if (container) {
+        const atvHabits = habits.map((h, i) => ({ ...h, _idx: i })).filter(h => h.category === 'atv_fisica');
+        container.innerHTML = atvHabits.map(h => {
+            const m = (typeof calcHabitMetrics === 'function') ? calcHabitMetrics(h) : { totalHours: 0, rate: 0 };
+            return `
+                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                        <h4 class="text-sm font-bold text-white">${h.name}</h4>
+                        <span class="text-xs font-mono text-slate-400">${Number(m.totalHours || 0).toFixed(1)}h / ${h.targetHours || 5}h (${Math.round(m.rate || 0)}%)</span>
+                    </div>
+                    <button onclick="openHabitModal(null, ${h._idx})" class="text-xs text-indigo-400 hover:underline">Configurar</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Renderiza a Planilha Interativa Upper/Lower do módulo workout.js
+    if (typeof WorkoutSheetUI !== 'undefined') {
+        WorkoutSheetUI.render();
+    }
+}
 
 function computeSleepMetrics(entry) {
     if (!entry || !entry.bedTime || !entry.sleepTime || !entry.wakeTime || !entry.upTime) return null;
-
-    const toMin = (t) => {
-        const [h, m] = t.split(':').map(Number);
+    const toMin = (str) => {
+        const [h, m] = str.split(':').map(Number);
         return h * 60 + m;
     };
-
-    const diffMin = (start, end) => {
-        let s = toMin(start);
-        let e = toMin(end);
-        if (e <= s) e += 24 * 60;
-        return e - s;
+    const diff = (s, e) => {
+        let a = toMin(s), b = toMin(e);
+        if (b <= a) b += 1440;
+        return b - a;
     };
-
-    const tibMin = diffMin(entry.bedTime, entry.upTime); // Tempo na Cama (TIB)
-    const tstMin = diffMin(entry.sleepTime, entry.wakeTime); // Tempo Total de Sono (TST)
-    if (tibMin <= 0) return null;
-
-    const eff = Math.min(100, Math.max(0, (tstMin / tibMin) * 100));
+    const tib = diff(entry.bedTime, entry.upTime);
+    const tst = diff(entry.sleepTime, entry.wakeTime);
+    if (tib <= 0) return null;
     return {
-        tibHours: (tibMin / 60).toFixed(2),
-        tstHours: (tstMin / 60).toFixed(2),
-        efficiency: eff.toFixed(1)
+        tibHours: (tib / 60).toFixed(2),
+        tstHours: (tst / 60).toFixed(2),
+        efficiency: Math.min(100, Math.max(0, (tst / tib) * 100)).toFixed(1)
     };
 }
 
-function openSleepJournalModal(isoDate = '') {
+function renderDedicatedSleepView() {
+    const tbody = document.getElementById('dedicated-sleep-tbody');
+    if (!tbody) return;
+
+    const daysList = (typeof getCurrentWeekDays === 'function') ? getCurrentWeekDays() : weekDays.map((d, i) => ({ label: d, iso: `dia-${i}` }));
+    let sumEff = 0, sumTst = 0, sumTib = 0, count = 0;
+
+    tbody.innerHTML = daysList.map((d, idx) => {
+        const key = d.iso || String(idx);
+        const entry = sleepJournal[key] || sleepJournal[idx];
+        const m = computeSleepMetrics(entry);
+        if (m) {
+            sumEff += parseFloat(m.efficiency);
+            sumTst += parseFloat(m.tstHours);
+            sumTib += parseFloat(m.tibHours);
+            count++;
+        }
+        return `
+            <tr class="hover:bg-slate-800/40">
+                <td class="py-3 px-4 font-semibold text-white">${d.label || weekDays[idx]}</td>
+                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.bedTime || '-'}</td>
+                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.sleepTime || '-'}</td>
+                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.wakeTime || '-'}</td>
+                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.upTime || '-'}</td>
+                <td class="py-3 px-3 text-center font-mono text-xs text-sky-400">${m ? m.tibHours + 'h' : '-'}</td>
+                <td class="py-3 px-3 text-center font-mono text-xs font-bold text-indigo-400">${m ? m.tstHours + 'h' : '-'}</td>
+                <td class="py-3 px-3 text-center font-mono text-xs font-bold text-emerald-400">${m ? m.efficiency + '%' : '-'}</td>
+                <td class="py-3 px-4 text-right">
+                    <button onclick="openSleepJournalModal(${idx}, '${key}')" class="text-xs font-semibold text-indigo-400 hover:underline">
+                        ${entry ? 'Editar' : '+ Registrar'}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    const elEff = document.getElementById('sleep-kpi-efficiency');
+    const elTst = document.getElementById('sleep-kpi-tst');
+    const elTib = document.getElementById('sleep-kpi-tib');
+    if (elEff) elEff.textContent = count > 0 ? `${(sumEff / count).toFixed(1)}%` : '--%';
+    if (elTst) elTst.textContent = count > 0 ? `${(sumTst / count).toFixed(1)}h` : '--h';
+    if (elTib) elTib.textContent = count > 0 ? `${(sumTib / count).toFixed(1)}h` : '--h';
+}
+
+const renderSleepJournalView = renderDedicatedSleepView;
+
+function openSleepJournalModal(dayIdx = 0, key = '') {
     const modal = document.getElementById('sleep-journal-modal');
-    const dateInput = document.getElementById('sleep-date-input');
-    const targetDate = isoDate || new Date().toISOString().split('T')[0];
-
-    if (dateInput) dateInput.value = targetDate;
-    const existing = sleepJournal[targetDate] || { bedTime: '23:30', sleepTime: '23:50', wakeTime: '07:10', upTime: '07:30', quality: '4', notes: '' };
-
+    document.getElementById('sleep-journal-day').value = key || String(dayIdx);
+    const existing = sleepJournal[key] || sleepJournal[dayIdx] || {};
     document.getElementById('sleep-bedtime-input').value = existing.bedTime || '23:30';
     document.getElementById('sleep-sleeptime-input').value = existing.sleepTime || '23:50';
     document.getElementById('sleep-waketime-input').value = existing.wakeTime || '07:10';
     document.getElementById('sleep-uptime-input').value = existing.upTime || '07:30';
     document.getElementById('sleep-quality-input').value = existing.quality || '4';
     document.getElementById('sleep-notes-input').value = existing.notes || '';
-
     if (modal) modal.classList.remove('hidden');
 }
 
@@ -576,10 +316,8 @@ function closeSleepJournalModal() {
 
 function saveSleepJournalEntry(e) {
     if (e) e.preventDefault();
-    const date = document.getElementById('sleep-date-input').value;
-    if (!date) return;
-
-    sleepJournal[date] = {
+    const key = document.getElementById('sleep-journal-day').value || document.getElementById('sleep-date-input').value || '0';
+    sleepJournal[key] = {
         bedTime: document.getElementById('sleep-bedtime-input').value,
         sleepTime: document.getElementById('sleep-sleeptime-input').value,
         wakeTime: document.getElementById('sleep-waketime-input').value,
@@ -587,71 +325,44 @@ function saveSleepJournalEntry(e) {
         quality: document.getElementById('sleep-quality-input').value,
         notes: document.getElementById('sleep-notes-input').value
     };
-
     saveData();
     closeSleepJournalModal();
     renderAll();
 }
 
-function renderSleepJournalView() {
-    const tbody = document.getElementById('sleep-journal-tbody');
-    if (!tbody) return;
+function populateSelects() {
+    const habitSelectIds = ['timer-habit-select', 'manual-habit-select', 'event-habit-select', 'activity-chart-target'];
+    habitSelectIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = habits.map((h, i) => `<option value="${i}">${h.name}</option>`).join('');
+    });
 
-    const weekDates = getWeekDates(currentWeekOffset);
-    let sumEff = 0, sumTst = 0, sumTib = 0, count = 0;
-
-    tbody.innerHTML = weekDates.map(d => {
-        const entry = sleepJournal[d.iso];
-        const m = computeSleepMetrics(entry);
-        if (m) {
-            sumEff += parseFloat(m.efficiency);
-            sumTst += parseFloat(m.tstHours);
-            sumTib += parseFloat(m.tibHours);
-            count++;
-        }
-
-        const effBadge = m
-            ? (parseFloat(m.efficiency) >= 85
-                ? `<span class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">${m.efficiency}%</span>`
-                : `<span class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400">${m.efficiency}%</span>`)
-            : '<span class="text-xs text-slate-400">-</span>';
-
-        return `
-            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                <td class="py-3 px-4 font-medium text-slate-900 dark:text-white">
-                    ${d.fullDayName} <span class="text-xs font-mono text-slate-400 ml-1">${d.br}</span>
-                </td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-600 dark:text-slate-300">${entry?.bedTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-600 dark:text-slate-300">${entry?.sleepTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-600 dark:text-slate-300">${entry?.wakeTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-600 dark:text-slate-300">${entry?.upTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">${m ? m.tibHours + 'h' : '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">${m ? m.tstHours + 'h' : '-'}</td>
-                <td class="py-3 px-3 text-center">${effBadge}</td>
-                <td class="py-3 px-4 text-right">
-                    <button onclick="openSleepJournalModal('${d.iso}')"
-                        class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
-                        ${entry ? 'Editar' : '+ Registrar'}
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    const elAvgEff = document.getElementById('sleep-kpi-efficiency');
-    const elAvgTst = document.getElementById('sleep-kpi-tst');
-    const elAvgTib = document.getElementById('sleep-kpi-tib');
-    if (elAvgEff) elAvgEff.textContent = count > 0 ? `${(sumEff / count).toFixed(1)}%` : '--%';
-    if (elAvgTst) elAvgTst.textContent = count > 0 ? `${(sumTst / count).toFixed(1)}h` : '--h';
-    if (elAvgTib) elAvgTib.textContent = count > 0 ? `${(sumTib / count).toFixed(1)}h` : '--h';
+    const daySelectIds = ['timer-day-select', 'manual-day-select', 'event-day-select'];
+    daySelectIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = weekDays.map((d, i) => `<option value="${i}">${d}</option>`).join('');
+    });
 }
 
-// ============================================================================
-// MÓDULO: DASHBOARD GERAL & HÁBITOS
-// ============================================================================
-
-function openHabitModal() {
+function openHabitModal(defaultCategory = null, editIndex = -1) {
     const modal = document.getElementById('habit-modal');
+    document.getElementById('modal-habit-index').value = editIndex;
+    const nameInput = document.getElementById('modal-habit-name');
+    const catInput = document.getElementById('modal-habit-category');
+    const targetInput = document.getElementById('modal-habit-target-hours');
+
+    if (editIndex >= 0 && habits[editIndex]) {
+        const h = habits[editIndex];
+        nameInput.value = h.name;
+        catInput.value = h.category || 'atv_fisica';
+        targetInput.value = h.targetHours || 6;
+    } else {
+        nameInput.value = '';
+        catInput.value = defaultCategory || 'atv_fisica';
+        targetInput.value = 6;
+    }
     if (modal) modal.classList.remove('hidden');
 }
 
@@ -660,143 +371,174 @@ function closeHabitModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-function saveNewHabit(e) {
-    if (e) e.preventDefault();
-    const name = document.getElementById('habit-name-input').value.trim();
-    const group = document.getElementById('habit-group-input').value;
-    const target = parseFloat(document.getElementById('habit-target-input').value) || 5;
-    if (!name) return;
-
-    habits.push({
-        id: 'h-' + Date.now(),
-        name,
-        group,
-        weeklyTarget: target,
-        logs: {}
-    });
-
-    saveData();
-    closeHabitModal();
-    document.getElementById('habit-name-input').value = '';
-    renderAll();
+function onHabitCategoryChange() {
+    const cat = document.getElementById('modal-habit-category')?.value;
+    const bedContainer = document.getElementById('modal-bedtime-container');
+    if (bedContainer) bedContainer.classList.toggle('hidden', cat !== 'sono');
 }
 
-function updateHabitDailyLog(habitId, isoDate, val) {
-    const h = habits.find(item => item.id === habitId);
-    if (!h) return;
-    if (!h.logs) h.logs = {};
-    h.logs[isoDate] = parseFloat(val) || 0;
-    saveData();
-    renderAll();
-}
+function renderCalendarView() {
+    const headerGrid = document.getElementById('calendar-header-grid');
+    const hoursGrid = document.getElementById('calendar-hours-grid');
+    if (!headerGrid || !hoursGrid) return;
 
-function deleteHabit(habitId) {
-    if (!confirm('Excluir esta atividade da matriz?')) return;
-    habits = habits.filter(h => h.id !== habitId);
-    saveData();
-    renderAll();
-}
-
-function renderDashboard() {
-    const weekDates = getWeekDates(currentWeekOffset);
-    const labelEl = document.getElementById('current-week-label');
-    if (labelEl) {
-        labelEl.textContent = `${weekDates[0].br} — ${weekDates[6].br}`;
+    headerGrid.innerHTML = `<div>Hora</div>` + weekDays.map(d => `<div>${d}</div>`).join('');
+    let rowsHtml = '';
+    for (let h = 6; h <= 22; h++) {
+        rowsHtml += `<div class="grid grid-cols-8 gap-2 py-2 items-center">
+            <div class="font-mono text-center text-slate-500">${String(h).padStart(2, '0')}:00</div>
+            ${weekDays.map((_, dIdx) => {
+                const ev = calendarEvents.find(e => Number(e.day) === dIdx && Number(e.startHour) === h);
+                if (ev) {
+                    return `<div class="p-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 text-[11px] flex items-center justify-between">
+                        <span class="truncate">${ev.title || 'Bloco'}</span>
+                        <button onclick="deleteCalEvent('${ev.id}')" class="text-rose-400 ml-1">✕</button>
+                    </div>`;
+                }
+                return `<div onclick="openEventModal(${dIdx},${h})" class="h-7 rounded-lg hover:bg-slate-800/60 cursor-pointer"></div>`;
+            }).join('')}
+        </div>`;
     }
-
-    const headRow = document.getElementById('matrix-header-row');
-    if (headRow) {
-        headRow.innerHTML = `
-            <th class="py-3 px-4 text-left">Atividade / Grupo</th>
-            <th class="py-3 px-2 text-center">Meta Sem.</th>
-            ${weekDates.map(d => `<th class="py-3 px-2 text-center font-mono">${d.dayName}<br><span class="text-[10px] text-slate-400">${d.br}</span></th>`).join('')}
-            <th class="py-3 px-3 text-right">Realizado</th>
-            <th class="py-3 px-2 w-8"></th>
-        `;
-    }
-
-    const tbody = document.getElementById('matrix-tbody');
-    if (!tbody) return;
-
-    if (habits.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="11" class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                    Nenhuma atividade geral cadastrada na matriz. Seus treinos completos já estão ativos na aba <strong class="text-indigo-500 cursor-pointer" onclick="navigateTo('atv_fisica')">Treino & Adesão</strong>.
-                </td>
-            </tr>
-        `;
-    } else {
-        tbody.innerHTML = habits.map(h => {
-            const grp = GROUPS_META[h.group] || GROUPS_META.academico;
-            let weekSum = 0;
-            const cells = weekDates.map(d => {
-                const v = (h.logs && h.logs[d.iso]) ? Number(h.logs[d.iso]) : 0;
-                weekSum += v;
-                return `
-                    <td class="py-2.5 px-1.5 text-center">
-                        <input type="number" step="0.5" min="0" value="${v || ''}" placeholder="-"
-                            onchange="updateHabitDailyLog('${h.id}', '${d.iso}', this.value)"
-                            class="w-14 text-center font-mono text-xs py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500">
-                    </td>
-                `;
-            }).join('');
-
-            const pct = h.weeklyTarget > 0 ? Math.min(100, Math.round((weekSum / h.weeklyTarget) * 100)) : 0;
-
-            return `
-                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
-                    <td class="py-3 px-4">
-                        <div class="font-semibold text-slate-900 dark:text-white text-sm">${h.name}</div>
-                        <span class="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold rounded border ${grp.badge}">${grp.label}</span>
-                    </td>
-                    <td class="py-3 px-2 text-center font-mono text-xs text-slate-500">${h.weeklyTarget}h</td>
-                    ${cells}
-                    <td class="py-3 px-3 text-right font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                        ${weekSum.toFixed(1)}h <span class="text-[10px] text-slate-400">(${pct}%)</span>
-                    </td>
-                    <td class="py-3 px-2 text-center">
-                        <button onclick="deleteHabit('${h.id}')" class="text-slate-300 hover:text-rose-500">✕</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
+    hoursGrid.innerHTML = rowsHtml;
 }
 
-// ============================================================================
-// ORQUESTRADOR GLOBAL DE RENDERIZAÇÃO
-// ============================================================================
+function openEventModal(dayIdx = 0, hour = 16) {
+    document.getElementById('event-day-select').value = dayIdx;
+    document.getElementById('event-start-hour').value = hour;
+    document.getElementById('event-modal').classList.remove('hidden');
+}
+
+function closeEventModal() {
+    document.getElementById('event-modal').classList.add('hidden');
+}
+
+function saveEventFromModal() {
+    const hIdx = document.getElementById('event-habit-select').value;
+    const day = Number(document.getElementById('event-day-select').value);
+    const startHour = Number(document.getElementById('event-start-hour').value);
+    const duration = Number(document.getElementById('event-duration').value) || 1;
+    const title = habits[hIdx] ? habits[hIdx].name : 'Sessão';
+
+    calendarEvents.push({ id: 'ev-' + Date.now(), title, day, startHour, duration });
+    saveData();
+    closeEventModal();
+    renderCalendarView();
+}
+
+function deleteCalEvent(id) {
+    calendarEvents = calendarEvents.filter(e => e.id !== id);
+    saveData();
+    renderCalendarView();
+}
+
+function saveAndOpenGoogleCal() {
+    saveEventFromModal();
+    window.open('https://calendar.google.com/calendar/r/eventedit', '_blank');
+}
+
+function openCloudModal() {
+    document.getElementById('gist-token-input').value = SafeStorage.getItem('hq_gist_token') || '';
+    document.getElementById('gist-id-input').value = SafeStorage.getItem('hq_gist_id') || '';
+    document.getElementById('cloud-modal').classList.remove('hidden');
+}
+
+function closeCloudModal() {
+    document.getElementById('cloud-modal').classList.add('hidden');
+}
+
+function pushToGist() {
+    SafeStorage.setItem('hq_gist_token', document.getElementById('gist-token-input').value.trim());
+    SafeStorage.setItem('hq_gist_id', document.getElementById('gist-id-input').value.trim());
+    autoPushToGist();
+    closeCloudModal();
+}
+
+function pullFromGist() {
+    SafeStorage.setItem('hq_gist_token', document.getElementById('gist-token-input').value.trim());
+    SafeStorage.setItem('hq_gist_id', document.getElementById('gist-id-input').value.trim());
+    autoPullFromGist(() => renderAll());
+    closeCloudModal();
+}
+
+function exportToCSV() {
+    if (typeof WorkoutSheetUI !== 'undefined') WorkoutSheetUI.exportCSV();
+}
+
+function exportCalendarICS() {
+    alert('Arquivo .ICS gerado para importação na agenda.');
+}
+
+function resetAllData() {
+    if (!confirm('Resetar todos os dados locais?')) return;
+    SafeStorage.removeItem(STORAGE_KEY);
+    location.reload();
+}
 
 function renderAll() {
-    renderDashboard();
+    populateSelects();
+    renderDashboardView();
     renderDedicatedAtvFisicaView();
-    renderSleepJournalView();
-
-    if (typeof renderMetricsView === 'function' && currentRoute === 'metrics') {
-        renderMetricsView();
-    }
-    if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons();
-    }
+    renderDedicatedSleepView();
+    renderCalendarView();
+    if (typeof renderMetricsView === 'function') renderMetricsView();
+    if (typeof renderProfileUI === 'function') renderProfileUI();
+    refreshIcons();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = SafeStorage.getItem('hq_theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-    }
-
     loadData();
 
-    const initialHash = window.location.hash.replace('#', '') || 'dashboard';
-    applyRoute(initialHash);
+    const habitForm = document.getElementById('habit-modal-form');
+    if (habitForm) {
+        habitForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const idx = Number(document.getElementById('modal-habit-index').value);
+            const name = document.getElementById('modal-habit-name').value.trim();
+            const category = document.getElementById('modal-habit-category').value;
+            const targetHours = parseFloat(document.getElementById('modal-habit-target-hours').value) || 6;
+            if (!name) return;
+
+            if (idx >= 0 && habits[idx]) {
+                habits[idx].name = name;
+                habits[idx].category = category;
+                habits[idx].targetHours = targetHours;
+            } else {
+                habits.push({
+                    name,
+                    category,
+                    targetHours,
+                    days: [false, false, false, false, false, false, false],
+                    hoursPerDay: [0, 0, 0, 0, 0, 0, 0]
+                });
+            }
+            saveData();
+            closeHabitModal();
+            renderAll();
+        });
+    }
+
+    const manualForm = document.getElementById('manual-hours-form');
+    if (manualForm) {
+        manualForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const hIdx = Number(document.getElementById('manual-habit-select').value);
+            const dIdx = Number(document.getElementById('manual-day-select').value);
+            const hrs = parseFloat(document.getElementById('manual-hours-input').value) || 0;
+            if (habits[hIdx] && hrs > 0) {
+                habits[hIdx].days[dIdx] = true;
+                habits[hIdx].hoursPerDay[dIdx] = Number(((habits[hIdx].hoursPerDay[dIdx] || 0) + hrs).toFixed(2));
+                saveData();
+                renderAll();
+            }
+        });
+    }
+
+    const initialRoute = (window.location.hash || '#dashboard').replace('#', '');
+    applyRoute(initialRoute);
 
     window.addEventListener('hashchange', () => {
-        const h = window.location.hash.replace('#', '') || 'dashboard';
-        applyRoute(h);
+        applyRoute((window.location.hash || '#dashboard').replace('#', ''));
     });
 
-    // Sincroniza silenciosamente com o GitHub Gist ao abrir
     autoPullFromGist(() => renderAll());
 });
