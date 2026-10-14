@@ -1,6 +1,13 @@
 let activeCategoryFilter = 'all';
 let isSidebarCollapsed = false;
 
+/* ---------- Lucide: chamada protegida ---------- */
+function refreshIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        try { window.lucide.createIcons(); } catch (e) { console.warn('[lucide]', e); }
+    }
+}
+
 window.toggleDesktopSidebar = function() {
     const sb = document.getElementById('desktop-sidebar');
     const icon = document.getElementById('sidebar-toggle-icon');
@@ -9,14 +16,13 @@ window.toggleDesktopSidebar = function() {
     sb.classList.toggle('sidebar-expanded', !isSidebarCollapsed);
     sb.classList.toggle('sidebar-collapsed', isSidebarCollapsed);
     if (icon) icon.setAttribute('data-lucide', isSidebarCollapsed ? 'panel-left-open' : 'panel-left-close');
-    if (window.lucide) lucide.createIcons();
+    refreshIcons();
 };
 
 window.toggleMobileDrawer = function() {
     document.getElementById('mobile-drawer').classList.toggle('hidden');
 };
 
-/* Títulos originais — sem greeting dinâmico */
 const ROUTE_CONFIG = {
     dashboard: { eyebrow: 'DASHBOARD', title: 'Bom dia, Semana Corrente' },
     timer:     { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
@@ -54,14 +60,25 @@ function applyRoute(routeParam) {
 
     const cfg = ROUTE_CONFIG[activeRoute];
     document.getElementById('header-eyebrow').innerText = cfg.eyebrow;
-    document.getElementById('view-title').innerText = cfg.title;
+
+    /* Dashboard usa cumprimento com o nome do usuário (estável) */
+    let titleText = cfg.title;
+    if (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function') {
+        titleText = window.getUserGreeting();
+    }
+    document.getElementById('view-title').innerText = titleText;
 
     renderAll(activeRoute);
 }
 
-/* No-op — o título é estático via ROUTE_CONFIG.
-   Mantida para compatibilidade com profile.js. */
-window.refreshHeaderTitle = function () {};
+window.refreshHeaderTitle = function () {
+    const hashRoute = (window.location.hash || '#dashboard').replace('#', '').trim();
+    const activeRoute = ROUTE_CONFIG[hashRoute] ? hashRoute : 'dashboard';
+    if (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function') {
+        const el = document.getElementById('view-title');
+        if (el) el.innerText = window.getUserGreeting();
+    }
+};
 
 window.addEventListener('hashchange', () => applyRoute());
 
@@ -90,38 +107,32 @@ window.deleteHabitByIdx = function(hIdx) {
     if (confirm(`Remover "${habits[hIdx].name}"?`)) { habits.splice(hIdx, 1); saveData(); }
 };
 
-/* KPI de Sono (substitui a antiga elasticidade global) */
+/* KPI do Sono */
 function renderSleepKPI() {
-    const sleepHabit = habits.find(h => h.category === 'sono');
     const bedEl = document.getElementById('kpi-sleep-bed');
-    const sleptEl = document.getElementById('kpi-sleep-slept');
-    const sensEl = document.getElementById('kpi-sleep-sens');
-    const effEl = document.getElementById('kpi-sleep-eff');
     if (!bedEl) return;
+    const sleepHabit = habits.find(h => h.category === 'sono');
 
     if (!sleepHabit) {
         bedEl.textContent = '—';
-        sleptEl.textContent = '→ —';
-        sensEl.textContent = 'Sensib.: ε —';
-        effEl.textContent = 'Eficiência: —';
+        document.getElementById('kpi-sleep-slept').textContent = '→ —';
+        document.getElementById('kpi-sleep-sens').textContent = 'Sensib.: ε —';
+        document.getElementById('kpi-sleep-eff').textContent = 'Efic.: —';
         return;
     }
-
     const agg = calcSleepAggregates(sleepHabit);
     const m = calcHabitMetrics(sleepHabit);
-
     if (agg.activeDays === 0) {
         bedEl.textContent = '—';
-        sleptEl.textContent = '→ —';
-        sensEl.textContent = 'Sensib.: ε —';
-        effEl.textContent = 'Eficiência: —';
+        document.getElementById('kpi-sleep-slept').textContent = '→ —';
+        document.getElementById('kpi-sleep-sens').textContent = 'Sensib.: ε —';
+        document.getElementById('kpi-sleep-eff').textContent = 'Efic.: —';
         return;
     }
-
     bedEl.textContent = agg.meanBed.toFixed(1) + 'h';
-    sleptEl.textContent = '→ ' + agg.meanSlept.toFixed(1) + 'h';
-    sensEl.textContent = 'Sensib.: ε ' + m.elasticity.toFixed(2);
-    effEl.textContent = 'Eficiência: ' + agg.efficiency.toFixed(0) + '%';
+    document.getElementById('kpi-sleep-slept').textContent = '→ ' + agg.meanSlept.toFixed(1) + 'h';
+    document.getElementById('kpi-sleep-sens').textContent = 'Sensib.: ε ' + m.elasticity.toFixed(2);
+    document.getElementById('kpi-sleep-eff').textContent = 'Efic.: ' + agg.efficiency.toFixed(0) + '%';
 }
 
 function renderDashboardView() {
@@ -159,7 +170,7 @@ function renderDashboardView() {
             <div class="col-span-full bg-white border border-dashed border-zinc-300 rounded-3xl p-10 text-center space-y-3">
                 <div class="text-2xl">🌱</div>
                 <div class="text-sm font-semibold text-zinc-800">Nenhuma atividade cadastrada</div>
-                <p class="text-xs text-zinc-500 max-w-sm mx-auto">O painel está zerado. Clique no botão <strong>+ Nova Atividade</strong> no canto superior direito para criar sua primeira meta semanal.</p>
+                <p class="text-xs text-zinc-500 max-w-sm mx-auto">Clique em <strong>+ Nova Atividade</strong> para começar.</p>
             </div>`;
         tbody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-zinc-400 text-xs">Sem dados registrados na semana.</td></tr>`;
         return;
@@ -169,6 +180,7 @@ function renderDashboardView() {
         const m = calcHabitMetrics(habit);
         const cat = CATEGORIES[habit.category] || CATEGORIES.estudos;
         const pctBar = Math.min(100, Math.round(m.hoursPct));
+        const isSleep = habit.category === 'sono';
 
         let daysPillsHTML = '';
         weekDays.forEach((day, dIdx) => {
@@ -176,7 +188,7 @@ function renderDashboardView() {
             const hrs = habit.dailyHours[dIdx] || 0;
             const bedH = (habit.bedtimeHours && habit.bedtimeHours[dIdx]) || 0;
             const todayBorder = day.isToday ? 'ring-2 ring-black/20 bg-white' : 'bg-white/50';
-            const bedLine = (habit.category === 'sono' && bedH > 0)
+            const bedLine = (isSleep && bedH > 0)
                 ? `<span class="text-[8px] font-mono text-indigo-600 mt-0.5">🛏 ${bedH.toFixed(1)}h</span>`
                 : '';
             daysPillsHTML += `
@@ -188,8 +200,8 @@ function renderDashboardView() {
                 </div>`;
         });
 
-        /* Sono: só Streak, Média e Sensib. (sem frequência) */
-        const footerHTML = habit.category === 'sono'
+        /* Sono: somente Streak / Média / Sensib. */
+        const footerHTML = isSleep
             ? `<div class="pt-2 border-t border-black/5 flex justify-between text-[11px] text-zinc-700 font-medium">
                    <span>Streak: 🔥 <strong>${m.streak}d</strong></span>
                    <span>Média: <strong>${m.meanHours.toFixed(1)}h/d</strong></span>
@@ -229,8 +241,7 @@ function renderDashboardView() {
                 ${footerHTML}
             </div>`;
 
-        /* Engajamento oculto para sono */
-        const engajCell = habit.category === 'sono' ? '—' : `${m.freqPct.toFixed(1)}%`;
+        const engajCell = isSleep ? '—' : `${m.freqPct.toFixed(1)}%`;
         let row = `<tr class="hover:bg-zinc-50 transition"><td class="py-3 px-2 font-medium text-zinc-900">${cat.emoji} ${habit.name}</td>`;
         weekDays.forEach((day, dIndex) => {
             const checked = habit.checks[dIndex] ? 'checked' : '';
@@ -314,7 +325,6 @@ function renderCalendarView() {
     }
 }
 
-/* Modal de Atividade: exibe/oculta Tempo de Cama */
 window.onHabitCategoryChange = function() {
     const cat = document.getElementById('modal-habit-category').value;
     const sec = document.getElementById('modal-bedtime-section');
@@ -365,10 +375,7 @@ window.closeHabitModal = function() {
 };
 
 window.openEventModal = function(dayIndex = 0, startHour = 9) {
-    if (habits.length === 0) {
-        alert('Crie pelo menos uma atividade antes de agendar no calendário.');
-        return;
-    }
+    if (habits.length === 0) { alert('Crie pelo menos uma atividade antes de agendar.'); return; }
     populateSelects();
     document.getElementById('event-day-select').value = dayIndex;
     document.getElementById('event-start-hour').value = startHour;
@@ -498,7 +505,7 @@ window.exportCalendarICS = function() {
 };
 
 window.resetAllData = function() {
-    if (confirm('Deseja zerar todos os dados e deixar o painel sem atividades?')) {
+    if (confirm('Deseja zerar todos os dados?')) {
         habits = [];
         calendarEvents = [];
         saveData();
@@ -513,7 +520,7 @@ function renderAll(activeRoute) {
     const current = activeRoute || (window.location.hash || '#dashboard').replace('#', '');
     if (current === 'metrics') renderMetricsView();
     if (current === 'calendar') renderCalendarView();
-    if (window.lucide) lucide.createIcons();
+    refreshIcons();
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -543,9 +550,9 @@ window.addEventListener('DOMContentLoaded', () => {
         let bedtimeHours = null;
         if (category === 'sono') {
             bedtimeHours = weekDays.map((_, dIdx) => {
-                const h = parseFloat(document.getElementById('modal-bed-h-' + dIdx).value) || 0;
-                const m = parseFloat(document.getElementById('modal-bed-m-' + dIdx).value) || 0;
-                return parseFloat((h + m / 60).toFixed(2));
+                const hh = parseFloat(document.getElementById('modal-bed-h-' + dIdx).value) || 0;
+                const mm = parseFloat(document.getElementById('modal-bed-m-' + dIdx).value) || 0;
+                return parseFloat((hh + mm / 60).toFixed(2));
             });
         }
 
@@ -557,10 +564,8 @@ window.addEventListener('DOMContentLoaded', () => {
             dailyHours.forEach((hr, i) => { if (hr > 0) habits[idx].checks[i] = true; });
         } else {
             const newHabit = {
-                id: 'h_' + Date.now(),
-                name, category, targetHours,
-                checks: dailyHours.map(hr => hr > 0),
-                dailyHours
+                id: 'h_' + Date.now(), name, category, targetHours,
+                checks: dailyHours.map(hr => hr > 0), dailyHours
             };
             if (bedtimeHours) newHabit.bedtimeHours = bedtimeHours;
             habits.push(newHabit);
@@ -584,6 +589,8 @@ window.addEventListener('DOMContentLoaded', () => {
             if (!name) return;
             const draft = (typeof window.getAvatarDraft === 'function') ? window.getAvatarDraft() : {};
             window.saveProfile({ name, gender, role: draft.role, skinTone: draft.skinTone });
+            /* Libera o fechamento e fecha o modal */
+            if (typeof window.markFirstRunDone === 'function') window.markFirstRunDone();
             window.closeProfileModal();
         });
     }
@@ -596,6 +603,11 @@ window.addEventListener('DOMContentLoaded', () => {
             window.openProfileModal({ firstRun: true });
         }
     }
+
+    /* Ícones: tentativa imediata + retry */
+    refreshIcons();
+    setTimeout(refreshIcons, 300);
+    setTimeout(refreshIcons, 1000);
 
     autoPullFromGist();
     window.addEventListener('focus', autoPullFromGist);
