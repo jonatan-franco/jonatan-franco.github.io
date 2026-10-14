@@ -1,4 +1,3 @@
-/* Sensibilidade Comportamental do Sono: elasticidade de h_dormido vs h_cama */
 function calcSleepElasticity(sleepArr, bedArr) {
     const pairs = [];
     for (let i = 0; i < 7; i++) {
@@ -38,13 +37,11 @@ function calcHabitMetrics(habit) {
     const sensitivityDerivative = (100 / targetH) * (0.5 + 0.5 * freqRatio);
 
     let elasticity;
-    let isSleep = false;
     if (habit.category === 'sono' && Array.isArray(habit.bedtimeHours)) {
         elasticity = calcSleepElasticity(
             habit.dailyHours.map(v => parseFloat(v) || 0),
             habit.bedtimeHours.map(v => parseFloat(v) || 0)
         );
-        isSleep = true;
     } else {
         const syncFactor = Math.exp(-Math.abs(freqRatio - Math.min(1, hoursRatio)) * 0.35);
         elasticity = hoursRatio * syncFactor;
@@ -59,8 +56,7 @@ function calcHabitMetrics(habit) {
     return {
         daysCompleted, freqRatio, freqPct,
         totalHours, meanHours, sdHours, targetH,
-        hoursRatio, hoursPct, sensitivityDerivative,
-        elasticity, streak: maxStreak, isSleep
+        hoursRatio, hoursPct, sensitivityDerivative, elasticity, streak: maxStreak
     };
 }
 
@@ -84,7 +80,7 @@ function calcWeeklyGlobalMetrics() {
     if (habits.length === 0) {
         return {
             avgFreqPct: 0, totalChecks: 0, possibleChecks: 0,
-            avgSensitivity: 0,
+            globalElasticity: 0, avgSensitivity: 0,
             sumTotalHours: 0, sumTargetHours: 0,
             dailyTotalMeanHours: 0, dailyTotalSdHours: 0,
             bestStreak: 0, leaderName: '-', todayDone: 0
@@ -103,6 +99,8 @@ function calcWeeklyGlobalMetrics() {
     const dailyTotalMeanHours = sumTotalHours / 7;
     const dailyTotalSdHours = Math.sqrt(dailyTotals.reduce((acc, v) => acc + Math.pow(v - dailyTotalMeanHours, 2), 0) / 7);
 
+    const globalHoursRatio = sumTargetHours > 0 ? (sumTotalHours / sumTargetHours) : 0;
+    const globalElasticity = globalHoursRatio * Math.exp(-Math.abs((avgFreqPct / 100) - Math.min(1, globalHoursRatio)) * 0.35);
     const avgSensitivity = metrics.reduce((a, m) => a + m.sensitivityDerivative, 0) / k;
 
     let bestStreak = 0, leaderName = 'Nenhum';
@@ -115,7 +113,7 @@ function calcWeeklyGlobalMetrics() {
 
     return {
         avgFreqPct, totalChecks, possibleChecks: k * 7,
-        avgSensitivity,
+        globalElasticity, avgSensitivity,
         sumTotalHours, sumTargetHours,
         dailyTotalMeanHours, dailyTotalSdHours,
         bestStreak, leaderName, todayDone
