@@ -9,24 +9,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    }
-                }
-            }
+            theme: { extend: { fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                mono: ['JetBrains Mono', 'monospace'],
+            }}}
         }
     </script>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="bg-[#fafafa] text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row pt-[56px] pb-20">
 
-    <!-- TOPBAR (todas as telas) -->
+    <!-- TOPBAR (fixed) -->
     <div class="bg-black text-white px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-40 h-[56px]">
         <div class="flex items-center gap-3 cursor-pointer" onclick="openProfileModal()">
             <div id="mobile-user-avatar" class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-base flex items-center justify-center">🧑‍💻</div>
@@ -37,7 +33,7 @@
         </button>
     </div>
 
-    <!-- GAVETA DE AÇÕES -->
+    <!-- GAVETA -->
     <div id="mobile-drawer" class="hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
         <button type="button" onclick="openProfileModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
             <i data-lucide="user" class="w-4 h-4"></i> <span>Editar Perfil &amp; Avatar</span>
@@ -53,14 +49,12 @@
         </button>
     </div>
 
-    <!-- SIDEBAR PRETA EXPANDÍVEL (DESKTOP) — STICKY ABAIXO DA TOPBAR -->
+    <!-- SIDEBAR (sticky, expandível) -->
     <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex self-start flex-col justify-between bg-black text-white shrink-0 sticky top-[56px] h-[calc(100vh-136px)] z-30 transition-all duration-300 select-none">
         <div class="p-4 space-y-6">
             <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-                <div onclick="openProfileModal()" class="flex items-center gap-3 overflow-hidden cursor-pointer group" title="Clique para personalizar seu perfil e ícone">
-                    <div id="sidebar-user-avatar" class="w-9 h-9 rounded-full bg-[#00e5ff] text-black font-extrabold text-lg flex items-center justify-center shrink-0 shadow group-hover:scale-105 transition">
-                        🧑‍💻
-                    </div>
+                <div onclick="openProfileModal()" class="flex items-center gap-3 overflow-hidden cursor-pointer group" title="Personalizar perfil">
+                    <div id="sidebar-user-avatar" class="w-9 h-9 rounded-full bg-[#00e5ff] text-black font-extrabold text-lg flex items-center justify-center shrink-0 shadow group-hover:scale-105 transition">🧑‍💻</div>
                     <div class="sidebar-label overflow-hidden whitespace-nowrap">
                         <div id="sidebar-user-name" class="font-bold text-sm text-white leading-none truncate max-w-[120px]">HabitQuant Pro</div>
                         <div class="text-[11px] font-mono text-[#00e676] mt-1">Editar Perfil ✎</div>
@@ -111,7 +105,7 @@
         </div>
     </aside>
 
-    <!-- BOTTOM NAV (todas as telas) -->
+    <!-- BOTTOM NAV -->
     <nav class="fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
         <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold">
             <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span>
@@ -127,23 +121,18 @@
         </button>
     </nav>
 
-    <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 p-5 md:p-8 max-w-7xl mx-auto w-full space-y-8">
 
-        <!-- CABEÇALHO DINÂMICO -->
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <div class="flex items-center gap-2.5">
                     <span id="header-eyebrow" class="text-[11px] font-mono uppercase tracking-widest text-zinc-500">DASHBOARD</span>
                     <span class="px-2.5 py-0.5 text-[10px] font-mono uppercase font-semibold bg-[#b9f6ca] text-emerald-950 rounded-full">SEMANA ATIVA</span>
-                    <button type="button" onclick="openCloudModal()" id="cloud-status-pill" class="px-2.5 py-0.5 text-[10px] font-mono bg-zinc-200/80 hover:bg-zinc-300 text-zinc-700 rounded-full transition">
-                        ☁️ Sync
-                    </button>
+                    <button type="button" onclick="openCloudModal()" id="cloud-status-pill" class="px-2.5 py-0.5 text-[10px] font-mono bg-zinc-200/80 hover:bg-zinc-300 text-zinc-700 rounded-full transition">☁️ Sync</button>
                 </div>
                 <h1 id="view-title" class="text-xl md:text-2xl lg:text-3xl font-bold text-zinc-900 mt-1.5 tracking-tight">Bom dia!</h1>
                 <p id="week-range-badge" class="text-sm text-zinc-500 mt-0.5 font-mono"></p>
             </div>
-
             <div class="flex items-center gap-2.5">
                 <button type="button" onclick="navigateTo('timer')" id="mini-timer-pill" class="hidden items-center gap-2 px-3.5 py-2 bg-zinc-900 text-white rounded-full text-xs font-mono animate-pulse">
                     <span>⏱️</span><span id="mini-timer-text">00:00:00</span>
@@ -154,11 +143,10 @@
             </div>
         </header>
 
-        <!-- VIEW 1: DASHBOARD -->
+        <!-- DASHBOARD -->
         <section id="view-dashboard" class="space-y-8">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                <!-- CARD 1: ENGAJAMENTO -->
                 <div class="bg-[#b9f6ca] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -178,7 +166,6 @@
                     </div>
                 </div>
 
-                <!-- CARD 2: SONO -->
                 <div class="bg-[#e0e7ff] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -194,11 +181,10 @@
                     </div>
                     <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-700 flex justify-between font-mono">
                         <span id="kpi-sleep-sens">Sensib.: ε —</span>
-                        <span id="kpi-sleep-eff">Eficiência: —</span>
+                        <span id="kpi-sleep-eff">Efic.: —</span>
                     </div>
                 </div>
 
-                <!-- CARD 3: VOLUME -->
                 <div class="bg-[#fef3c7] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -218,7 +204,6 @@
                     </div>
                 </div>
 
-                <!-- CARD 4: STREAK -->
                 <div class="bg-[#ffedd5] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -276,7 +261,7 @@
             </div>
         </section>
 
-        <!-- VIEW 2: TIMER -->
+        <!-- TIMER -->
         <section id="view-timer" class="hidden">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div class="lg:col-span-7 bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
@@ -379,7 +364,7 @@
             </div>
         </section>
 
-        <!-- VIEW 3: MÉTRICAS -->
+        <!-- MÉTRICAS -->
         <section id="view-metrics" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
@@ -402,7 +387,6 @@
                                 <button type="button" onclick="setActivityChartScope('group')" id="btn-scope-group" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Por Grupo</button>
                             </div>
                         </div>
-
                         <div id="group-view-mode-bar" class="hidden items-center justify-between gap-2 bg-purple-50/80 px-3.5 py-2 rounded-2xl border border-purple-200/80">
                             <span class="text-[11px] font-semibold text-purple-900">Modo de Grupo:</span>
                             <div class="flex bg-white p-0.5 rounded-full border border-purple-200 text-[11px]">
@@ -410,7 +394,6 @@
                                 <button type="button" onclick="setGroupViewMode('particular')" id="btn-group-particular" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Visualização Particular</button>
                             </div>
                         </div>
-
                         <div id="activity-target-selector-row" class="flex items-center justify-between gap-2 bg-zinc-50 px-3.5 py-2 rounded-2xl border border-zinc-200">
                             <span id="activity-target-label" class="text-xs text-zinc-600 font-medium">Selecionar Atividade Molecular:</span>
                             <select id="activity-chart-target" onchange="renderMetricsView()" class="bg-white border border-zinc-200 rounded-full px-3 py-1 text-xs font-medium text-zinc-900 max-w-[240px]"></select>
@@ -421,7 +404,7 @@
             </div>
         </section>
 
-        <!-- VIEW 4: AGENDA -->
+        <!-- AGENDA -->
         <section id="view-calendar" class="hidden space-y-4">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <p class="text-xs text-zinc-500">💡 Clique em um horário vazio para criar ou <strong>clique sobre uma atividade agendada para editá-la ou excluí-la</strong>.</p>
@@ -434,7 +417,6 @@
                     </button>
                 </div>
             </div>
-
             <div class="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
                 <div class="overflow-x-auto">
                     <div class="calendar-grid border-b border-zinc-200 bg-zinc-50 sticky top-0 z-10" id="calendar-header-grid"></div>
@@ -474,9 +456,7 @@
                 </div>
 
                 <div class="bg-zinc-900 text-white p-4 rounded-2xl flex items-center gap-3.5">
-                    <div id="avatar-live-preview" class="w-14 h-14 rounded-full bg-[#00e5ff] flex items-center justify-center text-3xl shadow-md shrink-0">
-                        🧑‍💻
-                    </div>
+                    <div id="avatar-live-preview" class="w-14 h-14 rounded-full bg-[#00e5ff] flex items-center justify-center text-3xl shadow-md shrink-0">🧑‍💻</div>
                     <div class="overflow-hidden">
                         <div class="text-[10px] text-zinc-400 font-mono uppercase">PRÉVIA DO CUMPRIMENTO</div>
                         <div id="avatar-greeting-preview" class="text-xs sm:text-sm font-bold text-white mt-0.5 leading-snug"></div>
@@ -541,13 +521,11 @@
                     <label class="block text-[11px] font-semibold uppercase text-zinc-600">Horas Realizadas por Dia (h<sub>it</sub>)</label>
                     <div class="grid grid-cols-7 gap-1.5" id="modal-daily-hours-inputs"></div>
                 </div>
-
                 <div id="modal-bedtime-section" class="bg-[#e0e7ff] p-3.5 rounded-2xl border border-indigo-200 space-y-2 hidden">
                     <label class="block text-[11px] font-semibold uppercase text-indigo-900">🌙 Tempo de Cama por Dia (hh:mm)</label>
                     <div class="grid grid-cols-7 gap-1" id="modal-bedtime-inputs"></div>
                     <p class="text-[10px] text-indigo-700 mt-1">A <strong>Sensibilidade Comportamental</strong> mede como o tempo dormido responde ao tempo de cama.</p>
                 </div>
-
                 <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
                     <button type="button" onclick="closeHabitModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
                     <button type="submit" class="px-5 py-2 bg-black text-white rounded-full text-xs font-semibold">Salvar Meta</button>
@@ -594,7 +572,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: GIST SYNC -->
+    <!-- MODAL 3: GIST -->
     <div id="cloud-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
