@@ -75,4 +75,3 @@ function calcWeeklyGlobalMetrics() {
         bestStreak, leaderName, todayDone
     };
 }
-// FIM DE math.js

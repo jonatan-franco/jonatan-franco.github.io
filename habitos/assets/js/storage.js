@@ -38,7 +38,6 @@ const weekDays = getCurrentWeekDays();
 const todayIndex = weekDays.findIndex(d => d.isToday);
 const STORAGE_KEY = 'habit_quant_pro_v7_clean';
 
-// Padrão 100% zerado: sem atividades e sem eventos iniciais
 const defaultHabits = [];
 const defaultEvents = [];
 
@@ -52,7 +51,6 @@ function loadData() {
     if (raw) {
         try {
             const parsed = JSON.parse(raw);
-            // Permite que a lista de hábitos seja vazia ([]) sem forçar recarregamento
             habits = Array.isArray(parsed.habits) ? parsed.habits : [];
             calendarEvents = Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [];
             if (parsed.timerConfig) timerConfig = { ...timerConfig, ...parsed.timerConfig };
@@ -116,4 +114,3 @@ async function autoPullFromGist() {
         }
     } catch (e) {}
 }
-// FIM DE storage.js

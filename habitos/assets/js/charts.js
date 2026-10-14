@@ -1,4 +1,5 @@
 let activityChartScope = 'molecular';
+let groupViewMode = 'total';
 let totalChartInstance = null;
 let activityChartInstance = null;
 
@@ -19,6 +20,28 @@ window.setActivityChartScope = function(scope) {
         ? "px-3 py-1 rounded-full bg-black text-white font-semibold transition"
         : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
 
+    const modeBar = document.getElementById('group-view-mode-bar');
+    if (modeBar) {
+        modeBar.classList.toggle('hidden', scope !== 'group');
+        modeBar.classList.toggle('flex', scope === 'group');
+    }
+
+    populateActivityChartTargetSelect();
+    renderMetricsView();
+};
+
+window.setGroupViewMode = function(mode) {
+    groupViewMode = mode;
+    const btnT = document.getElementById('btn-group-total');
+    const btnP = document.getElementById('btn-group-particular');
+    if (btnT && btnP) {
+        btnT.className = mode === 'total'
+            ? "px-3 py-1 rounded-full bg-purple-600 text-white font-semibold transition"
+            : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
+        btnP.className = mode === 'particular'
+            ? "px-3 py-1 rounded-full bg-purple-600 text-white font-semibold transition"
+            : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
+    }
     populateActivityChartTargetSelect();
     renderMetricsView();
 };
@@ -142,7 +165,7 @@ function renderMetricsView() {
             if (h) datasets.push(...buildLineWithSdDatasets(h.name, h.dailyHours.map(v => parseFloat(v) || 0), (CATEGORIES[h.category] || CATEGORIES.estudos).hex, true));
         }
     } else {
-        if (targetVal === 'all') {
+        if (targetVal === 'all' || groupViewMode === 'total') {
             Object.keys(CATEGORIES).forEach(key => {
                 const cat = CATEGORIES[key];
                 const series = [0, 0, 0, 0, 0, 0, 0];
@@ -172,4 +195,3 @@ function renderMetricsView() {
         }
     });
 }
-// FIM DE charts.js

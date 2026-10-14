@@ -16,7 +16,7 @@ window.toggleMobileDrawer = function() {
 };
 
 const ROUTE_CONFIG = {
-    dashboard: { eyebrow: 'DASHBOARD', title: 'Bom dia, Semana Corrente' },
+    dashboard: { eyebrow: 'DASHBOARD', title: 'Bom dia!' },
     timer:     { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
     metrics:   { eyebrow: 'ANÁLISE',   title: 'Métricas' },
     calendar:  { eyebrow: 'AGENDA',    title: 'Calendário Semanal' }
@@ -50,10 +50,25 @@ function applyRoute(routeParam) {
         }
     });
 
-    document.getElementById('header-eyebrow').innerText = ROUTE_CONFIG[activeRoute].eyebrow;
-    document.getElementById('view-title').innerText = ROUTE_CONFIG[activeRoute].title;
+    const cfg = ROUTE_CONFIG[activeRoute];
+    document.getElementById('header-eyebrow').innerText = cfg.eyebrow;
+
+    const titleText = (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function')
+        ? window.getUserGreeting()
+        : cfg.title;
+    document.getElementById('view-title').innerText = titleText;
+
     renderAll(activeRoute);
 }
+
+window.refreshHeaderTitle = function () {
+    const hashRoute = (window.location.hash || '#dashboard').replace('#', '').trim();
+    const activeRoute = ROUTE_CONFIG[hashRoute] ? hashRoute : 'dashboard';
+    if (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function') {
+        const el = document.getElementById('view-title');
+        if (el) el.innerText = window.getUserGreeting();
+    }
+};
 
 window.addEventListener('hashchange', () => applyRoute());
 
@@ -319,6 +334,16 @@ window.saveAndOpenGoogleCal = function() {
     closeEventModal();
 };
 
+window.deleteCurrentEditingEvent = function () {
+    const id = document.getElementById('event-modal-id').value;
+    if (!id) return;
+    if (confirm('Excluir este bloco?')) {
+        calendarEvents = calendarEvents.filter(e => e.id !== id);
+        saveData();
+        closeEventModal();
+    }
+};
+
 window.openCloudModal = function() {
     document.getElementById('gist-token-input').value = SafeStorage.getItem('hq_gist_token') || '';
     document.getElementById('gist-id-input').value = SafeStorage.getItem('hq_gist_id') || '';
@@ -419,6 +444,11 @@ function renderAll(activeRoute) {
 
 window.addEventListener('DOMContentLoaded', () => {
     loadData();
+
+    /* 1) Carrega perfil persistido */
+    if (typeof window.loadProfile === 'function') window.loadProfile();
+
+    /* 2) Listeners dos formulários */
     document.getElementById('manual-hours-form').addEventListener('submit', e => {
         e.preventDefault();
         const hIdx = parseInt(document.getElementById('manual-habit-select').value, 10);
@@ -430,6 +460,7 @@ window.addEventListener('DOMContentLoaded', () => {
             saveData();
         }
     });
+
     document.getElementById('habit-modal-form').addEventListener('submit', e => {
         e.preventDefault();
         const idx = parseInt(document.getElementById('modal-habit-index').value, 10);
@@ -447,18 +478,43 @@ window.addEventListener('DOMContentLoaded', () => {
         closeHabitModal();
         saveData();
     });
+
     document.getElementById('event-modal-form').addEventListener('submit', e => {
         e.preventDefault();
         saveEventFromModal();
         closeEventModal();
     });
 
+    /* 3) Formulário de perfil (tela de inicialização) */
+    const profileForm = document.getElementById('profile-modal-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const name = document.getElementById('profile-name-input').value.trim();
+            const gender = document.getElementById('profile-gender-input').value;
+            if (!name) return;
+            const draft = (typeof window.getAvatarDraft === 'function') ? window.getAvatarDraft() : {};
+            window.saveProfile({ name, gender, role: draft.role, skinTone: draft.skinTone });
+            window.closeProfileModal();
+            window.refreshHeaderTitle();
+        });
+    }
+
+    /* 4) Timer + roteamento */
     selectTimerMode('stopwatch');
     applyRoute();
+
+    /* 5) Primeiro acesso → abre tela de inicialização */
+    if (typeof window.hasProfile === 'function' && !window.hasProfile()) {
+        if (typeof window.openProfileModal === 'function') {
+            window.openProfileModal({ firstRun: true });
+        }
+    }
+
+    /* 6) Sync em nuvem */
     autoPullFromGist();
     window.addEventListener('focus', autoPullFromGist);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') autoPullFromGist();
     });
 });
-// FIM DE app.js
