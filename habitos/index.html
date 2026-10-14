@@ -42,7 +42,7 @@
                     <span>⏱️</span><span class="truncate">Timer</span>
                 </button>
                 <button type="button" onclick="navigateTo('metrics')" data-route="metrics" class="nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition w-full text-left">
-                    <span>📈</span><span class="truncate">Métricas &amp; ε</span>
+                    <span>📈</span><span class="truncate">Métricas</span>
                 </button>
                 <button type="button" onclick="navigateTo('calendar')" data-route="calendar" class="nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition w-full text-left">
                     <span>📅</span><span class="truncate">Agenda</span>
@@ -84,6 +84,7 @@
                 </button>
             </div>
         </header>
+
         <!-- VIEW 1: DASHBOARD PRINCIPAL -->
         <section id="view-dashboard" class="space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -158,7 +159,7 @@
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 md:p-5 space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                        <h2 class="text-base md:text-lg font-semibold text-slate-100">Matriz Semanal de Frequências &amp; Elasticidade Corrigida</h2>
+                        <h2 class="text-base md:text-lg font-semibold text-slate-100">Métrica Semanal</h2>
                         <p class="text-xs text-slate-400">Categorias: <span class="text-rose-400">🏋️ Academia</span> • <span class="text-indigo-400">📚 Estudos</span> • <span class="text-emerald-400">❤️ Saúde</span></p>
                     </div>
                     <div class="flex flex-wrap items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
@@ -177,47 +178,56 @@
                 </div>
 
                 <div class="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-slate-400">
-                    <div>💡 A matriz exibe a <strong>Média de Frequência (μ<sub>f</sub>%)</strong> e a <strong>Elasticidade (ε<sub>i</sub>)</strong>. O Desvio-Padrão é calculado sobre as <strong>Horas (σ<sub>H</sub>)</strong>.</div>
-                    <button type="button" onclick="navigateTo('metrics')" class="text-cyan-400 hover:underline font-medium shrink-0">Abrir Painel de Desempenho &amp; Elasticidade →</button>
+                    <div>💡 A tabela exibe a <strong>Média de Frequência (μ<sub>f</sub>%)</strong> e a <strong>Elasticidade (ε<sub>i</sub>)</strong>. O Desvio-Padrão é calculado sobre as <strong>Horas (σ<sub>H</sub>)</strong>.</div>
+                    <button type="button" onclick="navigateTo('metrics')" class="text-cyan-400 hover:underline font-medium shrink-0">Abrir Painel de Métricas →</button>
                 </div>
             </div>
         </section>
 
-        <!-- VIEW 2: TIMER EDITÁVEL -->
+        <!-- VIEW 2: TIMER EDITÁVEL (COM CONTADOR REGRESSIVO) -->
         <section id="view-timer" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-6">
                     <div>
-                        <h2 class="text-lg font-bold text-slate-100">⏱️ Cronômetro &amp; Pomodoro Editável</h2>
-                        <p class="text-xs text-slate-400">Edite os minutos nas 3 opções de trabalho mantendo o vínculo com a atividade escolhida.</p>
+                        <h2 class="text-lg font-bold text-slate-100">⏱️ Cronômetro, Regressivo &amp; Pomodoro Editável</h2>
+                        <p class="text-xs text-slate-400">Escolha entre Cronômetro Progressivo, Contador Regressivo Livre, Pomodoro ou Deep Work.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <div onclick="selectTimerMode('stopwatch')" id="card-tmode-stopwatch" class="cursor-pointer p-3.5 rounded-xl border border-indigo-500 bg-indigo-950/30 transition flex flex-col justify-between">
-                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-indigo-300 uppercase">1. Cronômetro Livre</span><span>⌚</span></div>
+                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-indigo-300 uppercase">1. Cronômetro</span><span>⌚</span></div>
                             <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-stopwatch" value="0" min="0" max="360" onchange="onTimerConfigChange()" class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-base font-mono font-bold text-white">
-                                <span class="text-xs text-slate-400 font-mono">min (início)</span>
+                                <input type="number" id="input-min-stopwatch" value="0" min="0" max="360" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
+                                <span class="text-[11px] text-slate-400 font-mono">min</span>
                             </div>
-                            <div class="text-[11px] text-slate-400">Progressivo</div>
+                            <div class="text-[11px] text-slate-400">Progressivo (↑)</div>
+                        </div>
+
+                        <div onclick="selectTimerMode('countdown')" id="card-tmode-countdown" class="cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between">
+                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-amber-400 uppercase">2. Regressivo</span><span>⏳</span></div>
+                            <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
+                                <input type="number" id="input-min-countdown" value="30" min="1" max="360" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
+                                <span class="text-[11px] text-slate-400 font-mono">min</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400">Cont. Regressivo (↓)</div>
                         </div>
 
                         <div onclick="selectTimerMode('pomodoro')" id="card-tmode-pomodoro" class="cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between">
-                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-emerald-400 uppercase">2. Pomodoro Foco</span><span>🔥</span></div>
+                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-emerald-400 uppercase">3. Pomodoro</span><span>🔥</span></div>
                             <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-pomodoro" value="25" min="1" max="240" onchange="onTimerConfigChange()" class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-base font-mono font-bold text-white">
-                                <span class="text-xs text-slate-400 font-mono">min</span>
+                                <input type="number" id="input-min-pomodoro" value="25" min="1" max="240" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
+                                <span class="text-[11px] text-slate-400 font-mono">min</span>
                             </div>
-                            <div class="text-[11px] text-slate-400">Regressivo (Editável)</div>
+                            <div class="text-[11px] text-slate-400">Regressivo (↓)</div>
                         </div>
 
                         <div onclick="selectTimerMode('deepwork')" id="card-tmode-deepwork" class="cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between">
-                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-cyan-400 uppercase">3. Deep Work</span><span>🧠</span></div>
+                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-cyan-400 uppercase">4. Deep Work</span><span>🧠</span></div>
                             <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-deepwork" value="50" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-base font-mono font-bold text-white">
-                                <span class="text-xs text-slate-400 font-mono">min</span>
+                                <input type="number" id="input-min-deepwork" value="50" min="1" max="360" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
+                                <span class="text-[11px] text-slate-400 font-mono">min</span>
                             </div>
-                            <div class="text-[11px] text-slate-400">Regressivo (Editável)</div>
+                            <div class="text-[11px] text-slate-400">Regressivo (↓)</div>
                         </div>
                     </div>
 
@@ -235,6 +245,12 @@
                     <div class="flex flex-col items-center justify-center py-6 bg-slate-950 rounded-2xl border border-slate-800/80">
                         <span id="timer-mode-badge" class="text-[11px] font-mono uppercase tracking-widest text-indigo-400 mb-1">Modo: Cronômetro Livre</span>
                         <div id="timer-display" class="text-5xl sm:text-6xl font-mono font-black tracking-wider text-slate-100">00:00:00</div>
+                        
+                        <!-- Barra de Progresso do Contador Regressivo -->
+                        <div id="countdown-progress-container" class="hidden w-full max-w-xs bg-slate-900 h-1.5 rounded-full overflow-hidden mt-3 border border-slate-800">
+                            <div id="countdown-progress-bar" class="bg-amber-400 h-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+
                         <div class="flex items-center gap-2 mt-4">
                             <button type="button" onclick="adjustTimerMinutes(-5)" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono border border-slate-700">-5m</button>
                             <button type="button" onclick="adjustTimerMinutes(-1)" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono border border-slate-700">-1m</button>
@@ -286,49 +302,51 @@
             </div>
         </section>
 
-        <!-- VIEW 3: MÉTRICAS DE DESEMPENHO & ELASTICIDADE -->
+        <!-- VIEW 3: MÉTRICAS (APENAS OS DOIS GRÁFICOS: PAINEL TOTAL E PAINEL POR ATIVIDADE) -->
         <section id="view-metrics" class="hidden space-y-6">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div>
-                        <h2 class="text-base md:text-lg font-bold text-slate-100">📈 Curvas de Desempenho &amp; Análise de Sensibilidade (ε<sub>i</sub>)</h2>
-                        <p class="text-xs text-slate-400">Alterne entre o <strong>Painel Total</strong> e o <strong>Painel por Atividade</strong> (Horas Totais, Média μ<sub>H</sub> e DP σ<sub>H</sub>).</p>
-                    </div>
-                    <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs shrink-0">
-                        <button type="button" onclick="switchChartMode('total')" id="btn-chart-total" class="px-3 py-1.5 rounded-md bg-cyan-600 text-white font-semibold">1. Painel Total</button>
-                        <button type="button" onclick="switchChartMode('activity')" id="btn-chart-activity" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-slate-200 font-medium">2. Por Atividade</button>
-                    </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-5">
+                <div>
+                    <h2 class="text-base md:text-lg font-bold text-slate-100">📈 Painel de Métricas Semanais</h2>
+                    <p class="text-xs text-slate-400">Visão comparativa do <strong>Painel Total</strong> e do <strong>Painel por Atividade</strong> (Curva temporal de horas com banda de Desvio-Padrão ±σ<sub>H</sub>).</p>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
-                        <h3 id="left-chart-title" class="text-xs font-semibold uppercase text-emerald-400 mb-3">Painel 1: Horas Realizadas por Dia vs. Adesão Diária (%)</h3>
-                        <div class="relative h-64 w-full"><canvas id="performanceChart"></canvas></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- GRÁFICO 1: PAINEL TOTAL -->
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <h3 class="text-xs font-semibold uppercase text-emerald-400">1. Painel Total (Agregado Diário)</h3>
+                                <span class="text-[10px] font-mono text-slate-500">Horas Totais vs. % Conclusão</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mb-4">Volume diário somado de todas as atividades e taxa de adesão na semana.</p>
+                        </div>
+                        <div class="relative h-80 w-full"><canvas id="totalPanelChart"></canvas></div>
                     </div>
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
-                        <h3 class="text-xs font-semibold uppercase text-cyan-400 mb-3">Sensibilidade &amp; Elasticidade (ε<sub>i</sub> acompanhando H<sub>i</sub> / H*<sub>i</sub>)</h3>
-                        <div class="relative h-64 w-full"><canvas id="elasticityChart"></canvas></div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                <h3 class="text-sm md:text-base font-bold text-slate-100 mb-1">Decomposição Psicométrica de Horas (Total, Média μ<sub>H</sub>, Desvio-Padrão σ<sub>H</sub>) e Derivada (∂A / ∂H)</h3>
-                <div class="overflow-x-auto mt-3">
-                    <table class="w-full text-left border-collapse text-xs md:text-sm">
-                        <thead>
-                            <tr class="border-b border-slate-800 text-slate-400 text-[11px] uppercase">
-                                <th class="py-2.5 px-3">Atividade</th>
-                                <th class="py-2.5 px-3 text-center">Frequência (μ<sub>f</sub>)</th>
-                                <th class="py-2.5 px-3 text-center text-amber-400">1. Horas Totais (H/H*)</th>
-                                <th class="py-2.5 px-3 text-center text-amber-300">2. Média Horas (μ<sub>H</sub>)</th>
-                                <th class="py-2.5 px-3 text-center text-purple-400">3. DP de Horas (σ<sub>H</sub>)</th>
-                                <th class="py-2.5 px-3 text-center text-cyan-400">Derivada (∂A / ∂H)</th>
-                                <th class="py-2.5 px-3 text-center text-emerald-400">Elasticidade (ε<sub>i</sub>)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="metrics-detail-tbody" class="divide-y divide-slate-800/60"></tbody>
-                    </table>
+                    <!-- GRÁFICO 2: PAINEL POR ATIVIDADE (LINHA COM DP + FILTRO MOLECULAR vs GRUPO) -->
+                    <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                        <div class="space-y-3 mb-3">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                <div>
+                                    <h3 class="text-xs font-semibold uppercase text-cyan-400">2. Painel por Atividade (Curva + Desvio-Padrão ±σ<sub>H</sub>)</h3>
+                                    <p class="text-[11px] text-slate-400">Eixo X: Dias da Semana • Eixo Y: Horas de Atividade (com banda ±1 DP)</p>
+                                </div>
+                                <!-- Toggle Molecular vs Grupo -->
+                                <div class="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[11px] shrink-0">
+                                    <button type="button" onclick="setActivityChartScope('molecular')" id="btn-scope-molecular" class="px-2.5 py-1 rounded-md bg-cyan-600 text-white font-semibold transition">Molecular</button>
+                                    <button type="button" onclick="setActivityChartScope('group')" id="btn-scope-group" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition">Por Grupo</button>
+                                </div>
+                            </div>
+
+                            <!-- Seletor do Alvo (Atividade específica/Todas ou Categoria específica/Todas) -->
+                            <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-lg border border-slate-800/80">
+                                <span id="activity-target-label" class="text-[11px] text-slate-400 font-medium">Selecionar Atividade Molecular:</span>
+                                <select id="activity-chart-target" onchange="renderMetricsView()" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 max-w-[230px]"></select>
+                            </div>
+                        </div>
+
+                        <div class="relative h-72 w-full"><canvas id="activityPanelChart"></canvas></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -354,7 +372,7 @@
         </section>
     </main>
 
-    <!-- MODAL 1: EDITAR ATIVIDADE -->
+    <!-- MODAL 1: EDITAR ATIVIDADE (SEM DEADLINE) -->
     <div id="habit-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -365,11 +383,11 @@
                 <input type="hidden" id="modal-habit-index" value="-1">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="sm:col-span-2">
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Nome da Atividade</label>
-                        <input type="text" id="modal-habit-name" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Nome da Atividade (Molecular)</label>
+                        <input type="text" id="modal-habit-name" required placeholder="Ex: Academia, Mestrado, Psicometria..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Categoria</label>
+                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Grupo / Categoria</label>
                         <select id="modal-habit-category" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
                             <option value="academia">🏋️ Academia</option>
                             <option value="estudos">📚 Estudos</option>
@@ -377,15 +395,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Meta Horas/Semana (H*)</label>
-                        <input type="number" id="modal-habit-target-hours" step="0.5" min="0.5" required value="5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Prazo (Deadline)</label>
-                        <input type="date" id="modal-habit-deadline" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100">
-                    </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Meta de Horas / Semana (H*)</label>
+                    <input type="number" id="modal-habit-target-hours" step="0.5" min="0.5" required value="5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100">
                 </div>
                 <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
                     <label class="block text-[11px] font-semibold uppercase text-amber-400">Horas Realizadas por Dia (h<sub>it</sub>)</label>
@@ -466,6 +478,16 @@
             saude:    { label: 'Saúde',    emoji: '❤️', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', hex: '#10b981' }
         };
 
+        const PALETTE = ['#22d3ee', '#f43f5e', '#10b981', '#a855f7', '#fbbf24', '#6366f1', '#ec4899'];
+
+        function hexToRgba(hex, alpha) {
+            const clean = hex.replace('#', '');
+            const r = parseInt(clean.substring(0, 2), 16) || 34;
+            const g = parseInt(clean.substring(2, 4), 16) || 211;
+            const b = parseInt(clean.substring(4, 6), 16) || 238;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
         function getCurrentWeekDays() {
             const today = new Date();
             const dayOfWeek = today.getDay();
@@ -493,11 +515,11 @@
         const STORAGE_KEY = 'habit_quant_pro_v5';
 
         const defaultHabits = [
-            { id: 'h1', name: 'Treino de Força (Upper/Lower)', category: 'academia', targetHours: 4.5, deadline: '2026-12-31', checks: [true, true, false, true, true, false, false], dailyHours: [1.0, 1.2, 0.0, 1.1, 1.0, 0.0, 0.0] },
-            { id: 'h2', name: 'Cardio Zona 2 & Mobilidade', category: 'saude', targetHours: 3.0, deadline: '2026-12-31', checks: [false, true, true, false, true, true, false], dailyHours: [0.0, 0.7, 0.8, 0.0, 0.7, 0.8, 0.0] },
-            { id: 'h3', name: 'Matemática Aplicada & Psicometria', category: 'estudos', targetHours: 8.0, deadline: '2026-11-30', checks: [true, true, true, true, true, false, false], dailyHours: [1.5, 2.0, 1.5, 1.5, 2.0, 0.0, 0.0] },
-            { id: 'h4', name: 'Leitura Científica (Inglês/Espanhol)', category: 'estudos', targetHours: 4.0, deadline: '2026-11-15', checks: [true, false, true, false, true, false, false], dailyHours: [1.0, 0.0, 1.2, 0.0, 1.0, 0.0, 0.0] },
-            { id: 'h5', name: 'Higiene do Sono & Hidratação', category: 'saude', targetHours: 7.0, deadline: '2026-12-31', checks: [true, true, true, true, true, true, false], dailyHours: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0] }
+            { id: 'h1', name: 'Treino de Força (Upper/Lower)', category: 'academia', targetHours: 4.5, checks: [true, true, false, true, true, false, false], dailyHours: [1.0, 1.2, 0.0, 1.1, 1.0, 0.0, 0.0] },
+            { id: 'h2', name: 'Cardio Zona 2 & Mobilidade', category: 'saude', targetHours: 3.0, checks: [false, true, true, false, true, true, false], dailyHours: [0.0, 0.7, 0.8, 0.0, 0.7, 0.8, 0.0] },
+            { id: 'h3', name: 'Mestrado & Psicometria', category: 'estudos', targetHours: 8.0, checks: [true, true, true, true, true, false, false], dailyHours: [1.5, 2.0, 1.5, 1.5, 2.0, 0.0, 0.0] },
+            { id: 'h4', name: 'Leitura Científica (Inglês/Espanhol)', category: 'estudos', targetHours: 4.0, checks: [true, false, true, false, true, false, false], dailyHours: [1.0, 0.0, 1.2, 0.0, 1.0, 0.0, 0.0] },
+            { id: 'h5', name: 'Higiene do Sono & Hidratação', category: 'saude', targetHours: 7.0, checks: [true, true, true, true, true, true, false], dailyHours: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0] }
         ];
 
         const defaultEvents = [
@@ -509,7 +531,7 @@
 
         let habits = [];
         let calendarEvents = [];
-        let timerConfig = { stopwatchStartMin: 0, pomodoroMin: 25, deepworkMin: 50 };
+        let timerConfig = { stopwatchStartMin: 0, countdownMin: 30, pomodoroMin: 25, deepworkMin: 50 };
 
         function loadData() {
             const raw = SafeStorage.getItem(STORAGE_KEY);
@@ -528,13 +550,9 @@
                 calendarEvents = JSON.parse(JSON.stringify(defaultEvents));
             }
             document.getElementById('input-min-stopwatch').value = timerConfig.stopwatchStartMin || 0;
+            document.getElementById('input-min-countdown').value = timerConfig.countdownMin || 30;
             document.getElementById('input-min-pomodoro').value = timerConfig.pomodoroMin || 25;
             document.getElementById('input-min-deepwork').value = timerConfig.deepworkMin || 50;
-        }
-
-        function saveData() {
-            SafeStorage.setItem(STORAGE_KEY, JSON.stringify({ habits, calendarEvents, timerConfig }));
-            renderAll();
         }
 
         window.resetAllData = function() {
@@ -547,8 +565,8 @@
 
         const ROUTE_TITLES = {
             dashboard: 'Dashboard Principal da Semana',
-            timer: 'Cronômetro & Pomodoro Editável',
-            metrics: 'Métricas de Desempenho & Elasticidade (ε)',
+            timer: 'Cronômetro, Regressivo & Pomodoro',
+            metrics: 'Métricas',
             calendar: 'Agenda Semanal de Hábitos'
         };
 
@@ -676,8 +694,7 @@
                 .forEach(({ habit, index: hIndex }) => {
                     const m = calcHabitMetrics(habit);
                     const cat = CATEGORIES[habit.category] || CATEGORIES.estudos;
-                    const deadlineStr = habit.deadline ? habit.deadline.split('-').reverse().join('/') : 'Contínuo';
-                    let row = `<tr class="hover:bg-slate-850/70 transition"><td class="py-3 px-2"><div class="flex items-center gap-2.5"><span class="w-8 h-8 rounded-lg ${cat.bg} ${cat.border} border flex items-center justify-center text-base shrink-0">${cat.emoji}</span><div><div class="font-semibold text-slate-100 leading-tight">${habit.name}</div><div class="text-[11px] text-slate-400 font-mono mt-0.5"><span class="${cat.color}">${cat.label}</span> • 📅 ${deadlineStr}</div></div></div></td>`;
+                    let row = `<tr class="hover:bg-slate-850/70 transition"><td class="py-3 px-2"><div class="flex items-center gap-2.5"><span class="w-8 h-8 rounded-lg ${cat.bg} ${cat.border} border flex items-center justify-center text-base shrink-0">${cat.emoji}</span><div><div class="font-semibold text-slate-100 leading-tight">${habit.name}</div><div class="text-[11px] text-slate-400 font-mono mt-0.5"><span class="${cat.color}">${cat.label}</span></div></div></div></td>`;
                     weekDays.forEach((day, dIndex) => {
                         const checked = habit.checks[dIndex] ? 'checked' : '';
                         const dayHrs = habit.dailyHours[dIndex] || 0;
@@ -689,6 +706,9 @@
                 });
         }
 
+        // =========================================================================
+        // TIMER (CRONÔMETRO + CONTADOR REGRESSIVO + POMODORO + DEEP WORK)
+        // =========================================================================
         let timerInterval = null, timerSeconds = 0, timerMode = 'stopwatch', initialCountdownSeconds = 0, isTimerRunning = false;
 
         function populateSelects() {
@@ -729,6 +749,7 @@
 
         window.onTimerConfigChange = function() {
             timerConfig.stopwatchStartMin = parseInt(document.getElementById('input-min-stopwatch').value, 10) || 0;
+            timerConfig.countdownMin = parseInt(document.getElementById('input-min-countdown').value, 10) || 30;
             timerConfig.pomodoroMin = parseInt(document.getElementById('input-min-pomodoro').value, 10) || 25;
             timerConfig.deepworkMin = parseInt(document.getElementById('input-min-deepwork').value, 10) || 50;
             saveData();
@@ -738,22 +759,32 @@
         window.selectTimerMode = function(mode) {
             if (isTimerRunning) toggleTimer();
             timerMode = mode;
-            ['stopwatch', 'pomodoro', 'deepwork'].forEach(m => {
+            ['stopwatch', 'countdown', 'pomodoro', 'deepwork'].forEach(m => {
                 const card = document.getElementById('card-tmode-' + m);
                 if (card) card.className = m === mode ? "cursor-pointer p-3.5 rounded-xl border border-indigo-500 bg-indigo-950/30 transition flex flex-col justify-between" : "cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between";
             });
+
+            const progContainer = document.getElementById('countdown-progress-container');
             if (mode === 'stopwatch') {
                 timerSeconds = (parseInt(document.getElementById('input-min-stopwatch').value, 10) || 0) * 60;
                 initialCountdownSeconds = timerSeconds;
-                document.getElementById('timer-mode-badge').textContent = "Modo 1: Cronômetro Progressivo";
+                document.getElementById('timer-mode-badge').textContent = "Modo 1: Cronômetro Progressivo (↑)";
+                progContainer.classList.add('hidden');
+            } else if (mode === 'countdown') {
+                timerSeconds = (parseInt(document.getElementById('input-min-countdown').value, 10) || 30) * 60;
+                initialCountdownSeconds = timerSeconds;
+                document.getElementById('timer-mode-badge').textContent = `Modo 2: Contador Regressivo (${timerSeconds / 60} min ↓)`;
+                progContainer.classList.remove('hidden');
             } else if (mode === 'pomodoro') {
                 timerSeconds = (parseInt(document.getElementById('input-min-pomodoro').value, 10) || 25) * 60;
                 initialCountdownSeconds = timerSeconds;
-                document.getElementById('timer-mode-badge').textContent = `Modo 2: Pomodoro (${timerSeconds / 60} min)`;
+                document.getElementById('timer-mode-badge').textContent = `Modo 3: Pomodoro Regressivo (${timerSeconds / 60} min ↓)`;
+                progContainer.classList.remove('hidden');
             } else {
                 timerSeconds = (parseInt(document.getElementById('input-min-deepwork').value, 10) || 50) * 60;
                 initialCountdownSeconds = timerSeconds;
-                document.getElementById('timer-mode-badge').textContent = `Modo 3: Deep Work (${timerSeconds / 60} min)`;
+                document.getElementById('timer-mode-badge').textContent = `Modo 4: Deep Work Regressivo (${timerSeconds / 60} min ↓)`;
+                progContainer.classList.remove('hidden');
             }
             updateTimerDisplay();
         };
@@ -770,6 +801,12 @@
             const str = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
             document.getElementById('timer-display').textContent = str;
             document.getElementById('mini-timer-text').textContent = str;
+
+            if (timerMode !== 'stopwatch' && initialCountdownSeconds > 0) {
+                const pct = Math.max(0, Math.min(100, (timerSeconds / initialCountdownSeconds) * 100));
+                const bar = document.getElementById('countdown-progress-bar');
+                if (bar) bar.style.width = `${pct}%`;
+            }
         }
 
         window.toggleTimer = function() {
@@ -810,74 +847,250 @@
             }
         };
 
-        let currentChartTab = 'total', perfChartInstance = null, elastChartInstance = null;
+        // =========================================================================
+        // MÉTRICAS: APENAS DOIS GRÁFICOS (PAINEL TOTAL E PAINEL POR ATIVIDADE COM DP)
+        // =========================================================================
+        let activityChartScope = 'molecular'; // 'molecular' ou 'group'
+        let totalChartInstance = null;
+        let activityChartInstance = null;
 
-        window.switchChartMode = function(mode) {
-            currentChartTab = mode;
-            document.getElementById('btn-chart-total').className = mode === 'total' ? "px-3 py-1.5 rounded-md bg-cyan-600 text-white font-semibold" : "px-3 py-1.5 rounded-md text-slate-400";
-            document.getElementById('btn-chart-activity').className = mode === 'activity' ? "px-3 py-1.5 rounded-md bg-cyan-600 text-white font-semibold" : "px-3 py-1.5 rounded-md text-slate-400";
-            document.getElementById('left-chart-title').textContent = mode === 'total' ? "Painel 1: Horas Realizadas por Dia vs. Adesão Diária (%)" : "Painel 2: Horas Totais, Média (μ_H) e Desvio-Padrão (σ_H)";
+        window.setActivityChartScope = function(scope) {
+            activityChartScope = scope;
+            document.getElementById('btn-scope-molecular').className = scope === 'molecular'
+                ? "px-2.5 py-1 rounded-md bg-cyan-600 text-white font-semibold transition"
+                : "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition";
+            document.getElementById('btn-scope-group').className = scope === 'group'
+                ? "px-2.5 py-1 rounded-md bg-cyan-600 text-white font-semibold transition"
+                : "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition";
+
+            document.getElementById('activity-target-label').textContent = scope === 'molecular'
+                ? "Atividade Molecular:"
+                : "Grupo de Atividade:";
+
+            populateActivityChartTargetSelect();
             renderMetricsView();
         };
 
-        function renderMetricsView() {
-            const tbody = document.getElementById('metrics-detail-tbody');
-            tbody.innerHTML = '';
-            habits.forEach(h => {
-                const m = calcHabitMetrics(h), cat = CATEGORIES[h.category] || CATEGORIES.estudos;
-                tbody.innerHTML += `<tr class="hover:bg-slate-850/60"><td class="py-3 px-3 font-medium text-slate-200">${cat.emoji} ${h.name}</td><td class="py-3 px-3 text-center font-mono text-emerald-400 font-bold">${m.freqPct.toFixed(1)}%</td><td class="py-3 px-3 text-center font-mono text-amber-400 font-bold">${m.totalHours.toFixed(2)}h / ${m.targetH}h</td><td class="py-3 px-3 text-center font-mono text-amber-300">${m.meanHours.toFixed(2)}h/d</td><td class="py-3 px-3 text-center font-mono text-purple-400 font-semibold">± ${m.sdHours.toFixed(2)}h</td><td class="py-3 px-3 text-center font-mono text-cyan-300">+${m.sensitivityDerivative.toFixed(1)}%/h</td><td class="py-3 px-3 text-center font-mono font-bold text-emerald-400">${m.elasticity.toFixed(2)}</td></tr>`;
-            });
-            if (typeof Chart === 'undefined') return;
-            const ctxPerf = document.getElementById('performanceChart').getContext('2d');
-            if (perfChartInstance) perfChartInstance.destroy();
-            if (currentChartTab === 'total') {
-                const dailyHoursSum = [0, 0, 0, 0, 0, 0, 0], dailyChecksSum = [0, 0, 0, 0, 0, 0, 0];
-                habits.forEach(h => {
-                    h.dailyHours.forEach((hr, i) => dailyHoursSum[i] += (parseFloat(hr) || 0));
-                    h.checks.forEach((c, i) => { if (c) dailyChecksSum[i]++; });
+        function populateActivityChartTargetSelect() {
+            const sel = document.getElementById('activity-chart-target');
+            if (!sel) return;
+            const prev = sel.value;
+            sel.innerHTML = '';
+
+            if (activityChartScope === 'molecular') {
+                habits.forEach((h, idx) => {
+                    const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
+                    sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name} (c/ Banda ±DP)</option>`;
                 });
-                perfChartInstance = new Chart(ctxPerf, {
-                    type: 'bar',
-                    data: {
-                        labels: weekDays.map(d => d.shortName),
-                        datasets: [
-                            { type: 'bar', label: 'Horas no Dia (h)', data: dailyHoursSum.map(v => v.toFixed(2)), backgroundColor: 'rgba(251, 191, 36, 0.45)', borderColor: '#fbbf24', borderWidth: 1.5, yAxisID: 'y' },
-                            { type: 'line', label: 'Conclusão Diária (%)', data: dailyChecksSum.map(c => habits.length > 0 ? Math.round((c / habits.length) * 100) : 0), borderColor: '#10b981', borderWidth: 2.5, tension: 0.3, yAxisID: 'y1' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { position: 'left', min: 0 }, y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } } } }
-                });
+                sel.innerHTML += `<option value="all">📊 Comparar Todas as Moleculares</option>`;
             } else {
-                const mList = habits.map(h => calcHabitMetrics(h));
-                perfChartInstance = new Chart(ctxPerf, {
-                    type: 'bar',
-                    data: {
-                        labels: habits.map(h => h.name.substring(0, 15)),
-                        datasets: [
-                            { label: 'Horas Totais', data: mList.map(m => m.totalHours.toFixed(2)), backgroundColor: 'rgba(251, 191, 36, 0.6)' },
-                            { label: 'Média (μ_H)', data: mList.map(m => m.meanHours.toFixed(2)), backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-                            { label: 'DP Horas (σ_H)', data: mList.map(m => m.sdHours.toFixed(2)), backgroundColor: 'rgba(168, 85, 247, 0.6)' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
+                Object.keys(CATEGORIES).forEach(key => {
+                    const cat = CATEGORIES[key];
+                    sel.innerHTML += `<option value="${key}">${cat.emoji} Grupo: ${cat.label} (c/ Banda ±DP)</option>`;
                 });
+                sel.innerHTML += `<option value="all">📊 Comparar Todos os Grupos</option>`;
             }
-            const ctxElast = document.getElementById('elasticityChart').getContext('2d');
-            if (elastChartInstance) elastChartInstance.destroy();
-            const mList = habits.map(h => calcHabitMetrics(h));
-            elastChartInstance = new Chart(ctxElast, {
+
+            if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+                sel.value = prev;
+            } else {
+                sel.selectedIndex = 0;
+            }
+        }
+
+        function calcSeriesStats(arr) {
+            const n = arr.length || 1;
+            const mean = arr.reduce((a, b) => a + b, 0) / n;
+            const sd = Math.sqrt(arr.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / n);
+            return { mean, sd };
+        }
+
+        function buildLineWithSdDatasets(label, series, colorHex, showBand) {
+            const { mean, sd } = calcSeriesStats(series);
+            const datasets = [
+                {
+                    label: `${label} (μ=${mean.toFixed(2)}h, σ=${sd.toFixed(2)}h)`,
+                    data: series.map(v => parseFloat(v.toFixed(2))),
+                    borderColor: colorHex,
+                    backgroundColor: colorHex,
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    tension: 0.3,
+                    fill: false
+                }
+            ];
+
+            if (showBand) {
+                const upper = series.map(v => parseFloat((v + sd).toFixed(2)));
+                const lower = series.map(v => parseFloat(Math.max(0, v - sd).toFixed(2)));
+                datasets.push(
+                    {
+                        label: `Limite Superior (+1 DP: +${sd.toFixed(2)}h)`,
+                        data: upper,
+                        borderColor: hexToRgba(colorHex, 0.45),
+                        borderWidth: 1,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        tension: 0.3,
+                        fill: false
+                    },
+                    {
+                        label: `Banda de Desvio-Padrão (±${sd.toFixed(2)}h)`,
+                        data: lower,
+                        borderColor: hexToRgba(colorHex, 0.45),
+                        backgroundColor: hexToRgba(colorHex, 0.16),
+                        borderWidth: 1,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        tension: 0.3,
+                        fill: '-1'
+                    }
+                );
+            }
+            return datasets;
+        }
+
+        function renderMetricsView() {
+            if (typeof Chart === 'undefined') return;
+            const sel = document.getElementById('activity-chart-target');
+            if (sel && sel.options.length === 0) populateActivityChartTargetSelect();
+
+            const xLabels = weekDays.map(d => d.shortName);
+
+            // 1. PAINEL TOTAL
+            const ctxTotal = document.getElementById('totalPanelChart').getContext('2d');
+            if (totalChartInstance) totalChartInstance.destroy();
+
+            const dailyHoursSum = [0, 0, 0, 0, 0, 0, 0];
+            const dailyChecksSum = [0, 0, 0, 0, 0, 0, 0];
+            habits.forEach(h => {
+                h.dailyHours.forEach((hr, i) => dailyHoursSum[i] += (parseFloat(hr) || 0));
+                h.checks.forEach((c, i) => { if (c) dailyChecksSum[i]++; });
+            });
+
+            totalChartInstance = new Chart(ctxTotal, {
                 type: 'bar',
                 data: {
-                    labels: habits.map(h => h.name.substring(0, 15)),
+                    labels: xLabels,
                     datasets: [
-                        { type: 'bar', label: 'Elasticidade Corrigida (ε)', data: mList.map(m => m.elasticity.toFixed(2)), backgroundColor: 'rgba(34, 211, 238, 0.5)', borderColor: '#22d3ee', borderWidth: 1.5 },
-                        { type: 'line', label: 'Razão Horas (H / H*)', data: mList.map(m => m.hoursRatio.toFixed(2)), borderColor: '#f43f5e', borderWidth: 2, borderDash: [4, 4] }
+                        {
+                            type: 'bar',
+                            label: 'Horas Totais no Dia (h)',
+                            data: dailyHoursSum.map(v => parseFloat(v.toFixed(2))),
+                            backgroundColor: 'rgba(251, 191, 36, 0.45)',
+                            borderColor: '#fbbf24',
+                            borderWidth: 1.5,
+                            borderRadius: 6,
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'line',
+                            label: 'Taxa de Conclusão Diária (%)',
+                            data: dailyChecksSum.map(c => habits.length > 0 ? Math.round((c / habits.length) * 100) : 0),
+                            borderColor: '#10b981',
+                            backgroundColor: '#10b981',
+                            borderWidth: 2.5,
+                            tension: 0.3,
+                            yAxisID: 'y1'
+                        }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51,65,85,0.25)' } },
+                        y: { position: 'left', min: 0, title: { display: true, text: 'Horas (h)', color: '#fbbf24', font: { size: 11 } }, ticks: { color: '#fbbf24' }, grid: { color: 'rgba(51,65,85,0.25)' } },
+                        y1: { position: 'right', min: 0, max: 100, title: { display: true, text: 'Adesão (%)', color: '#10b981', font: { size: 11 } }, ticks: { color: '#10b981' }, grid: { drawOnChartArea: false } }
+                    }
+                }
+            });
+
+            // 2. PAINEL POR ATIVIDADE (Eixo X = Dias da Semana, Eixo Y = Horas de Atividade, Linha c/ DP)
+            const ctxAct = document.getElementById('activityPanelChart').getContext('2d');
+            if (activityChartInstance) activityChartInstance.destroy();
+
+            const targetVal = sel ? sel.value : '0';
+            let datasets = [];
+
+            if (activityChartScope === 'molecular') {
+                if (targetVal === 'all') {
+                    habits.forEach((h, idx) => {
+                        const color = PALETTE[idx % PALETTE.length];
+                        const series = h.dailyHours.map(v => parseFloat(v) || 0);
+                        datasets.push(...buildLineWithSdDatasets(h.name, series, color, false));
+                    });
+                } else {
+                    const hIdx = parseInt(targetVal, 10) || 0;
+                    const h = habits[hIdx] || habits[0];
+                    if (h) {
+                        const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
+                        const series = h.dailyHours.map(v => parseFloat(v) || 0);
+                        datasets.push(...buildLineWithSdDatasets(h.name, series, cat.hex, true));
+                    }
+                }
+            } else {
+                // Escopo por Grupo de Atividade (Saúde, Estudos, Academia)
+                if (targetVal === 'all') {
+                    Object.keys(CATEGORIES).forEach(key => {
+                        const cat = CATEGORIES[key];
+                        const groupSeries = [0, 0, 0, 0, 0, 0, 0];
+                        habits.filter(h => h.category === key).forEach(h => {
+                            h.dailyHours.forEach((hr, dIdx) => groupSeries[dIdx] += (parseFloat(hr) || 0));
+                        });
+                        datasets.push(...buildLineWithSdDatasets(cat.label, groupSeries, cat.hex, false));
+                    });
+                } else {
+                    const cat = CATEGORIES[targetVal] || CATEGORIES.estudos;
+                    const groupSeries = [0, 0, 0, 0, 0, 0, 0];
+                    habits.filter(h => h.category === targetVal).forEach(h => {
+                        h.dailyHours.forEach((hr, dIdx) => groupSeries[dIdx] += (parseFloat(hr) || 0));
+                    });
+                    datasets.push(...buildLineWithSdDatasets(`Grupo ${cat.label}`, groupSeries, cat.hex, true));
+                }
+            }
+
+            activityChartInstance = new Chart(ctxAct, {
+                type: 'line',
+                data: {
+                    labels: xLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return `${ctx.dataset.label.split(' (')[0]}: ${ctx.parsed.y}h`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Dias da Semana', color: '#94a3b8', font: { size: 11 } },
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(51,65,85,0.25)' }
+                        },
+                        y: {
+                            min: 0,
+                            title: { display: true, text: 'Horas de Atividade (h)', color: '#22d3ee', font: { size: 11 } },
+                            ticks: { color: '#22d3ee', callback: v => v + 'h' },
+                            grid: { color: 'rgba(51,65,85,0.25)' }
+                        }
+                    }
+                }
             });
         }
 
+        // =========================================================================
+        // AGENDA SEMANAL
+        // =========================================================================
         window.deleteCalEvent = function(evId) {
             if (confirm('Remover bloco da agenda?')) { calendarEvents = calendarEvents.filter(e => e.id !== evId); saveData(); }
         };
@@ -918,7 +1131,6 @@
             document.getElementById('modal-habit-name').value = h ? h.name : '';
             document.getElementById('modal-habit-category').value = h ? h.category : 'estudos';
             document.getElementById('modal-habit-target-hours').value = h ? h.targetHours : 5.0;
-            document.getElementById('modal-habit-deadline').value = h ? h.deadline : '2026-12-31';
             weekDays.forEach((d, dIdx) => {
                 container.innerHTML += `<div class="text-center"><label class="block text-[10px] text-slate-400 mb-1">${d.shortName}</label><input type="number" id="modal-day-hr-${dIdx}" step="0.1" min="0" max="24" value="${h ? (h.dailyHours[dIdx] || 0) : 0}" class="w-full bg-slate-900 border border-slate-700 rounded px-1 py-1 text-xs font-mono text-center text-slate-100"></div>`;
             });
@@ -983,11 +1195,11 @@
         };
 
         window.exportToCSV = function() {
-            let csv = "data:text/csv;charset=utf-8,habit_id,habit_name,category,deadline,target_hours_week,total_hours_week,mean_hours_day,sd_hours_week,freq_pct,sensitivity_deriv,elasticity,day_of_week,date_iso,completed,hours_day\n";
+            let csv = "data:text/csv;charset=utf-8,habit_id,habit_name,category,target_hours_week,total_hours_week,mean_hours_day,sd_hours_week,freq_pct,sensitivity_deriv,elasticity,day_of_week,date_iso,completed,hours_day\n";
             habits.forEach(h => {
                 const m = calcHabitMetrics(h), cleanName = `"${h.name.replace(/"/g, '""')}"`;
                 weekDays.forEach((day, dIdx) => {
-                    csv += `${h.id},${cleanName},${h.category},${h.deadline},${h.targetHours},${m.totalHours.toFixed(2)},${m.meanHours.toFixed(2)},${m.sdHours.toFixed(2)},${m.freqPct.toFixed(1)},${m.sensitivityDerivative.toFixed(2)},${m.elasticity.toFixed(3)},${day.shortName},${day.iso},${h.checks[dIdx] ? 1 : 0},${h.dailyHours[dIdx] || 0}\n`;
+                    csv += `${h.id},${cleanName},${h.category},${h.targetHours},${m.totalHours.toFixed(2)},${m.meanHours.toFixed(2)},${m.sdHours.toFixed(2)},${m.freqPct.toFixed(1)},${m.sensitivityDerivative.toFixed(2)},${m.elasticity.toFixed(3)},${day.shortName},${day.iso},${h.checks[dIdx] ? 1 : 0},${h.dailyHours[dIdx] || 0}\n`;
                 });
             });
             const link = document.createElement("a");
@@ -1014,7 +1226,7 @@
             link.click();
         };
 
-function updateCloudBadge(state, text) {
+        function updateCloudBadge(state, text) {
             const pill = document.getElementById('cloud-status-pill');
             const icon = document.getElementById('cloud-pill-icon');
             const label = document.getElementById('cloud-pill-text');
@@ -1085,7 +1297,6 @@ function updateCloudBadge(state, text) {
             const status = document.getElementById('cloud-status-msg');
             if (!token || !gistId) { status.textContent = "⚠️ Informe o Token e o Gist ID."; return; }
 
-            // Grava as credenciais no aparelho atual (Crucial para ativar o Auto-Sync no celular!)
             SafeStorage.setItem('hq_gist_token', token);
             SafeStorage.setItem('hq_gist_id', gistId);
 
@@ -1201,6 +1412,7 @@ function updateCloudBadge(state, text) {
         function renderAll(activeRoute) {
             document.getElementById('week-range-badge').textContent = `${weekDays[0].dateNum} a ${weekDays[6].dateNum}`;
             populateSelects();
+            populateActivityChartTargetSelect();
             renderDashboardView();
             const current = activeRoute || (window.location.hash || '#dashboard').replace('#', '');
             if (current === 'metrics') renderMetricsView();
@@ -1228,14 +1440,13 @@ function updateCloudBadge(state, text) {
                 const name = document.getElementById('modal-habit-name').value.trim();
                 const category = document.getElementById('modal-habit-category').value;
                 const targetHours = parseFloat(document.getElementById('modal-habit-target-hours').value) || 1;
-                const deadline = document.getElementById('modal-habit-deadline').value;
                 const dailyHours = weekDays.map((_, dIdx) => parseFloat(document.getElementById('modal-day-hr-' + dIdx).value) || 0);
                 if (!name) return;
                 if (idx >= 0 && habits[idx]) {
-                    Object.assign(habits[idx], { name, category, targetHours, deadline, dailyHours });
+                    Object.assign(habits[idx], { name, category, targetHours, dailyHours });
                     dailyHours.forEach((hr, i) => { if (hr > 0) habits[idx].checks[i] = true; });
                 } else {
-                    habits.push({ id: 'h_' + Date.now(), name, category, targetHours, deadline, checks: dailyHours.map(hr => hr > 0), dailyHours });
+                    habits.push({ id: 'h_' + Date.now(), name, category, targetHours, checks: dailyHours.map(hr => hr > 0), dailyHours });
                 }
                 closeHabitModal();
                 saveData();
@@ -1250,7 +1461,6 @@ function updateCloudBadge(state, text) {
             selectTimerMode('stopwatch');
             applyRoute();
 
-            // Sincroniza ao abrir, ao ganhar foco no PC e ao desbloquear a tela no celular
             autoPullFromGist();
             window.addEventListener('focus', autoPullFromGist);
             document.addEventListener('visibilitychange', () => {
