@@ -23,7 +23,7 @@ window.toggleMobileDrawer = function() {
 };
 
 const ROUTE_CONFIG = {
-    dashboard:  { eyebrow: 'DASHBOARD', title: 'Bom dia, Semana Corrente' },
+    dashboard:  { eyebrow: 'DASHBOARD' },
     atv_fisica: { eyebrow: 'GRUPO',     title: 'Atividade Física' },
     sono:       { eyebrow: 'GRUPO',     title: 'Sono & Descanso' },
     timer:      { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
@@ -107,7 +107,6 @@ window.deleteHabitByIdx = function(hIdx) {
     if (confirm(`Remover "${habits[hIdx].name}"?`)) { habits.splice(hIdx, 1); saveData(); }
 };
 
-/* Diário do Sono no Menu de Métricas / Visão Dedicada */
 function renderSleepJournalView() {
     const tbody = document.getElementById('sleep-journal-tbody');
     if (!tbody) return;
@@ -185,35 +184,6 @@ function renderDedicatedSleepView() {
                 <td class="py-3 px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
                 <td class="py-3 px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
             </tr>`;
-    });
-}
-
-function renderDedicatedAtvFisicaView() {
-    const grid = document.getElementById('atv-fisica-cards-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const atvHabits = habits.map((h, i) => ({ habit: h, index: i })).filter(item => item.habit.category === 'atv_fisica');
-    if (atvHabits.length === 0) {
-        grid.innerHTML = `<div class="col-span-full text-zinc-400 text-xs py-6 text-center">Nenhuma atividade física cadastrada.</div>`;
-        return;
-    }
-    atvHabits.forEach(({ habit, index: hIndex }) => {
-        const m = calcHabitMetrics(habit);
-        const cat = CATEGORIES[habit.category];
-        grid.innerHTML += `
-            <div class="${cat.cardBg} p-5 rounded-3xl flex flex-col justify-between space-y-4 shadow-xs">
-                <div class="flex justify-between items-start gap-2">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-white/70 flex items-center justify-center text-lg shrink-0">${cat.emoji}</div>
-                        <div>
-                            <h3 class="font-bold text-zinc-900 text-sm leading-snug">${habit.name}</h3>
-                            <span class="text-[11px] font-mono text-zinc-600">Meta: ${habit.targetHours}h/sem</span>
-                        </div>
-                    </div>
-                    <button type="button" onclick="openHabitModal(${hIndex})" class="p-1">✏️</button>
-                </div>
-                <div class="font-mono"><span class="text-2xl font-bold text-zinc-950">${m.totalHours.toFixed(1)}h</span> <span class="text-xs text-zinc-600">/ ${habit.targetHours}h</span></div>
-            </div>`;
     });
 }
 
@@ -649,7 +619,7 @@ function renderAll(activeRoute) {
         renderDedicatedSleepView();
     }
     if (current === 'atv_fisica') {
-        renderDedicatedAtvFisicaView();
+        if (typeof renderAtvFisicaInteractiveView === 'function') renderAtvFisicaInteractiveView();
     }
     if (current === 'calendar') renderCalendarView();
     refreshIcons();
