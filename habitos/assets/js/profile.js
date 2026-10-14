@@ -23,51 +23,52 @@ const AVATAR_ROLES = [
     { id: 'ninja',      emoji: '🥷',   label: 'Ninja' },
 ];
 
-let currentProfile = {
-    name: 'HabitQuant Pro',
-    gender: 'nb',
-    role: 'dev',
-    skinTone: ''
-};
-
+let currentProfile = { name: 'HabitQuant Pro', gender: 'nb', role: 'dev', skinTone: '' };
 let selectedRoleId  = 'dev';
 let selectedSkinTone = '';
+let isFirstRunModal = false;
 
-/* ---------- Aplica tom de pele em emoji com ZWJ ---------- */
 function applySkinToneToEmoji(baseEmoji, tone) {
     if (!tone) return baseEmoji;
-    const codepoints = Array.from(baseEmoji);
-    if (codepoints.length === 0) return baseEmoji;
-    const first = codepoints[0];
-    const rest = codepoints.slice(1).join('');
-    return first + tone + rest;
+    const cp = Array.from(baseEmoji);
+    if (cp.length === 0) return baseEmoji;
+    return cp[0] + tone + cp.slice(1).join('');
 }
 
-function buildAvatarEmoji() {
-    const role = AVATAR_ROLES.find(r => r.id === selectedRoleId) || AVATAR_ROLES[0];
-    return applySkinToneToEmoji(role.emoji, selectedSkinTone);
+function buildAvatarEmoji(roleId, tone) {
+    const rid = roleId || currentProfile.role || 'dev';
+    const tk  = (tone !== undefined) ? tone : (currentProfile.skinTone || '');
+    const role = AVATAR_ROLES.find(r => r.id === rid) || AVATAR_ROLES[0];
+    return applySkinToneToEmoji(role.emoji, tk);
 }
 
-/* ---------- Cumprimento dinâmico ---------- */
-function getGreetingPhrase() {
-    const h = new Date().getHours();
-    if (h >= 12 && h < 18) return 'Boa tarde';
-    if (h >= 18 || h < 6)  return 'Boa noite';
-    return 'Bom dia';
+/* -------------------------------------------------------------------
+ * Fase da semana:
+ *   Seg, Ter, Qua → "iniciar a semana"
+ *   Qui, Sex, Sáb, Dom → "finalizar a semana"
+ * ------------------------------------------------------------------- */
+function getWeekPhaseAction() {
+    const dow = new Date().getDay();   /* 0=Dom, 1=Seg, ..., 6=Sáb */
+    if (dow >= 1 && dow <= 3) return 'iniciar';
+    return 'finalizar';
 }
 
-function getReadyWord(gender) {
+function getReadyWordForGender(gender) {
     return gender === 'fem' ? 'Pronta' : 'Pronto';
 }
 
+/* Cumprimento OFICIAL — usado pelo header do dashboard
+ * Formato: "Bom dia, [nome]! [Pronto|Pronta] para [iniciar|finalizar] a semana?" */
 window.getUserGreeting = function () {
-    const hasCustomName = currentProfile && currentProfile.name && currentProfile.name !== 'HabitQuant Pro';
-    return hasCustomName
-        ? `${getGreetingPhrase()}, ${currentProfile.name}!`
-        : `${getGreetingPhrase()}!`;
+    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HabitQuant Pro';
+    const phase   = getWeekPhaseAction();
+    const ready   = getReadyWordForGender(currentProfile.gender);
+    if (hasName) {
+        return `Bom dia, ${currentProfile.name}! ${ready} para ${phase} a semana?`;
+    }
+    return `Bom dia! ${ready} para ${phase} a semana?`;
 };
 
-/* ---------- Grade de papéis ---------- */
 function renderRoleGrid() {
     const grid = document.getElementById('avatar-role-grid');
     if (!grid) return;
@@ -103,6 +104,8 @@ window.selectSkinTone = function (tone) {
     updateAvatarPreview();
 };
 
+/* Prévia dentro do modal — mesma regra do cumprimento oficial,
+ * usando o nome que o usuário está digitando no momento */
 window.updateAvatarPreview = function () {
     const nameInput   = document.getElementById('profile-name-input');
     const genderInput = document.getElementById('profile-gender-input');
@@ -110,18 +113,23 @@ window.updateAvatarPreview = function () {
     const gender = genderInput?.value || 'nb';
 
     const preview = document.getElementById('avatar-live-preview');
-    if (preview) preview.textContent = buildAvatarEmoji();
+    if (preview) preview.textContent = buildAvatarEmoji(selectedRoleId, selectedSkinTone);
 
     const greet = document.getElementById('avatar-greeting-preview');
     if (greet) {
-        greet.textContent = `${getGreetingPhrase()}, ${name}! ${getReadyWord(gender)} para o dia?`;
+        const phase = getWeekPhaseAction();
+        const ready = getReadyWordForGender(gender);
+        greet.textContent = `Bom dia, ${name}! ${ready} para ${phase} a semana?`;
     }
 };
 
 window.getAvatarDraft = () => ({ role: selectedRoleId, skinTone: selectedSkinTone });
 
-/* ---------- Abrir / fechar modal ---------- */
+/* -------------------------------------------------------------------
+ * Modal do Perfil
+ * ------------------------------------------------------------------- */
 window.openProfileModal = function (opts = {}) {
+    isFirstRunModal = !!opts.firstRun;
     const m = document.getElementById('profile-modal');
     if (!m) return;
 
@@ -138,21 +146,22 @@ window.openProfileModal = function (opts = {}) {
     updateAvatarPreview();
 
     const closeBtn = document.getElementById('profile-modal-close-btn');
-    if (closeBtn) closeBtn.classList.toggle('hidden', !!opts.firstRun);
+    if (closeBtn) closeBtn.style.display = isFirstRunModal ? 'none' : '';
 
     m.classList.remove('hidden');
     m.classList.add('flex');
 };
 
 window.closeProfileModal = function () {
-    if (!window.hasProfile()) return;
+    if (isFirstRunModal) return;   /* bloqueia fechamento APENAS no primeiro acesso */
     const m = document.getElementById('profile-modal');
     if (!m) return;
     m.classList.add('hidden');
     m.classList.remove('flex');
 };
 
-/* ---------- Persistência ---------- */
+window.markFirstRunDone = function () { isFirstRunModal = false; };
+
 window.loadProfile = function () {
     const raw = SafeStorage.getItem(PROFILE_STORAGE_KEY);
     if (raw) {
@@ -172,7 +181,7 @@ window.hasProfile = function () {
 };
 
 function applyProfileToUI() {
-    const avatarEmoji = buildAvatarEmoji();
+    const avatarEmoji = buildAvatarEmoji(currentProfile.role, currentProfile.skinTone);
     ['sidebar-user-avatar', 'mobile-user-avatar'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.textContent = avatarEmoji;
@@ -183,3 +192,5 @@ function applyProfileToUI() {
     });
     if (typeof window.refreshHeaderTitle === 'function') window.refreshHeaderTitle();
 }
+
+console.log('[profile.js] carregado. getUserGreeting:', typeof window.getUserGreeting);
