@@ -72,4 +72,54 @@ function saveData(skipCloud = false) {
     SafeStorage.setItem(STORAGE_KEY, JSON.stringify({ habits, calendarEvents, timerConfig }));
     if (typeof renderAll === 'function') renderAll();
 
-    if (!skipCloud && SafeStorage.getItem('hq_gist_token') && SafeStorage.getItem('
+    if (!skipCloud && SafeStorage.getItem('hq_gist_token') && SafeStorage.getItem('hq_gist_id')) {
+        updateCloudBadge('⏳ Salvando...');
+        clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(autoPushToGist, 1000);
+    }
+}
+
+function updateCloudBadge(text) {
+    const pill = document.getElementById('cloud-status-pill');
+    if (pill) pill.textContent = text;
+}
+
+async function autoPushToGist() {
+    const token = SafeStorage.getItem('hq_gist_token');
+    const gistId = SafeStorage.getItem('hq_gist_id');
+    if (!token || !gistId) return;
+    try {
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+            body: JSON.stringify({ files: { "habitquant_data.json": { content: JSON.stringify({ updatedAt: Date.now(), habits, calendarEvents, timerConfig }) } } })
+        });
+        if (res.ok) updateCloudBadge('✅ Sync Ativo');
+    } catch (e) { updateCloudBadge('⚠️ Offline'); }
+}
+
+async function autoPullFromGist() {
+    const token = SafeStorage.getItem('hq_gist_token');
+    const gistId = SafeStorage.getItem('hq_gist_id');
+    if (!token || !gistId) return;
+    try {
+        const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+            cache: 'no-store'
+        });
+        const data = await res.json();
+        if (res.ok && data.files && data.files["habitquant_data.json"]) {
+            const content = JSON.parse(data.files["habitquant_data.json"].content);
+            habits = Array.isArray(content.habits) ? content.habits : [];
+            calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : [];
+            timerConfig = content.timerConfig || timerConfig;
+            habits.forEach(h => {
+                if (h.category === 'sono' && !Array.isArray(h.bedtimeHours)) {
+                    h.bedtimeHours = [0, 0, 0, 0, 0, 0, 0];
+                }
+            });
+            saveData(true);
+            updateCloudBadge('✅ Sync Ativo');
+        }
+    } catch (e) {}
+}
