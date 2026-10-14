@@ -1056,8 +1056,73 @@
             if (current === 'calendar') renderCalendarView();
         }
 
-          window.addEventListener('DOMContentLoaded', () => {
+       // =====================================================================
+        // MOTOR DE AUTO-SYNC (GITHUB GIST EM SEGUNDO PLANO)
+        // =====================================================================
+        let syncTimeout = null;
+
+        // Sobrescreve saveData para disparar o Auto-Push 1.5s após qualquer mudança
+        function saveData(skipCloud = false) {
+            SafeStorage.setItem(STORAGE_KEY, JSON.stringify({ habits, calendarEvents, timerConfig }));
+            renderAll();
+
+            if (!skipCloud && SafeStorage.getItem('hq_gist_token') && SafeStorage.getItem('hq_gist_id')) {
+                clearTimeout(syncTimeout);
+                syncTimeout = setTimeout(() => {
+                    autoPushToGist();
+                }, 1500);
+            }
+        }
+
+        async function autoPushToGist() {
+            const token = SafeStorage.getItem('hq_gist_token');
+            const gistId = SafeStorage.getItem('hq_gist_id');
+            if (!token || !gistId) return;
+
+            try {
+                await fetch(`https://api.github.com/gists/${gistId}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+                    body: JSON.stringify({
+                        files: { "habitquant_data.json": { content: JSON.stringify({ habits, calendarEvents, timerConfig }) } }
+                    })
+                });
+                console.log("☁️ Auto-Sync: Enviado para a nuvem com sucesso.");
+            } catch (e) {
+                console.warn("Falha no Auto-Push silencioso:", e);
+            }
+        }
+
+        async function autoPullFromGist() {
+            const token = SafeStorage.getItem('hq_gist_token');
+            const gistId = SafeStorage.getItem('hq_gist_id');
+            if (!token || !gistId) return;
+
+            try {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+                    cache: 'no-store'
+                });
+                const data = await res.json();
+                if (res.ok && data.files && data.files["habitquant_data.json"]) {
+                    const content = JSON.parse(data.files["habitquant_data.json"].content);
+                    habits = content.habits || habits;
+                    calendarEvents = content.calendarEvents || calendarEvents;
+                    timerConfig = content.timerConfig || timerConfig;
+                    saveData(true); // Salva localmente sem criar loop de envio
+                    console.log("☁️ Auto-Sync: Dados sincronizados da nuvem.");
+                }
+            } catch (e) {
+                console.warn("Falha no Auto-Pull silencioso:", e);
+            }
+        }
+
+        // =====================================================================
+        // INICIALIZAÇÃO DA PÁGINA (SUBSTITUI O SEU TRECHO ATÉ O FIM DO ARQUIVO)
+        // =====================================================================
+        window.addEventListener('DOMContentLoaded', () => {
             loadData();
+
             document.getElementById('manual-hours-form').addEventListener('submit', e => {
                 e.preventDefault();
                 const hIdx = parseInt(document.getElementById('manual-habit-select').value, 10);
@@ -1069,6 +1134,7 @@
                     saveData();
                 }
             });
+
             document.getElementById('habit-modal-form').addEventListener('submit', e => {
                 e.preventDefault();
                 const idx = parseInt(document.getElementById('modal-habit-index').value, 10);
@@ -1087,3 +1153,20 @@
                 closeHabitModal();
                 saveData();
             });
+
+            document.getElementById('event-modal-form').addEventListener('submit', e => {
+                e.preventDefault();
+                saveEventFromModal();
+                closeEventModal();
+            });
+
+            selectTimerMode('stopwatch');
+            applyRoute();
+
+            // Puxa da nuvem automaticamente ao abrir e toda vez que voltar para a aba
+            autoPullFromGist();
+            window.addEventListener('focus', autoPullFromGist);
+        });
+    </script>
+</body>
+</html>
