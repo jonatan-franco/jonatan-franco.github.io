@@ -1,603 +1,487 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HaQt — Análise de Hábitos</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>HaQt — HabitQuant Pro | Painel Longitudinal</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
     <script>
-        tailwind.config = { theme: { extend: { fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-        }}}}
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        };
     </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js & Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="bg-[#fafafa] text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row pt-[56px] md:pt-0 pb-20 md:pb-0">
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex overflow-x-hidden antialiased selection:bg-indigo-500 selection:text-white">
 
-    <!-- TOPBAR (MOBILE) -->
-    <div class="md:hidden bg-black text-white px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-40 h-[56px]">
-        <div class="flex items-center gap-3 cursor-pointer" onclick="openProfileModal()">
-            <div id="mobile-user-avatar" class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-base flex items-center justify-center">🧑‍💻</div>
-            <span class="font-bold text-sm tracking-tight" id="mobile-user-name">HaQt</span>
-        </div>
-        <button type="button" onclick="toggleMobileDrawer()" class="p-1.5 text-zinc-300 hover:text-white"><i data-lucide="menu" class="w-6 h-6"></i></button>
-    </div>
+    <!-- Backdrop Mobile -->
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 hidden lg:hidden"></div>
 
-    <!-- GAVETA (MOBILE) -->
-    <div id="mobile-drawer" class="hidden md:hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
-        <button type="button" onclick="openProfileModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5"><i data-lucide="user" class="w-4 h-4"></i> <span>Editar Perfil &amp; Avatar</span></button>
-        <button type="button" onclick="openCloudModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5"><i data-lucide="cloud" class="w-4 h-4"></i> <span>GitHub Gist Sync</span></button>
-        <button type="button" onclick="exportToCSV(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5"><i data-lucide="download" class="w-4 h-4"></i> <span>Exportar CSV</span></button>
-        <button type="button" onclick="resetAllData(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-rose-400 hover:text-rose-300 w-full py-1.5"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> <span>Resetar Dados</span></button>
-    </div>
-
-    <!-- SIDEBAR (DESKTOP) -->
-    <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex self-start flex-col justify-between bg-black text-white shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 select-none">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-all duration-300 -translate-x-full lg:translate-x-0 shrink-0">
         <div class="p-4 space-y-6">
-            <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-                <div onclick="openProfileModal()" class="flex items-center gap-3 overflow-hidden cursor-pointer group" title="Personalizar perfil">
-                    <div id="sidebar-user-avatar" class="w-9 h-9 rounded-full bg-[#00e5ff] text-black font-extrabold text-lg flex items-center justify-center shrink-0 shadow group-hover:scale-105 transition">🧑‍💻</div>
-                    <div class="sidebar-label overflow-hidden whitespace-nowrap">
-                        <div id="sidebar-user-name" class="font-bold text-sm text-white leading-none truncate max-w-[120px]">HaQt</div>
-                        <div class="text-[11px] font-mono text-[#00e676] mt-1">Editar Perfil ✎</div>
+            <!-- Logo + Toggle -->
+            <div class="flex items-center justify-between px-2">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-mono font-bold text-lg shadow-sm shadow-indigo-500/30">
+                        hQ
+                    </div>
+                    <div class="sidebar-label">
+                        <span class="font-bold tracking-tight text-slate-900 dark:text-white text-base">HaQt Pro</span>
+                        <span class="block text-[10px] font-mono uppercase tracking-widest text-indigo-500">Psychometrics Lab</span>
                     </div>
                 </div>
-                <button type="button" onclick="toggleDesktopSidebar()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-900 transition shrink-0"><i data-lucide="panel-left-close" id="sidebar-toggle-icon" class="w-4 h-4"></i></button>
+                <button onclick="toggleSidebar()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i data-lucide="panel-left" class="w-4 h-4"></i>
+                </button>
             </div>
-            <nav class="space-y-1.5">
-                <button type="button" onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition w-full"><i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Dashboard</span></button>
-                <button type="button" onclick="navigateTo('timer')" data-route="timer" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="timer" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Timer</span></button>
-                <button type="button" onclick="navigateTo('metrics')" data-route="metrics" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="bar-chart-2" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Métricas</span></button>
-                <button type="button" onclick="navigateTo('calendar')" data-route="calendar" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="calendar" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Agenda</span></button>
+
+            <!-- Menu de Navegação SPA -->
+            <nav id="sidebar-nav" class="space-y-1.5">
+                <button onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold">
+                    <i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label">Painel Geral</span>
+                </button>
+                <button onclick="navigateTo('atv_fisica')" data-route="atv_fisica" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                    <i data-lucide="dumbbell" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label">Treino & Adesão</span>
+                </button>
+                <button onclick="navigateTo('sono')" data-route="sono" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                    <i data-lucide="moon" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label">Diário do Sono</span>
+                </button>
+                <button onclick="navigateTo('timer')" data-route="timer" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                    <i data-lucide="timer" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label">Foco & Timer</span>
+                </button>
+                <button onclick="navigateTo('metrics')" data-route="metrics" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                    <i data-lucide="activity" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label">Métricas ($\varepsilon$)</span>
+                </button>
             </nav>
         </div>
-        <div class="p-4 border-t border-zinc-900 space-y-2 text-xs">
-            <button type="button" onclick="openProfileModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="user-check" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Perfil &amp; Ícone</span></button>
-            <button type="button" onclick="openCloudModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="cloud" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">GitHub Gist Sync</span></button>
-            <button type="button" onclick="exportToCSV()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="download" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Exportar CSV</span></button>
-            <button type="button" onclick="resetAllData()" class="flex items-center gap-3 px-3 py-2 text-rose-400 hover:text-rose-300 rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="rotate-ccw" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Resetar Dados</span></button>
+
+        <!-- Rodapé da Sidebar: Status do GitHub Gist + Tema -->
+        <div class="p-4 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
+            <button onclick="document.getElementById('cloud-modal').classList.remove('hidden')"
+                class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/70 text-xs">
+                <div class="flex items-center gap-2">
+                    <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span id="sync-status-text" class="sidebar-label font-medium text-slate-600 dark:text-slate-300">Gist Sync</span>
+                </div>
+                <i data-lucide="cloud" class="w-3.5 h-3.5 text-slate-400"></i>
+            </button>
+
+            <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <i data-lucide="sun-moon" class="w-4 h-4"></i>
+                <span class="sidebar-label">Alternar Tema</span>
+            </button>
         </div>
     </aside>
 
-    <!-- BOTTOM NAV (MOBILE) -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
-        <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold"><i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span></button>
-        <button type="button" onclick="navigateTo('timer')" data-mobile-route="timer" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="timer" class="w-4 h-4 mb-0.5"></i><span>Timer</span></button>
-        <button type="button" onclick="navigateTo('metrics')" data-mobile-route="metrics" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="bar-chart-2" class="w-4 h-4 mb-0.5"></i><span>Métricas</span></button>
-        <button type="button" onclick="navigateTo('calendar')" data-mobile-route="calendar" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span>Agenda</span></button>
-    </nav>
-
-    <main class="flex-1 p-5 md:p-8 max-w-7xl mx-auto w-full space-y-8">
-        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-                <div class="flex items-center gap-2.5">
-                    <span id="header-eyebrow" class="text-[11px] font-mono uppercase tracking-widest text-zinc-500">DASHBOARD</span>
-                    <span class="px-2.5 py-0.5 text-[10px] font-mono uppercase font-semibold bg-[#b9f6ca] text-emerald-950 rounded-full">SEMANA ATIVA</span>
-                    <button type="button" onclick="openCloudModal()" id="cloud-status-pill" class="px-2.5 py-0.5 text-[10px] font-mono bg-zinc-200/80 hover:bg-zinc-300 text-zinc-700 rounded-full transition">☁️ Sync</button>
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="flex-1 flex flex-col min-w-0">
+        <!-- Topbar Mobile/Desktop -->
+        <header class="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 lg:px-8 flex items-center justify-between sticky top-0 z-20">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+                <div>
+                    <h2 id="greeting-title" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                        Olá, Jonatan Franco
+                    </h2>
+                    <p class="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                        Monitoramento Comportamental & Longitudinal • USP
+                    </p>
                 </div>
-                <h1 id="view-title" class="text-xl md:text-2xl lg:text-3xl font-bold text-zinc-900 mt-1.5 tracking-tight">Bom dia!</h1>
-                <p id="week-range-badge" class="text-sm text-zinc-500 mt-0.5 font-mono"></p>
             </div>
-            <div class="flex items-center gap-2.5">
-                <button type="button" onclick="navigateTo('timer')" id="mini-timer-pill" class="hidden items-center gap-2 px-3.5 py-2 bg-zinc-900 text-white rounded-full text-xs font-mono animate-pulse">
-                    <span>⏱️</span><span id="mini-timer-text">00:00:00</span>
-                </button>
-                <button type="button" onclick="openHabitModal(-1)" class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white rounded-full text-xs md:text-sm font-semibold shadow-sm transition flex items-center gap-1.5 shrink-0">
-                    <span>+ Nova Atividade</span>
-                </button>
+
+            <!-- Controles de Semana -->
+            <div class="flex items-center gap-2">
+                <button onclick="changeWeek(-1)" class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs">◀</button>
+                <span id="current-week-label" class="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">Semana Atual</span>
+                <button onclick="changeWeek(1)" class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs">▶</button>
             </div>
         </header>
 
-        <!-- DASHBOARD -->
-        <section id="view-dashboard" class="space-y-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-[#b9f6ca] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">ENGAJAMENTO</span>
-                            <div class="flex items-baseline gap-2 mt-1.5">
-                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-freq-mean">0.0%</span>
-                                <span class="text-xs text-zinc-700 font-mono" id="kpi-freq-checks">(0/0d)</span>
-                            </div>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
+        <!-- ÁREA DE VIEWS -->
+        <main class="p-4 lg:p-8 max-w-7xl w-full mx-auto space-y-8">
+
+            <!-- ========================================================== -->
+            <!-- VIEW 1: DASHBOARD GERAL                                    -->
+            <!-- ========================================================== -->
+            <section id="view-dashboard" class="view-section space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Matriz Longitudinal de Hábitos</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Registre o volume diário (horas) ou acesse diretamente os módulos especializados ao lado.</p>
                     </div>
-                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between">
-                        <span id="kpi-today-progress">Hoje: 0/0</span><span>Engajamento semanal</span>
+                    <div class="flex items-center gap-2.5">
+                        <button onclick="navigateTo('atv_fisica')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20">
+                            🏋️ Abrir Planilha Upper/Lower
+                        </button>
+                        <button onclick="openHabitModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm">
+                            + Nova Atividade
+                        </button>
                     </div>
                 </div>
 
-                <div class="bg-[#e0e7ff] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">SONO — TEMPO DE CAMA</span>
-                            <div class="flex items-baseline gap-2 mt-1.5">
-                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-sleep-bed">—</span>
-                                <span class="text-xs text-zinc-600 font-mono" id="kpi-sleep-slept">→ —</span>
-                            </div>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="moon" class="w-5 h-5"></i></div>
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr id="matrix-header-row" class="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500"></tr>
+                            </thead>
+                            <tbody id="matrix-tbody" class="divide-y divide-slate-200/60 dark:divide-slate-800"></tbody>
+                        </table>
                     </div>
-                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-700 flex justify-between font-mono">
-                        <span id="kpi-sleep-sens">Sensib.: ε —</span><span id="kpi-sleep-eff">Efic.: —</span>
+                </div>
+            </section>
+
+            <!-- ========================================================== -->
+            <!-- VIEW 2: TREINO & ADESÃO (PLANILHA INTERATIVA UPPER/LOWER)  -->
+            <!-- ========================================================== -->
+            <section id="view-atv_fisica" class="view-section hidden space-y-6">
+                <!-- Header do Módulo de Treino -->
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                Upper / Lower + Zona 2
+                            </span>
+                            <span class="text-xs text-slate-400 font-mono">Google Drive Synced Structure</span>
+                        </div>
+                        <h1 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                            Planilha Interativa de Treinamento e Adesão
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            Preenchimento rápido de séries, repetições, carga (kg), RIR e cálculo automático de tonelagem.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <select id="workout-month-filter" onchange="renderDedicatedAtvFisicaView()"
+                            class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 outline-none">
+                            <option value="2026-10">Outubro 2026</option>
+                            <option value="2026-11">Novembro 2026</option>
+                            <option value="ALL">Todos os Meses</option>
+                        </select>
+
+                        <select id="workout-split-filter" onchange="renderDedicatedAtvFisicaView()"
+                            class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 outline-none">
+                            <option value="ALL">Todas as Divisões</option>
+                            <option value="Upper A">Upper A</option>
+                            <option value="Lower A">Lower A</option>
+                            <option value="Upper B">Upper B</option>
+                            <option value="Lower B">Lower B</option>
+                        </select>
+
+                        <button onclick="openNewWorkoutSessionModal()"
+                            class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20 transition-all cursor-pointer">
+                            + Nova Sessão
+                        </button>
                     </div>
                 </div>
 
-                <div class="bg-[#fef3c7] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">VOLUME</span>
-                            <div class="flex items-baseline gap-2 mt-1.5">
-                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-hours-total">0.0h</span>
-                                <span class="text-xs text-zinc-600 font-mono" id="kpi-hours-target">/ 0.0h</span>
-                            </div>
+                <!-- KPIs de Volume, Tonelagem e Adesão -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Volume Total (kg)</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span id="kpi-workout-vol-kg" class="text-2xl font-bold font-mono text-slate-900 dark:text-white">7.776,3 kg</span>
+                            <span class="text-[11px] text-emerald-500 font-mono">Séries×Reps×Carga</span>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="clock" class="w-5 h-5"></i></div>
                     </div>
-                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between font-mono">
-                        <span>Média ± DP:</span><span id="kpi-hours-mean-sd">0.0h ± 0.0h</span>
+
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Volume Total (Toneladas)</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span id="kpi-workout-vol-ton" class="text-2xl font-bold font-mono text-indigo-600 dark:text-indigo-400">7,7763 Ton</span>
+                            <span class="text-[11px] text-slate-400 font-mono">Vol / 1000</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Taxa de Adesão</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span id="kpi-workout-adherence" class="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">66,7%</span>
+                            <span id="kpi-workout-completed-count" class="text-xs text-slate-400 font-mono">14/21 concluídos</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                            <div id="kpi-workout-adherence-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 66.7%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Sessões no Período</span>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <span id="kpi-workout-sessions" class="text-2xl font-bold font-mono text-slate-900 dark:text-white">4</span>
+                            <span class="text-xs text-amber-500 font-medium">Meta: 4x / sem</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-[#ffedd5] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">MAIOR STREAK</span>
-                            <div class="flex items-baseline gap-2 mt-1.5">
-                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-streak">🔥 0d</span>
-                            </div>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="flame" class="w-5 h-5"></i></div>
+                <!-- Barra de Sub-abas + Exportar CSV -->
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+                    <div class="flex gap-2">
+                        <button id="subtab-btn-log" onclick="switchWorkoutSubTab('log')"
+                            class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all cursor-pointer">
+                            📋 Planilha de Preenchimento (Logs)
+                        </button>
+                        <button id="subtab-btn-plan" onclick="switchWorkoutSubTab('plan')"
+                            class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all cursor-pointer">
+                            🗓️ Planejamento Semanal & Rolling Split
+                        </button>
                     </div>
-                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between">
-                        <span>Destaque:</span><span id="kpi-streak-leader" class="font-semibold truncate max-w-[140px]">-</span>
+
+                    <button onclick="exportWorkoutCSV()"
+                        class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-500 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer">
+                        ⬇️ Exportar Planilha (.CSV)
+                    </button>
+                </div>
+
+                <!-- SUB-ABA 1: SESSÕES INTERATIVAS -->
+                <div id="workout-subtab-log" class="space-y-6">
+                    <div id="workout-sessions-container" class="space-y-6"></div>
+                </div>
+
+                <!-- SUB-ABA 2: PLANEJAMENTO SEMANAL FIXO & PROTOCOLO ROLLING SPLIT -->
+                <div id="workout-subtab-plan" class="hidden space-y-6">
+                    <div class="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-4">
+                        <div class="p-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-lg">🔄</div>
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                                Protocolo de Falta / Rolling Split
+                            </h3>
+                            <p id="workout-rolling-protocol" class="text-sm text-slate-700 dark:text-slate-300 mt-1 leading-relaxed"></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                        <th class="py-3.5 px-4">Dia da Semana</th>
+                                        <th class="py-3.5 px-4">Janela da Agenda</th>
+                                        <th class="py-3.5 px-4">Divisão / Treino</th>
+                                        <th class="py-3.5 px-4">Grupamento Muscular Alvo</th>
+                                        <th class="py-3.5 px-4">Prescrição de Cardio</th>
+                                        <th class="py-3.5 px-4">Foco</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="workout-weekly-plan-body" class="divide-y divide-slate-200/60 dark:divide-slate-800 text-sm"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+            </section>
+
+            <!-- ========================================================== -->
+            <!-- VIEW 3: DIÁRIO DO SONO                                     -->
+            <!-- ========================================================== -->
+            <section id="view-sono" class="view-section hidden space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                    <div>
+                        <span class="px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                            Sleep Architecture & Efficiency
+                        </span>
+                        <h1 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">Diário Clínico do Sono</h1>
+                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Cálculo automático de Tempo na Cama (TIB), Tempo Total Dormido (TST) e Eficiência do Sono (SE%).</p>
+                    </div>
+                    <button onclick="openSleepJournalModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm">
+                        + Registrar Noite
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                        <span class="text-xs font-bold uppercase text-slate-400">Eficiência Média (SE%)</span>
+                        <div id="sleep-kpi-efficiency" class="text-2xl font-bold font-mono text-emerald-500 mt-1">--%</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                        <span class="text-xs font-bold uppercase text-slate-400">Tempo Dormido Médio (TST)</span>
+                        <div id="sleep-kpi-tst" class="text-2xl font-bold font-mono text-indigo-500 mt-1">--h</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                        <span class="text-xs font-bold uppercase text-slate-400">Tempo na Cama Médio (TIB)</span>
+                        <div id="sleep-kpi-tib" class="text-2xl font-bold font-mono text-slate-700 dark:text-slate-200 mt-1">--h</div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                    <th class="py-3.5 px-4">Dia</th>
+                                    <th class="py-3.5 px-3 text-center">Deitou</th>
+                                    <th class="py-3.5 px-3 text-center">Dormiu</th>
+                                    <th class="py-3.5 px-3 text-center">Acordou</th>
+                                    <th class="py-3.5 px-3 text-center">Levantou</th>
+                                    <th class="py-3.5 px-3 text-center">TIB</th>
+                                    <th class="py-3.5 px-3 text-center">TST</th>
+                                    <th class="py-3.5 px-3 text-center">Eficiência</th>
+                                    <th class="py-3.5 px-4 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sleep-journal-tbody" class="divide-y divide-slate-200/60 dark:divide-slate-800 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Placeholders para Timer e Métricas (alimentados pelos seus respectivos módulos JS) -->
+            <section id="view-timer" class="view-section hidden">
+                <div id="timer-module-container" class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+                    <h2 class="text-lg font-bold">Módulo de Foco & Timer</h2>
+                </div>
+            </section>
+
+            <section id="view-metrics" class="view-section hidden">
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <canvas id="mainChart" height="100"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MODAL 1: NOVA SESSÃO DE TREINO (UPPER/LOWER TEMPLATE)              -->
+    <!-- ================================================================== -->
+    <div id="workout-session-modal" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 shadow-xl space-y-5">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Adicionar Sessão de Treino</h3>
+                <button onclick="closeNewWorkoutSessionModal()" class="text-slate-400 hover:text-slate-600">✕</button>
             </div>
-
-            <!-- FILTRO DE GRUPOS: ATIVIDADE FÍSICA E SONO -->
             <div class="space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">PAINÉIS DE ATIVIDADES</span>
-                        <h2 class="text-base font-semibold text-zinc-800">Acompanhe atividade física e sono</h2>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-1 bg-white p-1 rounded-full border border-zinc-200 text-xs shadow-sm">
-                        <button type="button" onclick="setCategoryFilter('all')" id="cat-btn-all" class="px-3.5 py-1.5 rounded-full bg-black text-white font-semibold">Todas</button>
-                        <button type="button" onclick="setCategoryFilter('atv_fisica')" id="cat-btn-atv_fisica" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">🏋️ Atividade Física</button>
-                        <button type="button" onclick="setCategoryFilter('sono')" id="cat-btn-sono" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">🌙 Sono</button>
-                    </div>
-                </div>
-                <div id="activity-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-            </div>
-
-            <div class="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">AVALIAÇÃO COMPARATIVA</span>
-                        <h2 class="text-lg font-bold text-zinc-900">Métrica Semanal</h2>
-                    </div>
-                    <button type="button" onclick="navigateTo('metrics')" class="text-xs font-semibold text-zinc-700 hover:text-black flex items-center gap-1">
-                        <span>Ver Gráficos de Métricas →</span>
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-zinc-200 text-zinc-400 text-[11px] font-mono uppercase" id="table-header-days"></tr></thead>
-                        <tbody id="habits-tbody" class="divide-y divide-zinc-100 text-xs md:text-sm"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- TIMER -->
-        <section id="view-timer" class="hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div class="lg:col-span-7 bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div onclick="selectTimerMode('stopwatch')" id="card-tmode-stopwatch" class="cursor-pointer p-3.5 rounded-2xl border-2 border-purple-300 bg-[#ede9fe] transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>CRONÔMETRO</span><span>🕒</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-stopwatch" value="0" min="0" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Progressivo</span>
-                        </div>
-                        <div onclick="selectTimerMode('countdown')" id="card-tmode-countdown" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>REGRESSIVO</span><span>⏳</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-countdown" value="30" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Regressivo</span>
-                        </div>
-                        <div onclick="selectTimerMode('pomodoro')" id="card-tmode-pomodoro" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>POMODORO</span><span>🔥</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-pomodoro" value="25" min="1" max="240" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Regressivo</span>
-                        </div>
-                        <div onclick="selectTimerMode('deepwork')" id="card-tmode-deepwork" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>DEEP WORK</span><span>🧠</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-deepwork" value="50" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Regressivo</span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-100 p-4 rounded-2xl">
-                        <div>
-                            <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
-                            <select id="timer-habit-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">DIA</label>
-                            <select id="timer-day-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                        </div>
-                    </div>
-
-                    <div class="bg-black text-white rounded-3xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-                        <span id="timer-mode-badge" class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 mb-2">MODO: CRONÔMETRO</span>
-                        <div id="timer-display" class="text-5xl sm:text-6xl font-mono font-bold tracking-wider">00:00:00</div>
-                        <div id="countdown-progress-container" class="hidden w-full max-w-xs bg-zinc-800 h-1.5 rounded-full overflow-hidden mt-4">
-                            <div id="countdown-progress-bar" class="bg-[#00e676] h-full transition-all duration-300" style="width: 100%"></div>
-                        </div>
-                        <div class="flex items-center gap-2 mt-5">
-                            <button type="button" onclick="adjustTimerMinutes(-5)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-5m</button>
-                            <button type="button" onclick="adjustTimerMinutes(-1)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-1m</button>
-                            <button type="button" onclick="adjustTimerMinutes(1)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">+1m</button>
-                            <button type="button" onclick="adjustTimerMinutes(5)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">+5m</button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
-                            <input type="checkbox" id="timer-auto-check" checked class="rounded text-blue-600">
-                            <span>Marcar presença ao salvar</span>
-                        </label>
-                        <div class="flex items-center gap-3">
-                            <button type="button" onclick="toggleTimer()" id="btn-timer-toggle" class="flex-1 py-3 bg-black hover:bg-zinc-800 text-white rounded-full text-sm font-semibold transition">▷ Iniciar</button>
-                            <button type="button" onclick="finishAndLogSession(false)" class="px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-900 border border-zinc-300 rounded-full text-sm font-semibold transition">✓ Salvar</button>
-                            <button type="button" onclick="selectTimerMode(timerMode)" class="p-3 bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-full transition">↺</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="lg:col-span-5 bg-[#fef3c7] rounded-3xl p-6 flex flex-col justify-between space-y-6">
-                    <div>
-                        <h3 class="text-lg font-bold text-zinc-900">Registro Rápido</h3>
-                        <p class="text-xs text-zinc-600 mb-4">Adicione horas diretamente a qualquer atividade</p>
-                        <form id="manual-hours-form" class="bg-white/70 p-4 rounded-2xl space-y-3.5">
-                            <div>
-                                <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
-                                <select id="manual-habit-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">DIA</label>
-                                    <select id="manual-day-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">HORAS</label>
-                                    <input type="number" id="manual-hours-input" step="0.25" min="0.1" max="24" value="1" required class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-mono text-zinc-900">
-                                </div>
-                            </div>
-                            <button type="submit" class="w-full py-2.5 bg-black hover:bg-zinc-800 text-white font-semibold rounded-full text-xs transition">Adicionar Horas</button>
-                        </form>
-                    </div>
-                    <div class="pt-4 border-t border-black/10">
-                        <h4 class="text-[10px] font-mono uppercase tracking-wider text-zinc-600 mb-3">VOLUME POR CATEGORIA</h4>
-                        <div id="category-hours-summary" class="space-y-3"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- MÉTRICAS -->
-        <section id="view-metrics" class="hidden space-y-6">
-            <!-- DIÁRIO DO SONO INTEGRADO NO MENU DE MÉTRICAS -->
-            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-indigo-600 font-bold">DIÁRIO DO SONO</span>
-                        <h2 class="text-lg font-bold text-zinc-900">Registro &amp; Eficiência do Sono</h2>
-                        <p class="text-xs text-zinc-500">Insira os horários de deitar, adormecer, acordar e levantar para acompanhar sua arquitetura de descanso.</p>
-                    </div>
-                    <button type="button" onclick="openSleepJournalModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold shadow-sm transition">
-                        + Registrar Diário do Sono
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead>
-                            <tr class="border-b border-zinc-200 text-zinc-400 font-mono uppercase text-[10px]">
-                                <th class="py-2.5 px-3">Data / Dia</th>
-                                <th class="py-2.5 px-3 text-center">Deitou</th>
-                                <th class="py-2.5 px-3 text-center">Dormiu</th>
-                                <th class="py-2.5 px-3 text-center">Acordou</th>
-                                <th class="py-2.5 px-3 text-center">Levantou</th>
-                                <th class="py-2.5 px-3 text-center text-indigo-600">Tempo de Cama</th>
-                                <th class="py-2.5 px-3 text-center text-emerald-600">Tempo Dormido</th>
-                                <th class="py-2.5 px-3 text-center text-purple-600">Eficiência (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sleep-journal-tbody" class="divide-y divide-zinc-100"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- PLANILHA INTERATIVA DE ATIVIDADE FÍSICA (EMBED GOOGLE SHEETS) -->
-            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">PLANILHA DE ATIVIDADE FÍSICA</span>
-                        <h2 class="text-lg font-bold text-zinc-900">Planilha Interativa Integrada</h2>
-                    </div>
-                    <a href="https://docs.google.com/spreadsheets/d/1zGeUgdOLsWAN83ulLImb_2dIKswnNZvHg0shPDcKMvU/edit?gid=0#gid=0" target="_blank" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-                        <span>↗ Abrir Planilha no Google Sheets</span>
-                    </a>
-                </div>
-                <div class="w-full h-[450px] rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-50">
-                    <iframe src="https://docs.google.com/spreadsheets/d/1zGeUgdOLsWAN83ulLImb_2dIKswnNZvHg0shPDcKMvU/edit?embedded=true&gid=0" class="w-full h-full border-0"></iframe>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-                    <div>
-                        <span class="text-[11px] font-mono uppercase font-bold text-emerald-600">1. PAINEL TOTAL — HORAS POR DIA VS. ENGAJAMENTO DIÁRIO</span>
-                        <p class="text-xs text-zinc-500 mt-1 mb-4">Volume diário agregado de todas as atividades na semana.</p>
-                    </div>
-                    <div class="relative h-80 w-full"><canvas id="totalPanelChart"></canvas></div>
-                </div>
-
-                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-                    <div class="space-y-3 mb-3">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                            <div>
-                                <span class="text-[11px] font-mono uppercase font-bold text-purple-600">2. PAINEL POR ATIVIDADE (LINHA + DESVIO-PADRÃO ±σ<sub>H</sub>)</span>
-                                <p class="text-xs text-zinc-500">Eixo X: Dias da Semana • Eixo Y: Horas de Atividade</p>
-                            </div>
-                            <div class="flex bg-zinc-100 p-1 rounded-full border border-zinc-200 text-xs shrink-0">
-                                <button type="button" onclick="setActivityChartScope('molecular')" id="btn-scope-molecular" class="px-3 py-1 rounded-full bg-black text-white font-semibold transition">Molecular</button>
-                                <button type="button" onclick="setActivityChartScope('group')" id="btn-scope-group" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Por Grupo</button>
-                            </div>
-                        </div>
-                        <div id="group-view-mode-bar" class="hidden items-center justify-between gap-2 bg-purple-50/80 px-3.5 py-2 rounded-2xl border border-purple-200/80">
-                            <span class="text-[11px] font-semibold text-purple-900">Modo de Grupo:</span>
-                            <div class="flex bg-white p-0.5 rounded-full border border-purple-200 text-[11px]">
-                                <button type="button" onclick="setGroupViewMode('total')" id="btn-group-total" class="px-3 py-1 rounded-full bg-purple-600 text-white font-semibold transition">Visualização Total (Todos)</button>
-                                <button type="button" onclick="setGroupViewMode('particular')" id="btn-group-particular" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Visualização Particular</button>
-                            </div>
-                        </div>
-                        <div id="activity-target-selector-row" class="flex items-center justify-between gap-2 bg-zinc-50 px-3.5 py-2 rounded-2xl border border-zinc-200">
-                            <span id="activity-target-label" class="text-xs text-zinc-600 font-medium">Selecionar Atividade Molecular:</span>
-                            <select id="activity-chart-target" onchange="renderMetricsView()" class="bg-white border border-zinc-200 rounded-full px-3 py-1 text-xs font-medium text-zinc-900 max-w-[240px]"></select>
-                        </div>
-                    </div>
-                    <div class="relative h-72 w-full"><canvas id="activityPanelChart"></canvas></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- AGENDA -->
-        <section id="view-calendar" class="hidden space-y-4">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <p class="text-xs text-zinc-500">💡 Clique em um horário vazio para criar ou <strong>clique sobre uma atividade agendada para editá-la ou excluí-la</strong>.</p>
-                <div class="flex gap-2">
-                    <button type="button" onclick="exportCalendarICS()" class="px-4 py-2 bg-white hover:bg-zinc-50 text-zinc-800 rounded-full text-xs font-semibold border border-zinc-200 shadow-sm">📥 Exportar .ICS</button>
-                    <button type="button" onclick="openEventModal(0, 9, null)" class="px-4 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold shadow-sm">+ Agendar</button>
-                </div>
-            </div>
-            <div class="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
-                <div class="overflow-x-auto">
-                    <div class="calendar-grid border-b border-zinc-200 bg-zinc-50 sticky top-0 z-10" id="calendar-header-grid"></div>
-                    <div class="max-h-[520px] overflow-y-auto relative">
-                        <div id="calendar-hours-grid" class="divide-y divide-zinc-100"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- MODAL DO DIÁRIO DO SONO -->
-    <div id="sleep-journal-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                <h3 class="text-base font-bold text-zinc-900">Registrar Diário do Sono</h3>
-                <button type="button" onclick="closeSleepJournalModal()" class="text-zinc-400 hover:text-black">✕</button>
-            </div>
-            <form id="sleep-journal-form" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Dia da Semana</label>
-                    <select id="sleep-journal-day" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900"></select>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário de Deitar</label>
-                        <input type="time" id="sleep-journal-bed" value="23:00" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Dormiu</label>
-                        <input type="time" id="sleep-journal-slept" value="23:30" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Acordou</label>
-                        <input type="time" id="sleep-journal-wake" value="07:00" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Levantou</label>
-                        <input type="time" id="sleep-journal-getup" value="07:30" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
-                    <button type="button" onclick="closeSleepJournalModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold">Salvar Registro</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL DE PERFIL -->
-    <div id="profile-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white border border-zinc-200 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                <div>
-                    <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">IDENTIFICAÇÃO &amp; PERSONALIZAÇÃO</span>
-                    <h3 class="text-lg font-bold text-zinc-900">Como gostaria de ser chamado(a)?</h3>
-                </div>
-                <button type="button" id="profile-modal-close-btn" onclick="closeProfileModal()" class="text-zinc-400 hover:text-black">✕</button>
-            </div>
-
-            <form id="profile-modal-form" class="space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Seu Nome / Apelido</label>
-                        <input type="text" id="profile-name-input" required oninput="updateAvatarPreview()" placeholder="Ex: Jonatan" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-2 text-sm text-zinc-900 font-medium">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Identificação (Flexão)</label>
-                        <select id="profile-gender-input" onchange="updateAvatarPreview()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-2 text-sm text-zinc-900 font-medium">
-                            <option value="masc">Masculino ("Pronto")</option>
-                            <option value="fem">Feminino ("Pronta")</option>
-                            <option value="nb">Neutro / Outro ("Pronto")</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="bg-zinc-900 text-white p-4 rounded-2xl flex items-center gap-3.5">
-                    <div id="avatar-live-preview" class="w-14 h-14 rounded-full bg-[#00e5ff] flex items-center justify-center text-3xl shadow-md shrink-0">🧑‍💻</div>
-                    <div class="overflow-hidden">
-                        <div class="text-[10px] text-zinc-400 font-mono uppercase">PRÉVIA DO CUMPRIMENTO</div>
-                        <div id="avatar-greeting-preview" class="text-xs sm:text-sm font-bold text-white mt-0.5 leading-snug"></div>
-                    </div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Data do Treino</label>
+                    <input type="date" id="new-workout-date" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1.5">1. Tom de Pele</label>
-                    <div class="grid grid-cols-6 gap-2" id="skin-tone-selector">
-                        <button type="button" onclick="selectSkinTone('')" data-tone="" class="skin-btn py-2 rounded-xl border-2 border-black bg-zinc-50 text-xs font-semibold">💛 Padrão</button>
-                        <button type="button" onclick="selectSkinTone('🏻')" data-tone="🏻" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏻 Claro</button>
-                        <button type="button" onclick="selectSkinTone('🏼')" data-tone="🏼" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏼 Méd-Cl</button>
-                        <button type="button" onclick="selectSkinTone('🏽')" data-tone="🏽" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏽 Médio</button>
-                        <button type="button" onclick="selectSkinTone('🏾')" data-tone="🏾" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏾 Méd-Esc</button>
-                        <button type="button" onclick="selectSkinTone('🏿')" data-tone="🏿" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏿 Escuro</button>
-                    </div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Divisão Prescrita (Template)</label>
+                    <select id="new-workout-split" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+                        <option value="Upper A">Upper A (Peitoral, Costas, Deltóide Lat, Braços)</option>
+                        <option value="Lower A">Lower A (Quadríceps, Glúteos, RDL, Panturrilha)</option>
+                        <option value="Upper B">Upper B (Costas, Desenvolvimento, Remada, Cardio)</option>
+                        <option value="Lower B">Lower B (Leg 45°, Flexora, Búlgaro, Abdômen)</option>
+                    </select>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1.5">2. Profissão, Cabelo &amp; Acessórios</label>
-                    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1" id="avatar-role-grid"></div>
-                </div>
-                <div class="pt-3 border-t border-zinc-100">
-                    <button type="submit" class="w-full py-3 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-bold uppercase tracking-wider transition">Salvar Perfil &amp; Continuar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL ATIVIDADE -->
-    <div id="habit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white border border-zinc-200 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                <h3 class="text-base font-bold text-zinc-900">Configurar Atividade &amp; Meta Semanal</h3>
-                <button type="button" onclick="closeHabitModal()" class="text-zinc-400 hover:text-black">✕</button>
             </div>
-            <form id="habit-modal-form" class="space-y-4">
-                <input type="hidden" id="modal-habit-index" value="-1">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div class="sm:col-span-2">
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Nome da Atividade</label>
-                        <input type="text" id="modal-habit-name" required placeholder="Ex: Academia, Mestrado..." class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Grupo</label>
-                        <select id="modal-habit-category" onchange="onHabitCategoryChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900">
-                            <option value="atv_fisica">🏋️ Atividade Física</option>
-                            <option value="sono">🌙 Sono</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Meta de Horas / Semana (H*)</label>
-                    <input type="number" id="modal-habit-target-hours" step="0.5" min="0.5" required value="5" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono text-zinc-900">
-                </div>
-                <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200 space-y-2">
-                    <label class="block text-[11px] font-semibold uppercase text-zinc-600">Horas Realizadas por Dia (h<sub>it</sub>)</label>
-                    <div class="grid grid-cols-7 gap-1.5" id="modal-daily-hours-inputs"></div>
-                </div>
-                <div id="modal-bedtime-section" class="bg-[#e0e7ff] p-3.5 rounded-2xl border border-indigo-200 space-y-2 hidden">
-                    <label class="block text-[11px] font-semibold uppercase text-indigo-900">🌙 Tempo de Cama por Dia (hh:mm)</label>
-                    <div class="grid grid-cols-7 gap-1" id="modal-bedtime-inputs"></div>
-                </div>
-                <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
-                    <button type="button" onclick="closeHabitModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 bg-black text-white rounded-full text-xs font-semibold">Salvar Meta</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL EVENTO -->
-    <div id="event-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                <h3 id="event-modal-title" class="text-base font-bold text-zinc-900">Agendar Bloco Semanal</h3>
-                <button type="button" onclick="closeEventModal()" class="text-zinc-400 hover:text-black">✕</button>
-            </div>
-            <form id="event-modal-form" class="space-y-3.5">
-                <input type="hidden" id="event-modal-id" value="">
-                <div>
-                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Atividade</label>
-                    <select id="event-habit-select" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900"></select>
-                </div>
-                <div class="grid grid-cols-3 gap-2.5">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Dia</label>
-                        <select id="event-day-select" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs text-zinc-900"></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Início (h)</label>
-                        <input type="number" id="event-start-hour" min="6" max="22" value="9" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono text-zinc-900">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Duração (h)</label>
-                        <input type="number" id="event-duration" step="0.5" min="0.5" max="8" value="1.5" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono text-zinc-900">
-                    </div>
-                </div>
-                <div class="flex flex-col gap-2 pt-3 border-t border-zinc-100">
-                    <button type="submit" class="w-full py-2.5 bg-black text-white rounded-full text-xs font-semibold">Salvar Alterações na Grade</button>
-                    <button type="button" onclick="saveAndOpenGoogleCal()" class="w-full py-2.5 bg-[#b9f6ca] text-emerald-950 rounded-full text-xs font-semibold">🔗 Salvar e Abrir no Google Agenda</button>
-                    <button type="button" id="btn-delete-event" onclick="deleteCurrentEditingEvent()" class="hidden w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-full text-xs font-semibold transition">🗑️ Excluir Este Bloco da Agenda</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL GIST -->
-    <div id="cloud-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                <h3 class="text-base font-bold text-zinc-900">Sincronizar via GitHub Gist</h3>
-                <button type="button" onclick="closeCloudModal()" class="text-zinc-400 hover:text-black">✕</button>
-            </div>
-            <div class="space-y-3">
-                <input type="password" id="gist-token-input" placeholder="GitHub Token (escopo: gist)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
-                <input type="text" id="gist-id-input" placeholder="Gist ID (deixe vazio no 1º envio)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
-                <div id="cloud-status-msg" class="text-xs font-mono text-emerald-700"></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 pt-3 border-t border-zinc-100">
-                <button type="button" onclick="pullFromGist()" class="py-2.5 bg-zinc-100 text-zinc-800 rounded-full text-xs font-semibold">⬇️ Baixar</button>
-                <button type="button" onclick="pushToGist()" class="py-2.5 bg-black text-white rounded-full text-xs font-semibold">⬆️ Enviar</button>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeNewWorkoutSessionModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500">Cancelar</button>
+                <button onclick="createWorkoutSessionFromTemplate()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white">Gerar Planilha</button>
             </div>
         </div>
     </div>
 
+    <!-- ================================================================== -->
+    <!-- MODAL 2: REGISTRO DO DIÁRIO DO SONO                                -->
+    <!-- ================================================================== -->
+    <div id="sleep-journal-modal" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <form onsubmit="saveSleepJournalEntry(event)" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Registrar Noite de Sono</h3>
+                <button type="button" onclick="closeSleepJournalModal()" class="text-slate-400">✕</button>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Data de Referência</label>
+                <input type="date" id="sleep-date-input" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Hora que Deitou</label>
+                    <input type="time" id="sleep-bedtime-input" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Hora que Dormiu</label>
+                    <input type="time" id="sleep-sleeptime-input" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Hora que Acordou</label>
+                    <input type="time" id="sleep-waketime-input" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Hora que Levantou</label>
+                    <input type="time" id="sleep-uptime-input" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Qualidade (1-5)</label>
+                    <input type="number" min="1" max="5" id="sleep-quality-input" value="4" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Observações</label>
+                    <input type="text" id="sleep-notes-input" placeholder="Despertares..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeSleepJournalModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white">Salvar Registro</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MODAL 3: NOVA ATIVIDADE GERAL & CONFIGURAÇÃO GITHUB GIST           -->
+    <!-- ================================================================== -->
+    <div id="habit-modal" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <form onsubmit="saveNewHabit(event)" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 shadow-xl space-y-4">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">Nova Atividade Semanal</h3>
+            <input type="text" id="habit-name-input" placeholder="Nome da atividade (ex: Estudo Espanhol FFLCH)" required class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+            <div class="grid grid-cols-2 gap-3">
+                <select id="habit-group-input" class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+                    <option value="academico">Acadêmico / USP</option>
+                    <option value="consultoria">Consultoria Estatística</option>
+                    <option value="atv_fisica">Atividade Física</option>
+                    <option value="sono">Sono & Recuperação</option>
+                </select>
+                <input type="number" step="0.5" id="habit-target-input" placeholder="Meta Semanal (h)" value="6" class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeHabitModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500">Cancelar</button>
+                <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white">Adicionar</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="cloud-modal" class="fixed inset-0 z-50 hidden bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 shadow-xl space-y-4">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">Sincronização GitHub Gist</h3>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">GitHub Personal Access Token (escopo gist)</label>
+                <input type="password" id="gist-token-input" placeholder="ghp_..." class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Gist ID (deixe em branco p/ criar automaticamente)</label>
+                <input type="text" id="gist-id-input" placeholder="Ex: a1b2c3d4..." class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('cloud-modal').classList.add('hidden')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500">Fechar</button>
+                <button onclick="saveCloudSettings()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white">Salvar & Sincronizar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulos JS -->
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/math.js"></script>
     <script src="assets/js/charts.js"></script>
