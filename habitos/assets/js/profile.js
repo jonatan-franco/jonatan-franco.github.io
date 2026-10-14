@@ -1,5 +1,5 @@
 /* ===================================================================
- * profile.js — Perfil, Avatar e Cumprimento — HabitQuant Pro
+ * profile.js — Perfil, Avatar e Cumprimento — HaQt
  * =================================================================== */
 
 const PROFILE_STORAGE_KEY = 'hq_profile_v1';
@@ -23,7 +23,7 @@ const AVATAR_ROLES = [
     { id: 'ninja',      emoji: '🥷',   label: 'Ninja' },
 ];
 
-let currentProfile = { name: 'HabitQuant Pro', gender: 'nb', role: 'dev', skinTone: '' };
+let currentProfile = { name: 'HaQt', gender: 'nb', role: 'dev', skinTone: '' };
 <<<<<<< HEAD
 let selectedRoleId  = 'dev';
 =======
@@ -65,7 +65,7 @@ function getReadyWordForGender(gender) {
 /* Cumprimento OFICIAL — usado pelo header do dashboard
  * Formato: "Bom dia, [nome]! [Pronto|Pronta] para [iniciar|finalizar] a semana?" */
 window.getUserGreeting = function () {
-    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HabitQuant Pro';
+    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HaQt';
     const phase   = getWeekPhaseAction();
     const ready   = getReadyWordForGender(currentProfile.gender);
     if (hasName) {
@@ -77,7 +77,7 @@ window.getUserGreeting = function () {
 
 /* Cumprimento ESTÁVEL — sempre "Bom dia, [nome]!" */
 window.getUserGreeting = function () {
-    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HabitQuant Pro';
+    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HaQt';
     return hasName ? `Bom dia, ${currentProfile.name}!` : 'Bom dia, Semana Corrente';
 >>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
 };
@@ -155,7 +155,7 @@ window.openProfileModal = function (opts = {}) {
     if (!m) return;
 
     const nameInput = document.getElementById('profile-name-input');
-    if (nameInput) nameInput.value = (currentProfile.name && currentProfile.name !== 'HabitQuant Pro') ? currentProfile.name : '';
+    if (nameInput) nameInput.value = (currentProfile.name && currentProfile.name !== 'HaQt') ? currentProfile.name : '';
     const genderInput = document.getElementById('profile-gender-input');
     if (genderInput) genderInput.value = currentProfile.gender || 'nb';
 
@@ -202,7 +202,7 @@ window.saveProfile = function (patch) {
 };
 
 window.hasProfile = function () {
-    return !!(currentProfile.name && currentProfile.name !== 'HabitQuant Pro');
+    return !!(currentProfile.name && currentProfile.name !== 'HaQt');
 };
 
 function applyProfileToUI() {
@@ -213,7 +213,7 @@ function applyProfileToUI() {
     });
     ['sidebar-user-name', 'mobile-user-name'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.textContent = currentProfile.name || 'HabitQuant Pro';
+        if (el) el.textContent = currentProfile.name || 'HaQt';
     });
     if (typeof window.refreshHeaderTitle === 'function') window.refreshHeaderTitle();
 }
