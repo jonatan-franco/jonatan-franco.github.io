@@ -26,28 +26,18 @@
             <div id="mobile-user-avatar" class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-base flex items-center justify-center">🧑‍💻</div>
             <span class="font-bold text-sm tracking-tight" id="mobile-user-name">HaQt</span>
         </div>
-        <button type="button" onclick="toggleMobileDrawer()" class="p-1.5 text-zinc-300 hover:text-white">
-            <i data-lucide="menu" class="w-6 h-6"></i>
-        </button>
+        <button type="button" onclick="toggleMobileDrawer()" class="p-1.5 text-zinc-300 hover:text-white"><i data-lucide="menu" class="w-6 h-6"></i></button>
     </div>
 
     <!-- GAVETA (MOBILE) -->
     <div id="mobile-drawer" class="hidden md:hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
-        <button type="button" onclick="openProfileModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
-            <i data-lucide="user" class="w-4 h-4"></i> <span>Editar Perfil &amp; Avatar</span>
-        </button>
-        <button type="button" onclick="openCloudModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
-            <i data-lucide="cloud" class="w-4 h-4"></i> <span>GitHub Gist Sync</span>
-        </button>
-        <button type="button" onclick="exportToCSV(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
-            <i data-lucide="download" class="w-4 h-4"></i> <span>Exportar CSV</span>
-        </button>
-        <button type="button" onclick="resetAllData(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-rose-400 hover:text-rose-300 w-full py-1.5">
-            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> <span>Resetar Dados</span>
-        </button>
+        <button type="button" onclick="openProfileModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5"><i data-lucide="user" class="w-4 h-4"></i> <span>Editar Perfil &amp; Avatar</span></button>
+        <button type="button" onclick="openCloudModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5"><i data-lucide="cloud" class="w-4 h-4"></i> <span>GitHub Gist Sync</span></button>
+        <button type="button" onclick="exportToCSV(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5"><i data-lucide="download" class="w-4 h-4"></i> <span>Exportar CSV</span></button>
+        <button type="button" onclick="resetAllData(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-rose-400 hover:text-rose-300 w-full py-1.5"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> <span>Resetar Dados</span></button>
     </div>
 
-    <!-- SIDEBAR (DESKTOP — sticky, expandível) -->
+    <!-- SIDEBAR (DESKTOP) -->
     <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex self-start flex-col justify-between bg-black text-white shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 select-none">
         <div class="p-4 space-y-6">
             <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
@@ -58,57 +48,29 @@
                         <div class="text-[11px] font-mono text-[#00e676] mt-1">Editar Perfil ✎</div>
                     </div>
                 </div>
-                <button type="button" onclick="toggleDesktopSidebar()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-900 transition shrink-0" title="Expandir / Recolher Menu">
-                    <i data-lucide="panel-left-close" id="sidebar-toggle-icon" class="w-4 h-4"></i>
-                </button>
+                <button type="button" onclick="toggleDesktopSidebar()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-900 transition shrink-0"><i data-lucide="panel-left-close" id="sidebar-toggle-icon" class="w-4 h-4"></i></button>
             </div>
-
             <nav class="space-y-1.5">
-                <button type="button" onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition w-full">
-                    <i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Dashboard</span>
-                </button>
-                <button type="button" onclick="navigateTo('timer')" data-route="timer" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full">
-                    <i data-lucide="timer" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Timer</span>
-                </button>
-                <button type="button" onclick="navigateTo('metrics')" data-route="metrics" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full">
-                    <i data-lucide="bar-chart-2" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Métricas</span>
-                </button>
-                <button type="button" onclick="navigateTo('calendar')" data-route="calendar" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full">
-                    <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Agenda</span>
-                </button>
+                <button type="button" onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition w-full"><i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Dashboard</span></button>
+                <button type="button" onclick="navigateTo('timer')" data-route="timer" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="timer" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Timer</span></button>
+                <button type="button" onclick="navigateTo('metrics')" data-route="metrics" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="bar-chart-2" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Métricas</span></button>
+                <button type="button" onclick="navigateTo('calendar')" data-route="calendar" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="calendar" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Agenda</span></button>
             </nav>
         </div>
-
         <div class="p-4 border-t border-zinc-900 space-y-2 text-xs">
-            <button type="button" onclick="openProfileModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
-                <i data-lucide="user-check" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Perfil &amp; Ícone</span>
-            </button>
-            <button type="button" onclick="openCloudModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
-                <i data-lucide="cloud" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">GitHub Gist Sync</span>
-            </button>
-            <button type="button" onclick="exportToCSV()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
-                <i data-lucide="download" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Exportar CSV</span>
-            </button>
-            <button type="button" onclick="resetAllData()" class="flex items-center gap-3 px-3 py-2 text-rose-400 hover:text-rose-300 rounded-lg hover:bg-zinc-900 transition w-full">
-                <i data-lucide="rotate-ccw" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Resetar Dados</span>
-            </button>
+            <button type="button" onclick="openProfileModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="user-check" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Perfil &amp; Ícone</span></button>
+            <button type="button" onclick="openCloudModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="cloud" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">GitHub Gist Sync</span></button>
+            <button type="button" onclick="exportToCSV()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="download" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Exportar CSV</span></button>
+            <button type="button" onclick="resetAllData()" class="flex items-center gap-3 px-3 py-2 text-rose-400 hover:text-rose-300 rounded-lg hover:bg-zinc-900 transition w-full"><i data-lucide="rotate-ccw" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Resetar Dados</span></button>
         </div>
     </aside>
 
     <!-- BOTTOM NAV (MOBILE) -->
     <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
-        <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold">
-            <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span>
-        </button>
-        <button type="button" onclick="navigateTo('timer')" data-mobile-route="timer" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
-            <i data-lucide="timer" class="w-4 h-4 mb-0.5"></i><span>Timer</span>
-        </button>
-        <button type="button" onclick="navigateTo('metrics')" data-mobile-route="metrics" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
-            <i data-lucide="bar-chart-2" class="w-4 h-4 mb-0.5"></i><span>Métricas</span>
-        </button>
-        <button type="button" onclick="navigateTo('calendar')" data-mobile-route="calendar" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
-            <i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span>Agenda</span>
-        </button>
+        <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold"><i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span></button>
+        <button type="button" onclick="navigateTo('timer')" data-mobile-route="timer" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="timer" class="w-4 h-4 mb-0.5"></i><span>Timer</span></button>
+        <button type="button" onclick="navigateTo('metrics')" data-mobile-route="metrics" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="bar-chart-2" class="w-4 h-4 mb-0.5"></i><span>Métricas</span></button>
+        <button type="button" onclick="navigateTo('calendar')" data-mobile-route="calendar" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span>Agenda</span></button>
     </nav>
 
     <main class="flex-1 p-5 md:p-8 max-w-7xl mx-auto w-full space-y-8">
@@ -199,17 +161,16 @@
                 </div>
             </div>
 
+            <!-- FILTRO DE GRUPOS: ATIVIDADE FÍSICA E SONO -->
             <div class="space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
                         <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">PAINÉIS DE ATIVIDADES</span>
-                        <h2 class="text-base font-semibold text-zinc-800">Acompanhe cada atividade individualmente</h2>
+                        <h2 class="text-base font-semibold text-zinc-800">Acompanhe atividade física e sono</h2>
                     </div>
                     <div class="flex flex-wrap items-center gap-1 bg-white p-1 rounded-full border border-zinc-200 text-xs shadow-sm">
                         <button type="button" onclick="setCategoryFilter('all')" id="cat-btn-all" class="px-3.5 py-1.5 rounded-full bg-black text-white font-semibold">Todas</button>
-                        <button type="button" onclick="setCategoryFilter('academia')" id="cat-btn-academia" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">🏋️ Academia</button>
-                        <button type="button" onclick="setCategoryFilter('estudos')" id="cat-btn-estudos" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">📚 Estudos</button>
-                        <button type="button" onclick="setCategoryFilter('saude')" id="cat-btn-saude" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">❤️ Saúde</button>
+                        <button type="button" onclick="setCategoryFilter('atv_fisica')" id="cat-btn-atv_fisica" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">🏋️ Atividade Física</button>
                         <button type="button" onclick="setCategoryFilter('sono')" id="cat-btn-sono" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">🌙 Sono</button>
                     </div>
                 </div>
@@ -340,6 +301,53 @@
 
         <!-- MÉTRICAS -->
         <section id="view-metrics" class="hidden space-y-6">
+            <!-- DIÁRIO DO SONO INTEGRADO NO MENU DE MÉTRICAS -->
+            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase tracking-widest text-indigo-600 font-bold">DIÁRIO DO SONO</span>
+                        <h2 class="text-lg font-bold text-zinc-900">Registro &amp; Eficiência do Sono</h2>
+                        <p class="text-xs text-zinc-500">Insira os horários de deitar, adormecer, acordar e levantar para acompanhar sua arquitetura de descanso.</p>
+                    </div>
+                    <button type="button" onclick="openSleepJournalModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold shadow-sm transition">
+                        + Registrar Diário do Sono
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-zinc-200 text-zinc-400 font-mono uppercase text-[10px]">
+                                <th class="py-2.5 px-3">Data / Dia</th>
+                                <th class="py-2.5 px-3 text-center">Deitou</th>
+                                <th class="py-2.5 px-3 text-center">Dormiu</th>
+                                <th class="py-2.5 px-3 text-center">Acordou</th>
+                                <th class="py-2.5 px-3 text-center">Levantou</th>
+                                <th class="py-2.5 px-3 text-center text-indigo-600">Tempo de Cama</th>
+                                <th class="py-2.5 px-3 text-center text-emerald-600">Tempo Dormido</th>
+                                <th class="py-2.5 px-3 text-center text-purple-600">Eficiência (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sleep-journal-tbody" class="divide-y divide-zinc-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PLANILHA INTERATIVA DE ATIVIDADE FÍSICA (EMBED GOOGLE SHEETS) -->
+            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">PLANILHA DE ATIVIDADE FÍSICA</span>
+                        <h2 class="text-lg font-bold text-zinc-900">Planilha Interativa Integrada</h2>
+                    </div>
+                    <a href="https://docs.google.com/spreadsheets/d/1zGeUgdOLsWAN83ulLImb_2dIKswnNZvHg0shPDcKMvU/edit?gid=0#gid=0" target="_blank" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+                        <span>↗ Abrir Planilha no Google Sheets</span>
+                    </a>
+                </div>
+                <div class="w-full h-[450px] rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-50">
+                    <iframe src="https://docs.google.com/spreadsheets/d/1zGeUgdOLsWAN83ulLImb_2dIKswnNZvHg0shPDcKMvU/edit?embedded=true&gid=0" class="w-full h-full border-0"></iframe>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
                     <div>
@@ -398,7 +406,47 @@
         </section>
     </main>
 
-    <!-- MODAL 0: PERFIL -->
+    <!-- MODAL DO DIÁRIO DO SONO -->
+    <div id="sleep-journal-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <h3 class="text-base font-bold text-zinc-900">Registrar Diário do Sono</h3>
+                <button type="button" onclick="closeSleepJournalModal()" class="text-zinc-400 hover:text-black">✕</button>
+            </div>
+            <form id="sleep-journal-form" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Dia da Semana</label>
+                    <select id="sleep-journal-day" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário de Deitar</label>
+                        <input type="time" id="sleep-journal-bed" value="23:00" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Dormiu</label>
+                        <input type="time" id="sleep-journal-slept" value="23:30" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Acordou</label>
+                        <input type="time" id="sleep-journal-wake" value="07:00" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Levantou</label>
+                        <input type="time" id="sleep-journal-getup" value="07:30" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
+                    <button type="button" onclick="closeSleepJournalModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold">Salvar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE PERFIL -->
     <div id="profile-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
@@ -453,7 +501,7 @@
         </div>
     </div>
 
-    <!-- MODAL 1: ATIVIDADE -->
+    <!-- MODAL ATIVIDADE -->
     <div id="habit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
@@ -470,9 +518,7 @@
                     <div>
                         <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Grupo</label>
                         <select id="modal-habit-category" onchange="onHabitCategoryChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900">
-                            <option value="academia">🏋️ Academia</option>
-                            <option value="estudos">📚 Estudos</option>
-                            <option value="saude">❤️ Saúde</option>
+                            <option value="atv_fisica">🏋️ Atividade Física</option>
                             <option value="sono">🌙 Sono</option>
                         </select>
                     </div>
@@ -488,7 +534,6 @@
                 <div id="modal-bedtime-section" class="bg-[#e0e7ff] p-3.5 rounded-2xl border border-indigo-200 space-y-2 hidden">
                     <label class="block text-[11px] font-semibold uppercase text-indigo-900">🌙 Tempo de Cama por Dia (hh:mm)</label>
                     <div class="grid grid-cols-7 gap-1" id="modal-bedtime-inputs"></div>
-                    <p class="text-[10px] text-indigo-700 mt-1">A <strong>Sensibilidade Comportamental</strong> mede como o tempo dormido responde ao tempo de cama.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
                     <button type="button" onclick="closeHabitModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
@@ -498,7 +543,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: EVENTO -->
+    <!-- MODAL EVENTO -->
     <div id="event-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
@@ -534,7 +579,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: GIST -->
+    <!-- MODAL GIST -->
     <div id="cloud-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
