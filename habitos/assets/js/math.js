@@ -1,7 +1,4 @@
-/* Sensibilidade Comportamental do Sono:
-   Elasticidade do tempo dormido em relação ao tempo de cama.
-   Regressão linear simples: sono = a + b·cama
-   ε = b · (média_cama / média_sono) */
+/* Sensibilidade Comportamental do Sono: elasticidade de h_dormido vs h_cama */
 function calcSleepElasticity(sleepArr, bedArr) {
     const pairs = [];
     for (let i = 0; i < 7; i++) {
@@ -19,12 +16,9 @@ function calcSleepElasticity(sleepArr, bedArr) {
         cov  += (p.b - meanB) * (p.s - meanS);
         varB += Math.pow(p.b - meanB, 2);
     });
-
-    /* Se não há variação no tempo de cama, não há como medir sensibilidade */
     if (varB === 0) return 0;
-
-    const slope = cov / varB; /* Δsono / Δcama (h de sono por h de cama) */
-    return slope * (meanB / (meanS || 1)); /* elasticidade no ponto médio */
+    const slope = cov / varB;
+    return slope * (meanB / (meanS || 1));
 }
 
 function calcHabitMetrics(habit) {
@@ -70,7 +64,6 @@ function calcHabitMetrics(habit) {
     };
 }
 
-/* Métricas de sono agregadas (tempo de cama, tempo dormido, eficiência) */
 function calcSleepAggregates(habit) {
     if (!habit || !Array.isArray(habit.bedtimeHours)) {
         return { meanBed: 0, meanSlept: 0, efficiency: 0, activeDays: 0 };
@@ -79,11 +72,7 @@ function calcSleepAggregates(habit) {
     for (let i = 0; i < 7; i++) {
         const b = parseFloat(habit.bedtimeHours[i]) || 0;
         const s = parseFloat(habit.dailyHours[i]) || 0;
-        if (b > 0) {
-            sumBed += b;
-            sumSlept += s;
-            activeDays++;
-        }
+        if (b > 0) { sumBed += b; sumSlept += s; activeDays++; }
     }
     const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
     const meanSlept = activeDays > 0 ? sumSlept / activeDays : 0;
@@ -118,10 +107,7 @@ function calcWeeklyGlobalMetrics() {
 
     let bestStreak = 0, leaderName = 'Nenhum';
     metrics.forEach((m, i) => {
-        if (m.streak > bestStreak) {
-            bestStreak = m.streak;
-            leaderName = habits[i].name;
-        }
+        if (m.streak > bestStreak) { bestStreak = m.streak; leaderName = habits[i].name; }
     });
 
     const tIdx = todayIndex !== -1 ? todayIndex : 0;
