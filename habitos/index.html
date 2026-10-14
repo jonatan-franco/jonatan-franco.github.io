@@ -1,394 +1,523 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HabitQuant Pro — Monitoramento Longitudinal & Elasticidade</title>
+    <title>HabitQuant Pro — Análise de Hábitos</title>
+    <!-- Fontes Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { colors: { slate: { 850: '#131c2e', 900: '#0f172a', 950: '#020617' } } } }
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        pastel: {
+                            mint: '#b9f6ca',
+                            mintSoft: '#dcfce7',
+                            lavender: '#e9d5ff',
+                            lavenderSoft: '#f3e8ff',
+                            cream: '#fef3c7',
+                            peach: '#ffedd5',
+                            pink: '#fce7f3'
+                        }
+                    }
+                }
+            }
         }
     </script>
-    <style>
-        .habit-check:checked + div { background-color: #10b981; border-color: #10b981; }
-        .habit-check:checked + div svg { opacity: 1; transform: scale(1); }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        .calendar-grid { display: grid; grid-template-columns: 56px repeat(7, minmax(105px, 1fr)); }
-    </style>
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
+<body class="bg-[#fafafa] text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
 
-    <!-- SIDEBAR (DESKTOP) & BOTTOM BAR (MOBILE) -->
-    <aside class="fixed bottom-0 left-0 right-0 md:static md:w-64 bg-slate-900/95 backdrop-blur-md border-t md:border-t-0 md:border-r border-slate-800 flex md:flex-col justify-between z-40 md:h-screen shrink-0">
-        <div class="flex md:flex-col items-center md:items-stretch w-full px-2 py-1.5 md:p-4 gap-1 md:gap-2">
-            <div class="hidden md:flex items-center gap-3 px-2 py-3 mb-4 border-b border-slate-800/80">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center text-slate-950 font-black text-base shadow-lg">HQ</div>
-                <div>
-                    <div class="font-bold text-sm text-slate-100 leading-none">HabitQuant Pro</div>
-                    <div class="text-[10px] font-mono text-emerald-400 mt-1">Análise de Sensibilidade</div>
+    <!-- ================================================================= -->
+    <!-- TOPBAR MOBILE (Com Menu Hambúrguer Expandível igual ao print)      -->
+    <!-- ================================================================= -->
+    <div class="md:hidden bg-black text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-xs flex items-center justify-center">HQ</div>
+            <span class="font-bold text-sm tracking-tight">HabitQuant Pro</span>
+        </div>
+        <button type="button" onclick="toggleMobileDrawer()" class="p-1.5 text-zinc-300 hover:text-white">
+            <i data-lucide="menu" id="mobile-menu-icon" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <!-- Gaveta Mobile Expandível (Exportar CSV / Sync / Resetar) -->
+    <div id="mobile-drawer" class="hidden md:hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
+        <button type="button" onclick="openCloudModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
+            <i data-lucide="cloud" class="w-4 h-4"></i> <span>GitHub Gist Sync</span>
+        </button>
+        <button type="button" onclick="exportToCSV(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
+            <i data-lucide="download" class="w-4 h-4"></i> <span>Exportar CSV</span>
+        </button>
+        <button type="button" onclick="resetAllData(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-rose-400 hover:text-rose-300 w-full py-1.5">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> <span>Resetar Dados</span>
+        </button>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SIDEBAR PRETA EXPANDÍVEL / RETRÁTIL (DESKTOP)                     -->
+    <!-- ================================================================= -->
+    <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex flex-col justify-between bg-black text-white shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 select-none">
+        <div class="p-4 space-y-6">
+            <!-- Topo da Sidebar + Botão de Expandir/Recolher -->
+            <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="w-9 h-9 rounded-full bg-[#00e5ff] text-black font-extrabold text-sm flex items-center justify-center shrink-0 shadow">
+                        HQ
+                    </div>
+                    <div class="sidebar-label overflow-hidden whitespace-nowrap">
+                        <div class="font-bold text-sm text-white leading-none">HabitQuant Pro</div>
+                        <div class="text-[11px] font-mono text-[#00e676] mt-1">Análise de Hábitos</div>
+                    </div>
                 </div>
+                <button type="button" onclick="toggleDesktopSidebar()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-900 transition shrink-0" title="Expandir / Recolher Menu">
+                    <i data-lucide="panel-left-close" id="sidebar-toggle-icon" class="w-4 h-4"></i>
+                </button>
             </div>
 
-            <nav class="grid grid-cols-4 md:flex md:flex-col w-full gap-1 md:gap-1.5">
-                <button type="button" onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-semibold transition w-full text-left">
-                    <span>📊</span><span class="truncate">Dashboard</span>
+            <!-- Links de Navegação -->
+            <nav class="space-y-1.5">
+                <button type="button" onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition w-full">
+                    <i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label truncate">Dashboard</span>
                 </button>
-                <button type="button" onclick="navigateTo('timer')" data-route="timer" class="nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition w-full text-left">
-                    <span>⏱️</span><span class="truncate">Timer</span>
+                <button type="button" onclick="navigateTo('timer')" data-route="timer" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full">
+                    <i data-lucide="timer" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label truncate">Timer</span>
                 </button>
-                <button type="button" onclick="navigateTo('metrics')" data-route="metrics" class="nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition w-full text-left">
-                    <span>📈</span><span class="truncate">Métricas</span>
+                <button type="button" onclick="navigateTo('metrics')" data-route="metrics" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label truncate">Métricas</span>
                 </button>
-                <button type="button" onclick="navigateTo('calendar')" data-route="calendar" class="nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium transition w-full text-left">
-                    <span>📅</span><span class="truncate">Agenda</span>
+                <button type="button" onclick="navigateTo('calendar')" data-route="calendar" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full">
+                    <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
+                    <span class="sidebar-label truncate">Agenda</span>
                 </button>
             </nav>
         </div>
 
-        <div class="hidden md:flex flex-col gap-2 p-4 border-t border-slate-800 text-xs">
-            <button type="button" onclick="openCloudModal()" class="px-3 py-2 bg-indigo-950/50 hover:bg-indigo-900/60 text-indigo-300 rounded-lg border border-indigo-700/40 w-full">☁️ GitHub Gist Sync</button>
-            <button type="button" onclick="exportToCSV()" class="px-3 py-2 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700/60 w-full">📥 Exportar Tidy CSV</button>
-            <button type="button" onclick="resetAllData()" class="px-3 py-2 bg-rose-950/30 hover:bg-rose-900/40 text-rose-300 rounded-lg border border-rose-800/30 w-full">🔄 Resetar Padrão</button>
+        <!-- Rodapé da Sidebar -->
+        <div class="p-4 border-t border-zinc-900 space-y-2 text-xs">
+            <button type="button" onclick="openCloudModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
+                <i data-lucide="cloud" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-label truncate" id="sidebar-sync-text">GitHub Gist Sync</span>
+            </button>
+            <button type="button" onclick="exportToCSV()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
+                <i data-lucide="download" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-label truncate">Exportar CSV</span>
+            </button>
+            <button type="button" onclick="resetAllData()" class="flex items-center gap-3 px-3 py-2 text-rose-400 hover:text-rose-300 rounded-lg hover:bg-zinc-900 transition w-full">
+                <i data-lucide="rotate-ccw" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-label truncate">Resetar Dados</span>
+            </button>
         </div>
     </aside>
 
-    <!-- CONTEÚDO PRINCIPAL -->
-    <main class="flex-1 p-4 md:p-7 max-w-7xl mx-auto w-full space-y-6">
+    <!-- ================================================================= -->
+    <!-- BARRA DE NAVEGAÇÃO INFERIOR PRETA (MOBILE)                        -->
+    <!-- ================================================================= -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
+        <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold">
+            <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i>
+            <span>Dashboard</span>
+        </button>
+        <button type="button" onclick="navigateTo('timer')" data-mobile-route="timer" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
+            <i data-lucide="timer" class="w-4 h-4 mb-0.5"></i>
+            <span>Timer</span>
+        </button>
+        <button type="button" onclick="navigateTo('metrics')" data-mobile-route="metrics" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
+            <i data-lucide="bar-chart-2" class="w-4 h-4 mb-0.5"></i>
+            <span>Métricas</span>
+        </button>
+        <button type="button" onclick="navigateTo('calendar')" data-mobile-route="calendar" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
+            <i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i>
+            <span>Agenda</span>
+        </button>
+    </nav>
 
-        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+    <!-- ================================================================= -->
+    <!-- ÁREA DE CONTEÚDO PRINCIPAL (TEMA CLARO PASTEL)                    -->
+    <!-- ================================================================= -->
+    <main class="flex-1 p-5 md:p-8 max-w-7xl mx-auto w-full space-y-8">
+
+        <!-- CABEÇALHO DINÂMICO -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <div class="flex items-center gap-2">
-                    <span class="px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">Semana Corrente</span>
-                    <span id="week-range-badge" class="text-xs font-mono text-slate-400"></span>
+                <div class="flex items-center gap-2.5">
+                    <span id="header-eyebrow" class="text-[11px] font-mono uppercase tracking-widest text-zinc-500">DASHBOARD</span>
+                    <span class="px-2.5 py-0.5 text-[10px] font-mono uppercase font-semibold bg-[#b9f6ca] text-emerald-950 rounded-full">SEMANA ATIVA</span>
+                    <button type="button" onclick="openCloudModal()" id="cloud-status-pill" class="px-2.5 py-0.5 text-[10px] font-mono bg-zinc-200/80 hover:bg-zinc-300 text-zinc-700 rounded-full transition">
+                        ☁️ Sync
+                    </button>
                 </div>
-                <h1 id="view-title" class="text-xl md:text-2xl font-bold text-slate-100 mt-1">Dashboard Principal da Semana</h1>
+                <h1 id="view-title" class="text-2xl md:text-3xl font-bold text-zinc-900 mt-1 tracking-tight">Bom dia, Semana Corrente</h1>
+                <p id="week-range-badge" class="text-sm text-zinc-500 mt-0.5 font-mono"></p>
             </div>
-            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                <button type="button" onclick="navigateTo('timer')" id="mini-timer-pill" class="hidden items-center gap-2 px-3 py-1.5 bg-indigo-950 border border-indigo-500/40 rounded-full text-xs font-mono text-indigo-300 animate-pulse">
+
+            <div class="flex items-center gap-2.5">
+                <button type="button" onclick="navigateTo('timer')" id="mini-timer-pill" class="hidden items-center gap-2 px-3.5 py-2 bg-zinc-900 text-white rounded-full text-xs font-mono animate-pulse">
                     <span>⏱️</span><span id="mini-timer-text">00:00:00</span>
                 </button>
-
-                <!-- Botão / Status de Nuvem visível no Celular e no Notebook -->
-                <button type="button" onclick="openCloudModal()" id="cloud-status-pill" class="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-xs font-mono transition">
-                    <span id="cloud-pill-icon">☁️</span>
-                    <span id="cloud-pill-text">Conectar Sync</span>
-                </button>
-
-                <button type="button" onclick="openHabitModal(-1)" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs md:text-sm font-semibold shadow-lg">
-                    + Nova Atividade
+                <button type="button" id="header-action-btn" onclick="openHabitModal(-1)" class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white rounded-full text-xs md:text-sm font-semibold shadow-sm transition flex items-center gap-1.5">
+                    <span>+ Nova Atividade</span>
                 </button>
             </div>
         </header>
 
-        <!-- VIEW 1: DASHBOARD PRINCIPAL -->
-        <section id="view-dashboard" class="space-y-6">
+        <!-- ============================================================= -->
+        <!-- VIEW 1: DASHBOARD PRINCIPAL                                   -->
+        <!-- ============================================================= -->
+        <section id="view-dashboard" class="space-y-8">
+            <!-- 4 KPI CARDS PASTÉIS -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+                <!-- 1. Consistência (Menta) -->
+                <div class="bg-[#b9f6ca] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
-                            <span class="text-slate-400 text-[11px] uppercase font-semibold">1. Consistência (Semana)</span>
-                            <div class="flex items-baseline gap-2 mt-1">
-                                <span class="text-2xl font-bold text-emerald-400 font-mono" id="kpi-freq-mean">0.0%</span>
-                                <span class="text-xs text-slate-400 font-mono" id="kpi-freq-checks">(0/0 d)</span>
+                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">CONSISTÊNCIA</span>
+                            <div class="flex items-baseline gap-2 mt-1.5">
+                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-freq-mean">0.0%</span>
+                                <span class="text-xs text-zinc-700 font-mono" id="kpi-freq-checks">(0/0d)</span>
                             </div>
                         </div>
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold">✓</div>
+                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                        </div>
                     </div>
-                    <div class="mt-3 pt-2 border-t border-slate-800/80 flex justify-between text-[11px] text-slate-400">
-                        <span>Frequência média semanal</span>
-                        <span id="kpi-today-progress" class="font-mono text-emerald-300">Hoje: 0/0</span>
+                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between">
+                        <span id="kpi-today-progress">Hoje: 0/0</span>
+                        <span>Frequência semanal</span>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+                <!-- 2. Elasticidade (Lavanda) -->
+                <div class="bg-[#ede9fe] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
-                            <span class="text-slate-400 text-[11px] uppercase font-semibold">2. Elasticidade (ε Semanal)</span>
-                            <div class="flex items-baseline gap-2 mt-1">
-                                <span class="text-2xl font-bold text-cyan-400 font-mono" id="kpi-elasticity">0.00</span>
-                                <span class="text-[11px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" id="kpi-elasticity-status">Neutra</span>
+                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">ELASTICIDADE</span>
+                            <div class="flex items-baseline gap-2 mt-1.5">
+                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-elasticity">ε 0.00</span>
+                                <span class="text-xs text-zinc-600 font-mono" id="kpi-elasticity-status">Sub-meta</span>
                             </div>
                         </div>
-                        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 font-mono font-bold">ε</div>
+                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900">
+                            <i data-lucide="zap" class="w-5 h-5"></i>
+                        </div>
                     </div>
-                    <div class="mt-3 pt-2 border-t border-slate-800/80 flex justify-between text-[11px] text-slate-400">
-                        <span>Derivada (∂A / ∂H):</span>
-                        <span id="kpi-sensitivity-slope" class="font-mono text-cyan-300">+0.0%/h</span>
+                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-700">
+                        <span id="kpi-sensitivity-slope">Derivada: +0.0%/h</span>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+                <!-- 3. Volume de Horas (Creme/Amarelo) -->
+                <div class="bg-[#fef3c7] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
-                            <span class="text-slate-400 text-[11px] uppercase font-semibold">3. Volume de Horas</span>
-                            <div class="flex items-baseline gap-2 mt-1">
-                                <span class="text-2xl font-bold text-amber-400 font-mono" id="kpi-hours-total">0.0h</span>
-                                <span class="text-xs text-slate-400 font-mono" id="kpi-hours-target">/ 0.0h</span>
+                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">VOLUME</span>
+                            <div class="flex items-baseline gap-2 mt-1.5">
+                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-hours-total">0.0h</span>
+                                <span class="text-xs text-zinc-600 font-mono" id="kpi-hours-target">/ 0.0h</span>
                             </div>
                         </div>
-                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 font-bold">⏱</div>
+                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900">
+                            <i data-lucide="clock" class="w-5 h-5"></i>
+                        </div>
                     </div>
-                    <div class="mt-3 pt-2 border-t border-slate-800/80 flex justify-between text-[11px] text-slate-400">
-                        <span>Média ± DP (Horas):</span>
-                        <span id="kpi-hours-mean-sd" class="font-mono text-purple-300">0.0h ± 0.0h</span>
+                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between font-mono">
+                        <span>Média ± DP:</span>
+                        <span id="kpi-hours-mean-sd">0.0h ± 0.0h</span>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+                <!-- 4. Maior Streak (Pêssego) -->
+                <div class="bg-[#ffedd5] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
-                            <span class="text-slate-400 text-[11px] uppercase font-semibold">4. Maior Streak (Semana)</span>
-                            <div class="flex items-baseline gap-2 mt-1">
-                                <span class="text-2xl font-bold text-orange-400 font-mono" id="kpi-streak">🔥 0 dias</span>
+                            <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">MAIOR STREAK</span>
+                            <div class="flex items-baseline gap-2 mt-1.5">
+                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-streak">🔥 0d</span>
                             </div>
                         </div>
-                        <div class="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-400">🔥</div>
+                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900">
+                            <i data-lucide="flame" class="w-5 h-5"></i>
+                        </div>
                     </div>
-                    <div class="mt-3 pt-2 border-t border-slate-800/80 flex justify-between text-[11px] text-slate-400">
+                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between">
                         <span>Destaque:</span>
-                        <span id="kpi-streak-leader" class="font-medium text-slate-200 truncate max-w-[130px]">-</span>
+                        <span id="kpi-streak-leader" class="font-semibold truncate max-w-[140px]">-</span>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 md:p-5 space-y-4">
+            <!-- PAINÉIS DE ATIVIDADES (CARDS COLORIDOS INDIVIDUAIS) -->
+            <div class="space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                        <h2 class="text-base md:text-lg font-semibold text-slate-100">Métrica Semanal</h2>
-                        <p class="text-xs text-slate-400">Categorias: <span class="text-rose-400">🏋️ Academia</span> • <span class="text-indigo-400">📚 Estudos</span> • <span class="text-emerald-400">❤️ Saúde</span></p>
+                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">PAINÉIS DE ATIVIDADES</span>
+                        <h2 class="text-base font-semibold text-zinc-800">Acompanhe cada atividade individualmente</h2>
                     </div>
-                    <div class="flex flex-wrap items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
-                        <button type="button" onclick="setCategoryFilter('all')" id="cat-btn-all" class="px-2.5 py-1 rounded bg-slate-800 text-white font-medium">Todas</button>
-                        <button type="button" onclick="setCategoryFilter('academia')" id="cat-btn-academia" class="px-2.5 py-1 rounded text-slate-400 hover:text-white">🏋️ Academia</button>
-                        <button type="button" onclick="setCategoryFilter('estudos')" id="cat-btn-estudos" class="px-2.5 py-1 rounded text-slate-400 hover:text-white">📚 Estudos</button>
-                        <button type="button" onclick="setCategoryFilter('saude')" id="cat-btn-saude" class="px-2.5 py-1 rounded text-slate-400 hover:text-white">❤️ Saúde</button>
+                    <div class="flex flex-wrap items-center gap-1 bg-white p-1 rounded-full border border-zinc-200 text-xs shadow-sm">
+                        <button type="button" onclick="setCategoryFilter('all')" id="cat-btn-all" class="px-3.5 py-1.5 rounded-full bg-black text-white font-semibold">Todas</button>
+                        <button type="button" onclick="setCategoryFilter('academia')" id="cat-btn-academia" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">🏋️ Academia</button>
+                        <button type="button" onclick="setCategoryFilter('estudos')" id="cat-btn-estudos" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">📚 Estudos</button>
+                        <button type="button" onclick="setCategoryFilter('saude')" id="cat-btn-saude" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">❤️ Saúde</button>
                     </div>
+                </div>
+
+                <!-- Grid de Cards de Hábitos -->
+                <div id="activity-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+            </div>
+
+            <!-- TABELA: MÉTRICA SEMANAL (Mantendo a estrutura limpa sem DP% e sem Deadlines) -->
+            <div class="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">AVALIAÇÃO COMPARATIVA</span>
+                        <h2 class="text-lg font-bold text-zinc-900">Métrica Semanal</h2>
+                    </div>
+                    <button type="button" onclick="navigateTo('metrics')" class="text-xs font-semibold text-zinc-700 hover:text-black flex items-center gap-1">
+                        <span>Ver Gráficos de Métricas →</span>
+                    </button>
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-slate-800 text-slate-400 text-[11px] uppercase" id="table-header-days"></tr></thead>
-                        <tbody id="habits-tbody" class="divide-y divide-slate-800/60 text-xs md:text-sm"></tbody>
+                        <thead>
+                            <tr class="border-b border-zinc-200 text-zinc-400 text-[11px] font-mono uppercase" id="table-header-days"></tr>
+                        </thead>
+                        <tbody id="habits-tbody" class="divide-y divide-zinc-100 text-xs md:text-sm"></tbody>
                     </table>
-                </div>
-
-                <div class="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs text-slate-400">
-                    <div>💡 A tabela exibe a <strong>Média de Frequência (μ<sub>f</sub>%)</strong> e a <strong>Elasticidade (ε<sub>i</sub>)</strong>. O Desvio-Padrão é calculado sobre as <strong>Horas (σ<sub>H</sub>)</strong>.</div>
-                    <button type="button" onclick="navigateTo('metrics')" class="text-cyan-400 hover:underline font-medium shrink-0">Abrir Painel de Métricas →</button>
                 </div>
             </div>
         </section>
 
-        <!-- VIEW 2: TIMER EDITÁVEL (COM CONTADOR REGRESSIVO) -->
-        <section id="view-timer" class="hidden space-y-6">
+        <!-- ============================================================= -->
+        <!-- VIEW 2: TIMER (Com Contador Regressivo, Cronômetro, Pomodoro) -->
+        <!-- ============================================================= -->
+        <section id="view-timer" class="hidden">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-6">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-100">⏱️ Cronômetro, Regressivo &amp; Pomodoro Editável</h2>
-                        <p class="text-xs text-slate-400">Escolha entre Cronômetro Progressivo, Contador Regressivo Livre, Pomodoro ou Deep Work.</p>
+                <!-- Card Esquerdo do Timer -->
+                <div class="lg:col-span-7 bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
+                    <!-- 4 Modalidades Editáveis -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div onclick="selectTimerMode('stopwatch')" id="card-tmode-stopwatch" class="cursor-pointer p-3.5 rounded-2xl border-2 border-purple-300 bg-[#ede9fe] transition flex flex-col items-center text-center">
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
+                                <span>CRONÔMETRO</span><span>🕒</span>
+                            </div>
+                            <div class="my-2.5" onclick="event.stopPropagation()">
+                                <input type="number" id="input-min-stopwatch" value="0" min="0" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
+                            </div>
+                            <span class="text-[11px] text-zinc-600">Progressivo</span>
+                        </div>
+
+                        <div onclick="selectTimerMode('countdown')" id="card-tmode-countdown" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
+                                <span>REGRESSIVO</span><span>⏳</span>
+                            </div>
+                            <div class="my-2.5" onclick="event.stopPropagation()">
+                                <input type="number" id="input-min-countdown" value="30" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
+                            </div>
+                            <span class="text-[11px] text-zinc-600">Regressivo</span>
+                        </div>
+
+                        <div onclick="selectTimerMode('pomodoro')" id="card-tmode-pomodoro" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
+                                <span>POMODORO</span><span>🔥</span>
+                            </div>
+                            <div class="my-2.5" onclick="event.stopPropagation()">
+                                <input type="number" id="input-min-pomodoro" value="25" min="1" max="240" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
+                            </div>
+                            <span class="text-[11px] text-zinc-600">Regressivo</span>
+                        </div>
+
+                        <div onclick="selectTimerMode('deepwork')" id="card-tmode-deepwork" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
+                                <span>DEEP WORK</span><span>🧠</span>
+                            </div>
+                            <div class="my-2.5" onclick="event.stopPropagation()">
+                                <input type="number" id="input-min-deepwork" value="50" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
+                            </div>
+                            <span class="text-[11px] text-zinc-600">Regressivo</span>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <div onclick="selectTimerMode('stopwatch')" id="card-tmode-stopwatch" class="cursor-pointer p-3.5 rounded-xl border border-indigo-500 bg-indigo-950/30 transition flex flex-col justify-between">
-                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-indigo-300 uppercase">1. Cronômetro</span><span>⌚</span></div>
-                            <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-stopwatch" value="0" min="0" max="360" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
-                                <span class="text-[11px] text-slate-400 font-mono">min</span>
-                            </div>
-                            <div class="text-[11px] text-slate-400">Progressivo (↑)</div>
-                        </div>
-
-                        <div onclick="selectTimerMode('countdown')" id="card-tmode-countdown" class="cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between">
-                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-amber-400 uppercase">2. Regressivo</span><span>⏳</span></div>
-                            <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-countdown" value="30" min="1" max="360" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
-                                <span class="text-[11px] text-slate-400 font-mono">min</span>
-                            </div>
-                            <div class="text-[11px] text-slate-400">Cont. Regressivo (↓)</div>
-                        </div>
-
-                        <div onclick="selectTimerMode('pomodoro')" id="card-tmode-pomodoro" class="cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between">
-                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-emerald-400 uppercase">3. Pomodoro</span><span>🔥</span></div>
-                            <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-pomodoro" value="25" min="1" max="240" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
-                                <span class="text-[11px] text-slate-400 font-mono">min</span>
-                            </div>
-                            <div class="text-[11px] text-slate-400">Regressivo (↓)</div>
-                        </div>
-
-                        <div onclick="selectTimerMode('deepwork')" id="card-tmode-deepwork" class="cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between">
-                            <div class="flex justify-between items-center"><span class="text-xs font-bold text-cyan-400 uppercase">4. Deep Work</span><span>🧠</span></div>
-                            <div class="my-2 flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-deepwork" value="50" min="1" max="360" onchange="onTimerConfigChange()" class="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-white">
-                                <span class="text-[11px] text-slate-400 font-mono">min</span>
-                            </div>
-                            <div class="text-[11px] text-slate-400">Regressivo (↓)</div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+                    <!-- Seletores de Atividade e Dia -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-100 p-4 rounded-2xl">
                         <div>
-                            <label class="block text-[11px] uppercase font-semibold text-slate-400 mb-1">Atividade em Execução</label>
-                            <select id="timer-habit-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"></select>
+                            <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
+                            <select id="timer-habit-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
                         </div>
                         <div>
-                            <label class="block text-[11px] uppercase font-semibold text-slate-400 mb-1">Dia do Registro</label>
-                            <select id="timer-day-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"></select>
+                            <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">DIA</label>
+                            <select id="timer-day-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
                         </div>
                     </div>
 
-                    <div class="flex flex-col items-center justify-center py-6 bg-slate-950 rounded-2xl border border-slate-800/80">
-                        <span id="timer-mode-badge" class="text-[11px] font-mono uppercase tracking-widest text-indigo-400 mb-1">Modo: Cronômetro Livre</span>
-                        <div id="timer-display" class="text-5xl sm:text-6xl font-mono font-black tracking-wider text-slate-100">00:00:00</div>
+                    <!-- Visor Preto igual ao print -->
+                    <div class="bg-black text-white rounded-3xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
+                        <span id="timer-mode-badge" class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 mb-2">MODO: CRONÔMETRO</span>
+                        <div id="timer-display" class="text-5xl sm:text-6xl font-mono font-bold tracking-wider">00:00:00</div>
                         
-                        <!-- Barra de Progresso do Contador Regressivo -->
-                        <div id="countdown-progress-container" class="hidden w-full max-w-xs bg-slate-900 h-1.5 rounded-full overflow-hidden mt-3 border border-slate-800">
-                            <div id="countdown-progress-bar" class="bg-amber-400 h-full transition-all duration-300" style="width: 100%"></div>
+                        <div id="countdown-progress-container" class="hidden w-full max-w-xs bg-zinc-800 h-1.5 rounded-full overflow-hidden mt-4">
+                            <div id="countdown-progress-bar" class="bg-[#00e676] h-full transition-all duration-300" style="width: 100%"></div>
                         </div>
 
-                        <div class="flex items-center gap-2 mt-4">
-                            <button type="button" onclick="adjustTimerMinutes(-5)" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono border border-slate-700">-5m</button>
-                            <button type="button" onclick="adjustTimerMinutes(-1)" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono border border-slate-700">-1m</button>
-                            <button type="button" onclick="adjustTimerMinutes(1)" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono border border-slate-700">+1m</button>
-                            <button type="button" onclick="adjustTimerMinutes(5)" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono border border-slate-700">+5m</button>
+                        <div class="flex items-center gap-2 mt-5">
+                            <button type="button" onclick="adjustTimerMinutes(-5)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-5m</button>
+                            <button type="button" onclick="adjustTimerMinutes(-1)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-1m</button>
+                            <button type="button" onclick="adjustTimerMinutes(1)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">+1m</button>
+                            <button type="button" onclick="adjustTimerMinutes(5)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">+5m</button>
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                            <input type="checkbox" id="timer-auto-check" checked class="rounded bg-slate-950 border-slate-700 text-emerald-500">
-                            <span>Marcar presença no dia ao salvar</span>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
+                            <input type="checkbox" id="timer-auto-check" checked class="rounded text-blue-600">
+                            <span>Marcar presença ao salvar</span>
                         </label>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="toggleTimer()" id="btn-timer-toggle" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold">▶ Iniciar</button>
-                            <button type="button" onclick="finishAndLogSession(false)" class="px-4 py-2.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-xl text-sm font-semibold">✓ Salvar Horas</button>
-                            <button type="button" onclick="selectTimerMode(timerMode)" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl">↺</button>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="toggleTimer()" id="btn-timer-toggle" class="flex-1 py-3 bg-black hover:bg-zinc-800 text-white rounded-full text-sm font-semibold transition">
+                                ▷ Iniciar
+                            </button>
+                            <button type="button" onclick="finishAndLogSession(false)" class="px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-900 border border-zinc-300 rounded-full text-sm font-semibold transition">
+                                ✓ Salvar
+                            </button>
+                            <button type="button" onclick="selectTimerMode(timerMode)" class="p-3 bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-full transition">
+                                ↺
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 flex flex-col justify-between space-y-5">
+                <!-- Card Direito Creme: Registro Rápido -->
+                <div class="lg:col-span-5 bg-[#fef3c7] rounded-3xl p-6 flex flex-col justify-between space-y-6">
                     <div>
-                        <h3 class="text-base font-bold text-slate-100 mb-1">➕ Registro Rápido de Horas</h3>
-                        <p class="text-xs text-slate-400 mb-4">Adicione horas diretamente em qualquer dia da semana.</p>
-                        <form id="manual-hours-form" class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <h3 class="text-lg font-bold text-zinc-900">Registro Rápido</h3>
+                        <p class="text-xs text-zinc-600 mb-4">Adicione horas diretamente a qualquer atividade</p>
+
+                        <form id="manual-hours-form" class="bg-white/70 p-4 rounded-2xl space-y-3.5">
                             <div>
-                                <label class="block text-[11px] uppercase text-slate-400 font-semibold mb-1">Atividade</label>
-                                <select id="manual-habit-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100"></select>
+                                <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
+                                <select id="manual-habit-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-[11px] uppercase text-slate-400 font-semibold mb-1">Dia</label>
-                                    <select id="manual-day-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100"></select>
+                                    <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">DIA</label>
+                                    <select id="manual-day-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] uppercase text-slate-400 font-semibold mb-1">Horas (+h)</label>
-                                    <input type="number" id="manual-hours-input" step="0.25" min="0.1" max="24" value="1.0" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-100">
+                                    <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">HORAS</label>
+                                    <input type="number" id="manual-hours-input" step="0.25" min="0.1" max="24" value="1" required class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-mono text-zinc-900">
                                 </div>
                             </div>
-                            <button type="submit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs">Somar Horas na Atividade</button>
+                            <button type="submit" class="w-full py-2.5 bg-black hover:bg-zinc-800 text-white font-semibold rounded-full text-xs transition">
+                                Adicionar Horas
+                            </button>
                         </form>
                     </div>
-                    <div class="pt-4 border-t border-slate-800">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Volume Semanal por Categoria</h4>
+
+                    <div class="pt-4 border-t border-black/10">
+                        <h4 class="text-[10px] font-mono uppercase tracking-wider text-zinc-600 mb-3">VOLUME POR CATEGORIA</h4>
                         <div id="category-hours-summary" class="space-y-3"></div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- VIEW 3: MÉTRICAS (APENAS OS DOIS GRÁFICOS: PAINEL TOTAL E PAINEL POR ATIVIDADE) -->
+        <!-- ============================================================= -->
+        <!-- VIEW 3: MÉTRICAS (Apenas Painel Total e Painel por Atividade) -->
+        <!-- ============================================================= -->
         <section id="view-metrics" class="hidden space-y-6">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-5">
-                <div>
-                    <h2 class="text-base md:text-lg font-bold text-slate-100">📈 Painel de Métricas Semanais</h2>
-                    <p class="text-xs text-slate-400">Visão comparativa do <strong>Painel Total</strong> e do <strong>Painel por Atividade</strong> (Curva temporal de horas com banda de Desvio-Padrão ±σ<sub>H</sub>).</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- GRÁFICO 1: PAINEL TOTAL -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="text-[11px] font-mono uppercase font-bold text-emerald-600">1. PAINEL TOTAL — HORAS POR DIA VS. ADESÃO DIÁRIA</span>
+                        <p class="text-xs text-zinc-500 mt-1 mb-4">Volume diário agregado de todas as atividades na semana.</p>
+                    </div>
+                    <div class="relative h-80 w-full"><canvas id="totalPanelChart"></canvas></div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- GRÁFICO 1: PAINEL TOTAL -->
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <h3 class="text-xs font-semibold uppercase text-emerald-400">1. Painel Total (Agregado Diário)</h3>
-                                <span class="text-[10px] font-mono text-slate-500">Horas Totais vs. % Conclusão</span>
+                <!-- GRÁFICO 2: PAINEL POR ATIVIDADE (Linha c/ DP + Molecular vs Grupo) -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-3 mb-3">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div>
+                                <span class="text-[11px] font-mono uppercase font-bold text-purple-600">2. PAINEL POR ATIVIDADE (LINHA + DESVIO-PADRÃO ±σ<sub>H</sub>)</span>
+                                <p class="text-xs text-zinc-500">Eixo X: Dias da Semana • Eixo Y: Horas de Atividade</p>
                             </div>
-                            <p class="text-[11px] text-slate-400 mb-4">Volume diário somado de todas as atividades e taxa de adesão na semana.</p>
-                        </div>
-                        <div class="relative h-80 w-full"><canvas id="totalPanelChart"></canvas></div>
-                    </div>
-
-                    <!-- GRÁFICO 2: PAINEL POR ATIVIDADE (LINHA COM DP + FILTRO MOLECULAR vs GRUPO) -->
-                    <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                        <div class="space-y-3 mb-3">
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                <div>
-                                    <h3 class="text-xs font-semibold uppercase text-cyan-400">2. Painel por Atividade (Curva + Desvio-Padrão ±σ<sub>H</sub>)</h3>
-                                    <p class="text-[11px] text-slate-400">Eixo X: Dias da Semana • Eixo Y: Horas de Atividade (com banda ±1 DP)</p>
-                                </div>
-                                <!-- Toggle Molecular vs Grupo -->
-                                <div class="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[11px] shrink-0">
-                                    <button type="button" onclick="setActivityChartScope('molecular')" id="btn-scope-molecular" class="px-2.5 py-1 rounded-md bg-cyan-600 text-white font-semibold transition">Molecular</button>
-                                    <button type="button" onclick="setActivityChartScope('group')" id="btn-scope-group" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition">Por Grupo</button>
-                                </div>
-                            </div>
-
-                            <!-- Seletor do Alvo (Atividade específica/Todas ou Categoria específica/Todas) -->
-                            <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-lg border border-slate-800/80">
-                                <span id="activity-target-label" class="text-[11px] text-slate-400 font-medium">Selecionar Atividade Molecular:</span>
-                                <select id="activity-chart-target" onchange="renderMetricsView()" class="bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-cyan-500 max-w-[230px]"></select>
+                            <div class="flex bg-zinc-100 p-1 rounded-full border border-zinc-200 text-xs shrink-0">
+                                <button type="button" onclick="setActivityChartScope('molecular')" id="btn-scope-molecular" class="px-3 py-1 rounded-full bg-black text-white font-semibold transition">Molecular</button>
+                                <button type="button" onclick="setActivityChartScope('group')" id="btn-scope-group" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Por Grupo</button>
                             </div>
                         </div>
 
-                        <div class="relative h-72 w-full"><canvas id="activityPanelChart"></canvas></div>
+                        <div class="flex items-center justify-between gap-2 bg-zinc-50 px-3.5 py-2 rounded-2xl border border-zinc-200">
+                            <span id="activity-target-label" class="text-xs text-zinc-600 font-medium">Visualizar:</span>
+                            <select id="activity-chart-target" onchange="renderMetricsView()" class="bg-white border border-zinc-200 rounded-full px-3 py-1 text-xs font-medium text-zinc-900 max-w-[240px]"></select>
+                        </div>
                     </div>
+                    <div class="relative h-72 w-full"><canvas id="activityPanelChart"></canvas></div>
                 </div>
             </div>
         </section>
 
-        <!-- VIEW 4: AGENDA SEMANAL -->
-        <section id="view-calendar" class="hidden space-y-5">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 md:p-5 space-y-4">
-                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-800 pb-4">
-                    <div>
-                        <h2 class="text-base md:text-lg font-bold text-slate-100">📅 Calendário Semanal de Hábitos (Integração Google Agenda)</h2>
-                        <p class="text-xs text-slate-400">Clique em qualquer célula para agendar um bloco e enviá-lo para o seu <strong>Google Agenda</strong>.</p>
+        <!-- ============================================================= -->
+        <!-- VIEW 4: AGENDA SEMANAL                                        -->
+        <!-- ============================================================= -->
+        <section id="view-calendar" class="hidden space-y-4">
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="exportCalendarICS()" class="px-4 py-2 bg-white hover:bg-zinc-50 text-zinc-800 rounded-full text-xs font-semibold border border-zinc-200 shadow-sm">
+                    📥 Exportar .ICS
+                </button>
+                <button type="button" onclick="openEventModal(0, 9)" class="px-4 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold shadow-sm">
+                    + Agendar
+                </button>
+            </div>
+
+            <div class="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
+                <div class="overflow-x-auto">
+                    <div class="calendar-grid border-b border-zinc-200 bg-zinc-50 sticky top-0 z-10" id="calendar-header-grid"></div>
+                    <div class="max-h-[520px] overflow-y-auto relative">
+                        <div id="calendar-hours-grid" class="divide-y divide-zinc-100"></div>
                     </div>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="openEventModal(0, 9)" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold">+ Agendar Bloco</button>
-                        <button type="button" onclick="exportCalendarICS()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium border border-slate-700">📥 Exportar .ICS</button>
-                    </div>
-                </div>
-                <div class="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950">
-                    <div class="calendar-grid border-b border-slate-800 bg-slate-900/95 sticky top-0 z-10" id="calendar-header-grid"></div>
-                    <div class="max-h-[500px] overflow-y-auto relative"><div id="calendar-hours-grid" class="divide-y divide-slate-800/40"></div></div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- MODAL 1: EDITAR ATIVIDADE (SEM DEADLINE) -->
-    <div id="habit-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-base font-bold text-slate-100">Configurar Atividade &amp; Meta Semanal</h3>
-                <button type="button" onclick="closeHabitModal()" class="text-slate-400 hover:text-white">✕</button>
+    <!-- ================================================================= -->
+    <!-- MODAIS (Nova Atividade sem Deadline, Agendar e Gist Sync)         -->
+    <!-- ================================================================= -->
+    <div id="habit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <h3 class="text-base font-bold text-zinc-900">Configurar Atividade &amp; Meta Semanal</h3>
+                <button type="button" onclick="closeHabitModal()" class="text-zinc-400 hover:text-black">✕</button>
             </div>
             <form id="habit-modal-form" class="space-y-4">
                 <input type="hidden" id="modal-habit-index" value="-1">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="sm:col-span-2">
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Nome da Atividade (Molecular)</label>
-                        <input type="text" id="modal-habit-name" required placeholder="Ex: Academia, Mestrado, Psicometria..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Nome da Atividade</label>
+                        <input type="text" id="modal-habit-name" required placeholder="Ex: Academia, Mestrado..." class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Grupo / Categoria</label>
-                        <select id="modal-habit-category" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Grupo</label>
+                        <select id="modal-habit-category" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900">
                             <option value="academia">🏋️ Academia</option>
                             <option value="estudos">📚 Estudos</option>
                             <option value="saude">❤️ Saúde</option>
@@ -396,1077 +525,77 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Meta de Horas / Semana (H*)</label>
-                    <input type="number" id="modal-habit-target-hours" step="0.5" min="0.5" required value="5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100">
+                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Meta de Horas / Semana (H*)</label>
+                    <input type="number" id="modal-habit-target-hours" step="0.5" min="0.5" required value="5" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono text-zinc-900">
                 </div>
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-                    <label class="block text-[11px] font-semibold uppercase text-amber-400">Horas Realizadas por Dia (h<sub>it</sub>)</label>
+                <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200 space-y-2">
+                    <label class="block text-[11px] font-semibold uppercase text-zinc-600">Horas Realizadas por Dia (h<sub>it</sub>)</label>
                     <div class="grid grid-cols-7 gap-1.5" id="modal-daily-hours-inputs"></div>
                 </div>
-                <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
-                    <button type="button" onclick="closeHabitModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold">Salvar Meta</button>
+                <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
+                    <button type="button" onclick="closeHabitModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-black text-white rounded-full text-xs font-semibold">Salvar Meta</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL 2: AGENDAR BLOCO -->
-    <div id="event-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-base font-bold text-slate-100">Agendar Sessão no Calendário</h3>
-                <button type="button" onclick="closeEventModal()" class="text-slate-400 hover:text-white">✕</button>
+    <div id="event-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <h3 class="text-base font-bold text-zinc-900">Agendar Bloco Semanal</h3>
+                <button type="button" onclick="closeEventModal()" class="text-zinc-400 hover:text-black">✕</button>
             </div>
             <form id="event-modal-form" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Atividade</label>
-                    <select id="event-habit-select" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"></select>
+                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Atividade</label>
+                    <select id="event-habit-select" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900"></select>
                 </div>
                 <div class="grid grid-cols-3 gap-2.5">
                     <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Dia</label>
-                        <select id="event-day-select" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-xs text-slate-100"></select>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Dia</label>
+                        <select id="event-day-select" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs text-zinc-900"></select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Início (h)</label>
-                        <input type="number" id="event-start-hour" min="6" max="22" value="9" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100">
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Início (h)</label>
+                        <input type="number" id="event-start-hour" min="6" max="22" value="9" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono text-zinc-900">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Duração (h)</label>
-                        <input type="number" id="event-duration" step="0.5" min="0.5" max="8" value="1.5" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100">
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Duração (h)</label>
+                        <input type="number" id="event-duration" step="0.5" min="0.5" max="8" value="1.5" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono text-zinc-900">
                     </div>
                 </div>
-                <div class="flex flex-col gap-2 pt-3 border-t border-slate-800">
-                    <button type="submit" class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">Salvar Bloco na Grade Local</button>
-                    <button type="button" onclick="saveAndOpenGoogleCal()" class="w-full py-2.5 bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold">🔗 Salvar e Abrir no Google Agenda</button>
+                <div class="flex flex-col gap-2 pt-3 border-t border-zinc-100">
+                    <button type="submit" class="w-full py-2.5 bg-black text-white rounded-full text-xs font-semibold">Salvar na Grade</button>
+                    <button type="button" onclick="saveAndOpenGoogleCal()" class="w-full py-2.5 bg-[#b9f6ca] text-emerald-950 rounded-full text-xs font-semibold">🔗 Salvar e Abrir no Google Agenda</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL 3: GITHUB GIST SYNC -->
-    <div id="cloud-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-base font-bold text-slate-100">Sincronizar via GitHub Gist</h3>
-                <button type="button" onclick="closeCloudModal()" class="text-slate-400 hover:text-white">✕</button>
+    <div id="cloud-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <h3 class="text-base font-bold text-zinc-900">Sincronizar via GitHub Gist</h3>
+                <button type="button" onclick="closeCloudModal()" class="text-zinc-400 hover:text-black">✕</button>
             </div>
             <div class="space-y-3">
-                <input type="password" id="gist-token-input" placeholder="GitHub Token (escopo: gist)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-100">
-                <input type="text" id="gist-id-input" placeholder="Gist ID (deixe vazio no 1º envio)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-100">
-                <div id="cloud-status-msg" class="text-xs font-mono text-cyan-400"></div>
+                <input type="password" id="gist-token-input" placeholder="GitHub Token (escopo: gist)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
+                <input type="text" id="gist-id-input" placeholder="Gist ID (deixe vazio no 1º envio)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-900">
+                <div id="cloud-status-msg" class="text-xs font-mono text-emerald-700"></div>
             </div>
-            <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800">
-                <button type="button" onclick="pullFromGist()" class="py-2 bg-slate-800 text-slate-200 rounded-lg text-xs font-semibold">⬇️ Baixar</button>
-                <button type="button" onclick="pushToGist()" class="py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold">⬆️ Enviar</button>
+            <div class="grid grid-cols-2 gap-2 pt-3 border-t border-zinc-100">
+                <button type="button" onclick="pullFromGist()" class="py-2.5 bg-zinc-100 text-zinc-800 rounded-full text-xs font-semibold">⬇️ Baixar</button>
+                <button type="button" onclick="pushToGist()" class="py-2.5 bg-black text-white rounded-full text-xs font-semibold">⬆️ Enviar</button>
             </div>
         </div>
     </div>
 
-    <script>
-        const SafeStorage = {
-            mem: {},
-            getItem(k) { try { return localStorage.getItem(k); } catch(e) { return this.mem[k] || null; } },
-            setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) { this.mem[k] = v; } },
-            removeItem(k) { try { localStorage.removeItem(k); } catch(e) { delete this.mem[k]; } }
-        };
-
-        const CATEGORIES = {
-            academia: { label: 'Academia', emoji: '🏋️', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30', hex: '#f43f5e' },
-            estudos:  { label: 'Estudos',  emoji: '📚', color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', hex: '#6366f1' },
-            saude:    { label: 'Saúde',    emoji: '❤️', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', hex: '#10b981' }
-        };
-
-        const PALETTE = ['#22d3ee', '#f43f5e', '#10b981', '#a855f7', '#fbbf24', '#6366f1', '#ec4899'];
-
-        function hexToRgba(hex, alpha) {
-            const clean = hex.replace('#', '');
-            const r = parseInt(clean.substring(0, 2), 16) || 34;
-            const g = parseInt(clean.substring(2, 4), 16) || 211;
-            const b = parseInt(clean.substring(4, 6), 16) || 238;
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        }
-
-        function getCurrentWeekDays() {
-            const today = new Date();
-            const dayOfWeek = today.getDay();
-            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            const monday = new Date(today);
-            monday.setDate(today.getDate() + diffToMonday);
-            const shortNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-            return Array.from({ length: 7 }, (_, i) => {
-                const d = new Date(monday);
-                d.setDate(monday.getDate() + i);
-                return {
-                    index: i,
-                    shortName: shortNames[i],
-                    dateNum: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'),
-                    iso: d.toISOString().split('T')[0],
-                    isToday: d.toDateString() === today.toDateString(),
-                    rawDate: d
-                };
-            });
-        }
-
-        const weekDays = getCurrentWeekDays();
-        const todayIndex = weekDays.findIndex(d => d.isToday);
-        let activeCategoryFilter = 'all';
-        const STORAGE_KEY = 'habit_quant_pro_v5';
-
-        const defaultHabits = [
-            { id: 'h1', name: 'Treino de Força (Upper/Lower)', category: 'academia', targetHours: 4.5, checks: [true, true, false, true, true, false, false], dailyHours: [1.0, 1.2, 0.0, 1.1, 1.0, 0.0, 0.0] },
-            { id: 'h2', name: 'Cardio Zona 2 & Mobilidade', category: 'saude', targetHours: 3.0, checks: [false, true, true, false, true, true, false], dailyHours: [0.0, 0.7, 0.8, 0.0, 0.7, 0.8, 0.0] },
-            { id: 'h3', name: 'Mestrado & Psicometria', category: 'estudos', targetHours: 8.0, checks: [true, true, true, true, true, false, false], dailyHours: [1.5, 2.0, 1.5, 1.5, 2.0, 0.0, 0.0] },
-            { id: 'h4', name: 'Leitura Científica (Inglês/Espanhol)', category: 'estudos', targetHours: 4.0, checks: [true, false, true, false, true, false, false], dailyHours: [1.0, 0.0, 1.2, 0.0, 1.0, 0.0, 0.0] },
-            { id: 'h5', name: 'Higiene do Sono & Hidratação', category: 'saude', targetHours: 7.0, checks: [true, true, true, true, true, true, false], dailyHours: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0] }
-        ];
-
-        const defaultEvents = [
-            { id: 'ev1', habitId: 'h1', dayIndex: 0, startHour: 7, duration: 1.0 },
-            { id: 'ev2', habitId: 'h3', dayIndex: 0, startHour: 14, duration: 2.0 },
-            { id: 'ev3', habitId: 'h1', dayIndex: 1, startHour: 7, duration: 1.2 },
-            { id: 'ev4', habitId: 'h4', dayIndex: 2, startHour: 19, duration: 1.5 }
-        ];
-
-        let habits = [];
-        let calendarEvents = [];
-        let timerConfig = { stopwatchStartMin: 0, countdownMin: 30, pomodoroMin: 25, deepworkMin: 50 };
-
-        function loadData() {
-            const raw = SafeStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                try {
-                    const parsed = JSON.parse(raw);
-                    habits = Array.isArray(parsed.habits) && parsed.habits.length > 0 ? parsed.habits : JSON.parse(JSON.stringify(defaultHabits));
-                    calendarEvents = Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : JSON.parse(JSON.stringify(defaultEvents));
-                    if (parsed.timerConfig) timerConfig = { ...timerConfig, ...parsed.timerConfig };
-                } catch (e) {
-                    habits = JSON.parse(JSON.stringify(defaultHabits));
-                    calendarEvents = JSON.parse(JSON.stringify(defaultEvents));
-                }
-            } else {
-                habits = JSON.parse(JSON.stringify(defaultHabits));
-                calendarEvents = JSON.parse(JSON.stringify(defaultEvents));
-            }
-            document.getElementById('input-min-stopwatch').value = timerConfig.stopwatchStartMin || 0;
-            document.getElementById('input-min-countdown').value = timerConfig.countdownMin || 30;
-            document.getElementById('input-min-pomodoro').value = timerConfig.pomodoroMin || 25;
-            document.getElementById('input-min-deepwork').value = timerConfig.deepworkMin || 50;
-        }
-
-        window.resetAllData = function() {
-            if (confirm('Restaurar as 5 atividades padrão?')) {
-                SafeStorage.removeItem(STORAGE_KEY);
-                loadData();
-                renderAll();
-            }
-        };
-
-        const ROUTE_TITLES = {
-            dashboard: 'Dashboard Principal da Semana',
-            timer: 'Cronômetro, Regressivo & Pomodoro',
-            metrics: 'Métricas',
-            calendar: 'Agenda Semanal de Hábitos'
-        };
-
-        window.navigateTo = function(route) {
-            if (window.location.hash !== '#' + route) history.pushState(null, null, '#' + route);
-            applyRoute(route);
-        };
-
-        function applyRoute(routeParam) {
-            const hashRoute = (window.location.hash || '#dashboard').replace('#', '').trim();
-            const activeRoute = ROUTE_TITLES[routeParam] ? routeParam : (ROUTE_TITLES[hashRoute] ? hashRoute : 'dashboard');
-
-            ['dashboard', 'timer', 'metrics', 'calendar'].forEach(r => {
-                const sec = document.getElementById('view-' + r);
-                if (sec) sec.classList.toggle('hidden', r !== activeRoute);
-                const btn = document.querySelector(`[data-route="${r}"]`);
-                if (btn) {
-                    btn.className = r === activeRoute
-                        ? "nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 transition w-full text-left"
-                        : "nav-item flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 px-2 md:px-3.5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800/70 hover:text-slate-200 border border-transparent transition w-full text-left";
-                }
-            });
-            document.getElementById('view-title').innerText = ROUTE_TITLES[activeRoute];
-            renderAll(activeRoute);
-        }
-
-        window.addEventListener('hashchange', () => applyRoute());
-
-        function calcHabitMetrics(habit) {
-            const n = 7;
-            const daysCompleted = habit.checks.filter(Boolean).length;
-            const freqRatio = daysCompleted / n;
-            const freqPct = freqRatio * 100;
-            const totalHours = habit.dailyHours.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
-            const meanHours = totalHours / n;
-            const sdHours = Math.sqrt(habit.dailyHours.reduce((acc, val) => acc + Math.pow((parseFloat(val) || 0) - meanHours, 2), 0) / n);
-            const targetH = habit.targetHours > 0 ? habit.targetHours : 1;
-            const hoursRatio = totalHours / targetH;
-            const hoursPct = hoursRatio * 100;
-            const sensitivityDerivative = (100 / targetH) * (0.5 + 0.5 * freqRatio);
-            const syncFactor = Math.exp(-Math.abs(freqRatio - Math.min(1, hoursRatio)) * 0.35);
-            const elasticity = hoursRatio * syncFactor;
-
-            let maxStreak = 0, cur = 0;
-            habit.checks.forEach(c => { if (c) { cur++; if (cur > maxStreak) maxStreak = cur; } else cur = 0; });
-
-            return { daysCompleted, freqRatio, freqPct, totalHours, meanHours, sdHours, targetH, hoursRatio, hoursPct, sensitivityDerivative, elasticity, streak: maxStreak };
-        }
-
-        function calcWeeklyGlobalMetrics() {
-            if (habits.length === 0) return { avgFreqPct: 0, totalChecks: 0, possibleChecks: 0, globalElasticity: 0, avgSensitivity: 0, sumTotalHours: 0, sumTargetHours: 0, dailyTotalMeanHours: 0, dailyTotalSdHours: 0, bestStreak: 0, leaderName: '-', todayDone: 0 };
-            const metrics = habits.map(h => calcHabitMetrics(h));
-            const k = metrics.length;
-            const avgFreqPct = metrics.reduce((a, m) => a + m.freqPct, 0) / k;
-            const totalChecks = metrics.reduce((a, m) => a + m.daysCompleted, 0);
-            const dailyTotals = [0, 0, 0, 0, 0, 0, 0];
-            habits.forEach(h => h.dailyHours.forEach((hr, i) => dailyTotals[i] += (parseFloat(hr) || 0)));
-            const sumTotalHours = dailyTotals.reduce((a, b) => a + b, 0);
-            const sumTargetHours = habits.reduce((a, h) => a + h.targetHours, 0);
-            const dailyTotalMeanHours = sumTotalHours / 7;
-            const dailyTotalSdHours = Math.sqrt(dailyTotals.reduce((acc, v) => acc + Math.pow(v - dailyTotalMeanHours, 2), 0) / 7);
-            const globalHoursRatio = sumTargetHours > 0 ? (sumTotalHours / sumTargetHours) : 0;
-            const globalElasticity = globalHoursRatio * Math.exp(-Math.abs((avgFreqPct / 100) - Math.min(1, globalHoursRatio)) * 0.35);
-            const avgSensitivity = metrics.reduce((a, m) => a + m.sensitivityDerivative, 0) / k;
-
-            let bestStreak = 0, leaderName = 'Nenhum';
-            metrics.forEach((m, i) => { if (m.streak > bestStreak) { bestStreak = m.streak; leaderName = habits[i].name; } });
-            const tIdx = todayIndex !== -1 ? todayIndex : 0;
-            const todayDone = habits.filter(h => h.checks[tIdx]).length;
-
-            return { avgFreqPct, totalChecks, possibleChecks: k * 7, globalElasticity, avgSensitivity, sumTotalHours, sumTargetHours, dailyTotalMeanHours, dailyTotalSdHours, bestStreak, leaderName, todayDone };
-        }
-
-        window.setCategoryFilter = function(cat) {
-            activeCategoryFilter = cat;
-            ['all', 'academia', 'estudos', 'saude'].forEach(c => {
-                const btn = document.getElementById('cat-btn-' + c);
-                if (btn) btn.className = c === cat ? "px-2.5 py-1 rounded bg-slate-800 text-white font-medium" : "px-2.5 py-1 rounded text-slate-400 hover:text-white";
-            });
-            renderDashboardView();
-        };
-
-        window.toggleHabitDay = function(hIdx, dIdx, el) {
-            const state = el.checked;
-            habits[hIdx].checks[dIdx] = state;
-            if (state && (!habits[hIdx].dailyHours[dIdx] || habits[hIdx].dailyHours[dIdx] === 0)) {
-                habits[hIdx].dailyHours[dIdx] = parseFloat((habits[hIdx].targetHours / 5).toFixed(1));
-            } else if (!state) {
-                habits[hIdx].dailyHours[dIdx] = 0;
-            }
-            saveData();
-        };
-
-        window.deleteHabitByIdx = function(hIdx) {
-            if (confirm(`Remover "${habits[hIdx].name}"?`)) { habits.splice(hIdx, 1); saveData(); }
-        };
-
-        function renderDashboardView() {
-            const g = calcWeeklyGlobalMetrics();
-            document.getElementById('kpi-freq-mean').textContent = `${g.avgFreqPct.toFixed(1)}%`;
-            document.getElementById('kpi-freq-checks').textContent = `(${g.totalChecks}/${g.possibleChecks} d)`;
-            document.getElementById('kpi-today-progress').textContent = `Hoje: ${g.todayDone}/${habits.length}`;
-            document.getElementById('kpi-elasticity').textContent = g.globalElasticity.toFixed(2);
-            document.getElementById('kpi-elasticity-status').textContent = g.globalElasticity > 1.08 ? 'Super-Elástica (>1)' : (g.globalElasticity >= 0.95 ? 'Calibrada (≈1)' : 'Sub-meta (<1)');
-            document.getElementById('kpi-sensitivity-slope').textContent = `+${g.avgSensitivity.toFixed(1)}%/h`;
-            document.getElementById('kpi-hours-total').textContent = `${g.sumTotalHours.toFixed(1)}h`;
-            document.getElementById('kpi-hours-target').textContent = `/ ${g.sumTargetHours.toFixed(1)}h`;
-            document.getElementById('kpi-hours-mean-sd').textContent = `${g.dailyTotalMeanHours.toFixed(1)}h/d ± ${g.dailyTotalSdHours.toFixed(2)}h`;
-            document.getElementById('kpi-streak').textContent = `🔥 ${g.bestStreak} ${g.bestStreak === 1 ? 'dia' : 'dias'}`;
-            document.getElementById('kpi-streak-leader').textContent = g.leaderName;
-
-            const trHead = document.getElementById('table-header-days');
-            let headHTML = `<th class="py-3 px-2 font-semibold min-w-[200px]">Categoria &amp; Atividade</th>`;
-            weekDays.forEach(day => {
-                const highlight = day.isToday ? 'text-emerald-400 font-bold bg-emerald-950/30 border-b-2 border-emerald-500' : 'text-slate-400';
-                headHTML += `<th class="py-2 px-1 text-center ${highlight}"><div class="text-[11px]">${day.shortName}</div><div class="text-[9px] font-mono opacity-75">${day.dateNum}</div></th>`;
-            });
-            headHTML += `<th class="py-2 px-2 text-center font-semibold text-amber-400">Horas (Sem.)</th><th class="py-2 px-2 text-center font-semibold text-emerald-400">Média Freq.</th><th class="py-2 px-2 text-center font-semibold text-cyan-400">Elast. (ε)</th><th class="py-2 px-2 text-right font-semibold">Ações</th>`;
-            trHead.innerHTML = headHTML;
-
-            const tbody = document.getElementById('habits-tbody');
-            tbody.innerHTML = '';
-            habits.map((h, i) => ({ habit: h, index: i }))
-                .filter(item => activeCategoryFilter === 'all' || item.habit.category === activeCategoryFilter)
-                .forEach(({ habit, index: hIndex }) => {
-                    const m = calcHabitMetrics(habit);
-                    const cat = CATEGORIES[habit.category] || CATEGORIES.estudos;
-                    let row = `<tr class="hover:bg-slate-850/70 transition"><td class="py-3 px-2"><div class="flex items-center gap-2.5"><span class="w-8 h-8 rounded-lg ${cat.bg} ${cat.border} border flex items-center justify-center text-base shrink-0">${cat.emoji}</span><div><div class="font-semibold text-slate-100 leading-tight">${habit.name}</div><div class="text-[11px] text-slate-400 font-mono mt-0.5"><span class="${cat.color}">${cat.label}</span></div></div></div></td>`;
-                    weekDays.forEach((day, dIndex) => {
-                        const checked = habit.checks[dIndex] ? 'checked' : '';
-                        const dayHrs = habit.dailyHours[dIndex] || 0;
-                        row += `<td class="py-2 px-1 text-center ${day.isToday ? 'bg-emerald-950/15' : ''}"><div class="flex flex-col items-center gap-0.5"><label class="inline-flex items-center justify-center cursor-pointer"><input type="checkbox" class="sr-only habit-check" onchange="toggleHabitDay(${hIndex}, ${dIndex}, this)" ${checked}><div class="w-5 h-5 rounded border-2 border-slate-700 bg-slate-950 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-slate-950 opacity-0 transform scale-50 transition-all pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div></label><span class="text-[9px] font-mono ${dayHrs > 0 ? 'text-amber-400' : 'text-slate-600'}">${dayHrs.toFixed(1)}h</span></div></td>`;
-                    });
-                    const eColor = m.elasticity >= 0.90 && m.elasticity <= 1.15 ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' : (m.elasticity > 1.15 ? 'text-cyan-300 bg-cyan-500/15 border-cyan-400/40' : 'text-amber-300 bg-amber-500/10 border-amber-500/30');
-                    row += `<td class="py-2.5 px-2 text-center font-mono"><div class="text-xs font-bold text-amber-400">${m.totalHours.toFixed(1)}h <span class="text-slate-500 font-normal">/ ${m.targetH}h</span></div><div class="text-[10px] text-purple-300">${m.meanHours.toFixed(1)}h ± ${m.sdHours.toFixed(2)}h</div></td><td class="py-2.5 px-2 text-center font-mono"><span class="text-xs font-bold text-emerald-400">${m.freqPct.toFixed(1)}%</span><div class="text-[10px] text-slate-500">${m.daysCompleted}/7 d</div></td><td class="py-2.5 px-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-mono font-semibold border ${eColor}">${m.elasticity.toFixed(2)}</span></td><td class="py-2.5 px-2 text-right whitespace-nowrap"><button type="button" onclick="openHabitModal(${hIndex})" class="text-slate-400 hover:text-cyan-400 p-1.5">✏️</button><button type="button" onclick="deleteHabitByIdx(${hIndex})" class="text-slate-500 hover:text-rose-400 p-1.5">🗑️</button></td></tr>`;
-                    tbody.innerHTML += row;
-                });
-        }
-
-        // =========================================================================
-        // TIMER (CRONÔMETRO + CONTADOR REGRESSIVO + POMODORO + DEEP WORK)
-        // =========================================================================
-        let timerInterval = null, timerSeconds = 0, timerMode = 'stopwatch', initialCountdownSeconds = 0, isTimerRunning = false;
-
-        function populateSelects() {
-            ['timer-habit-select', 'manual-habit-select', 'event-habit-select'].forEach(id => {
-                const sel = document.getElementById(id);
-                if (!sel) return;
-                const cur = sel.value;
-                sel.innerHTML = '';
-                habits.forEach((h, idx) => {
-                    const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
-                    sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name}</option>`;
-                });
-                if (cur !== '' && cur < habits.length) sel.value = cur;
-            });
-            ['timer-day-select', 'manual-day-select', 'event-day-select'].forEach(id => {
-                const sel = document.getElementById(id);
-                if (!sel) return;
-                const cur = sel.value;
-                sel.innerHTML = '';
-                weekDays.forEach((d, idx) => {
-                    sel.innerHTML += `<option value="${idx}">${d.shortName} (${d.dateNum})${d.isToday ? ' - Hoje' : ''}</option>`;
-                });
-                sel.value = cur !== '' ? cur : (todayIndex !== -1 ? todayIndex : 0);
-            });
-            const catSummary = document.getElementById('category-hours-summary');
-            if (catSummary) {
-                catSummary.innerHTML = '';
-                Object.keys(CATEGORIES).forEach(key => {
-                    const cat = CATEGORIES[key];
-                    const catHabits = habits.filter(h => h.category === key);
-                    const doneH = catHabits.reduce((acc, h) => acc + calcHabitMetrics(h).totalHours, 0);
-                    const targH = catHabits.reduce((acc, h) => acc + h.targetHours, 0);
-                    const pct = targH > 0 ? Math.min(Math.round((doneH / targH) * 100), 100) : 0;
-                    catSummary.innerHTML += `<div class="space-y-1"><div class="flex justify-between text-xs"><span class="font-medium ${cat.color}">${cat.emoji} ${cat.label}</span><span class="font-mono text-slate-300">${doneH.toFixed(1)}h / ${targH.toFixed(1)}h (${pct}%)</span></div><div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800"><div class="h-full" style="width:${pct}%; background-color:${cat.hex}"></div></div></div>`;
-                });
-            }
-        }
-
-        window.onTimerConfigChange = function() {
-            timerConfig.stopwatchStartMin = parseInt(document.getElementById('input-min-stopwatch').value, 10) || 0;
-            timerConfig.countdownMin = parseInt(document.getElementById('input-min-countdown').value, 10) || 30;
-            timerConfig.pomodoroMin = parseInt(document.getElementById('input-min-pomodoro').value, 10) || 25;
-            timerConfig.deepworkMin = parseInt(document.getElementById('input-min-deepwork').value, 10) || 50;
-            saveData();
-            if (!isTimerRunning) selectTimerMode(timerMode);
-        };
-
-        window.selectTimerMode = function(mode) {
-            if (isTimerRunning) toggleTimer();
-            timerMode = mode;
-            ['stopwatch', 'countdown', 'pomodoro', 'deepwork'].forEach(m => {
-                const card = document.getElementById('card-tmode-' + m);
-                if (card) card.className = m === mode ? "cursor-pointer p-3.5 rounded-xl border border-indigo-500 bg-indigo-950/30 transition flex flex-col justify-between" : "cursor-pointer p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 transition flex flex-col justify-between";
-            });
-
-            const progContainer = document.getElementById('countdown-progress-container');
-            if (mode === 'stopwatch') {
-                timerSeconds = (parseInt(document.getElementById('input-min-stopwatch').value, 10) || 0) * 60;
-                initialCountdownSeconds = timerSeconds;
-                document.getElementById('timer-mode-badge').textContent = "Modo 1: Cronômetro Progressivo (↑)";
-                progContainer.classList.add('hidden');
-            } else if (mode === 'countdown') {
-                timerSeconds = (parseInt(document.getElementById('input-min-countdown').value, 10) || 30) * 60;
-                initialCountdownSeconds = timerSeconds;
-                document.getElementById('timer-mode-badge').textContent = `Modo 2: Contador Regressivo (${timerSeconds / 60} min ↓)`;
-                progContainer.classList.remove('hidden');
-            } else if (mode === 'pomodoro') {
-                timerSeconds = (parseInt(document.getElementById('input-min-pomodoro').value, 10) || 25) * 60;
-                initialCountdownSeconds = timerSeconds;
-                document.getElementById('timer-mode-badge').textContent = `Modo 3: Pomodoro Regressivo (${timerSeconds / 60} min ↓)`;
-                progContainer.classList.remove('hidden');
-            } else {
-                timerSeconds = (parseInt(document.getElementById('input-min-deepwork').value, 10) || 50) * 60;
-                initialCountdownSeconds = timerSeconds;
-                document.getElementById('timer-mode-badge').textContent = `Modo 4: Deep Work Regressivo (${timerSeconds / 60} min ↓)`;
-                progContainer.classList.remove('hidden');
-            }
-            updateTimerDisplay();
-        };
-
-        window.adjustTimerMinutes = function(deltaMin) {
-            const deltaSec = deltaMin * 60;
-            timerSeconds = Math.max(0, timerSeconds + deltaSec);
-            if (timerMode !== 'stopwatch') initialCountdownSeconds = Math.max(timerSeconds, initialCountdownSeconds + deltaSec);
-            updateTimerDisplay();
-        };
-
-        function updateTimerDisplay() {
-            const hrs = Math.floor(timerSeconds / 3600), mins = Math.floor((timerSeconds % 3600) / 60), secs = timerSeconds % 60;
-            const str = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            document.getElementById('timer-display').textContent = str;
-            document.getElementById('mini-timer-text').textContent = str;
-
-            if (timerMode !== 'stopwatch' && initialCountdownSeconds > 0) {
-                const pct = Math.max(0, Math.min(100, (timerSeconds / initialCountdownSeconds) * 100));
-                const bar = document.getElementById('countdown-progress-bar');
-                if (bar) bar.style.width = `${pct}%`;
-            }
-        }
-
-        window.toggleTimer = function() {
-            const btn = document.getElementById('btn-timer-toggle'), pill = document.getElementById('mini-timer-pill');
-            if (isTimerRunning) {
-                clearInterval(timerInterval);
-                isTimerRunning = false;
-                pill.classList.add('hidden'); pill.classList.remove('flex');
-                btn.textContent = '▶ Retomar';
-            } else {
-                isTimerRunning = true;
-                pill.classList.remove('hidden'); pill.classList.add('flex');
-                btn.textContent = '⏸ Pausar';
-                timerInterval = setInterval(() => {
-                    if (timerMode === 'stopwatch') timerSeconds++;
-                    else if (timerSeconds > 0) timerSeconds--;
-                    else { clearInterval(timerInterval); isTimerRunning = false; finishAndLogSession(true); }
-                    updateTimerDisplay();
-                }, 1000);
-            }
-        };
-
-        window.finishAndLogSession = function(autoTriggered = false) {
-            if (habits.length === 0) return;
-            if (isTimerRunning) toggleTimer();
-            let elapsedSec = timerMode === 'stopwatch' ? timerSeconds : (initialCountdownSeconds - timerSeconds);
-            if (elapsedSec < 30 && !autoTriggered) {
-                const m = prompt("Quantos minutos deseja registrar nesta atividade?", "30");
-                if (m && !isNaN(m)) elapsedSec = parseFloat(m) * 60; else return;
-            }
-            const hIdx = parseInt(document.getElementById('timer-habit-select').value, 10) || 0;
-            const dIdx = parseInt(document.getElementById('timer-day-select').value, 10) || 0;
-            if (habits[hIdx]) {
-                habits[hIdx].dailyHours[dIdx] = parseFloat(((habits[hIdx].dailyHours[dIdx] || 0) + (elapsedSec / 3600)).toFixed(2));
-                if (document.getElementById('timer-auto-check').checked) habits[hIdx].checks[dIdx] = true;
-                saveData();
-                selectTimerMode(timerMode);
-            }
-        };
-
-        // =========================================================================
-        // MÉTRICAS: APENAS DOIS GRÁFICOS (PAINEL TOTAL E PAINEL POR ATIVIDADE COM DP)
-        // =========================================================================
-        let activityChartScope = 'molecular'; // 'molecular' ou 'group'
-        let totalChartInstance = null;
-        let activityChartInstance = null;
-
-        window.setActivityChartScope = function(scope) {
-            activityChartScope = scope;
-            document.getElementById('btn-scope-molecular').className = scope === 'molecular'
-                ? "px-2.5 py-1 rounded-md bg-cyan-600 text-white font-semibold transition"
-                : "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition";
-            document.getElementById('btn-scope-group').className = scope === 'group'
-                ? "px-2.5 py-1 rounded-md bg-cyan-600 text-white font-semibold transition"
-                : "px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition";
-
-            document.getElementById('activity-target-label').textContent = scope === 'molecular'
-                ? "Atividade Molecular:"
-                : "Grupo de Atividade:";
-
-            populateActivityChartTargetSelect();
-            renderMetricsView();
-        };
-
-        function populateActivityChartTargetSelect() {
-            const sel = document.getElementById('activity-chart-target');
-            if (!sel) return;
-            const prev = sel.value;
-            sel.innerHTML = '';
-
-            if (activityChartScope === 'molecular') {
-                habits.forEach((h, idx) => {
-                    const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
-                    sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name} (c/ Banda ±DP)</option>`;
-                });
-                sel.innerHTML += `<option value="all">📊 Comparar Todas as Moleculares</option>`;
-            } else {
-                Object.keys(CATEGORIES).forEach(key => {
-                    const cat = CATEGORIES[key];
-                    sel.innerHTML += `<option value="${key}">${cat.emoji} Grupo: ${cat.label} (c/ Banda ±DP)</option>`;
-                });
-                sel.innerHTML += `<option value="all">📊 Comparar Todos os Grupos</option>`;
-            }
-
-            if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-                sel.value = prev;
-            } else {
-                sel.selectedIndex = 0;
-            }
-        }
-
-        function calcSeriesStats(arr) {
-            const n = arr.length || 1;
-            const mean = arr.reduce((a, b) => a + b, 0) / n;
-            const sd = Math.sqrt(arr.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / n);
-            return { mean, sd };
-        }
-
-        function buildLineWithSdDatasets(label, series, colorHex, showBand) {
-            const { mean, sd } = calcSeriesStats(series);
-            const datasets = [
-                {
-                    label: `${label} (μ=${mean.toFixed(2)}h, σ=${sd.toFixed(2)}h)`,
-                    data: series.map(v => parseFloat(v.toFixed(2))),
-                    borderColor: colorHex,
-                    backgroundColor: colorHex,
-                    borderWidth: 2.5,
-                    pointRadius: 4,
-                    tension: 0.3,
-                    fill: false
-                }
-            ];
-
-            if (showBand) {
-                const upper = series.map(v => parseFloat((v + sd).toFixed(2)));
-                const lower = series.map(v => parseFloat(Math.max(0, v - sd).toFixed(2)));
-                datasets.push(
-                    {
-                        label: `Limite Superior (+1 DP: +${sd.toFixed(2)}h)`,
-                        data: upper,
-                        borderColor: hexToRgba(colorHex, 0.45),
-                        borderWidth: 1,
-                        borderDash: [4, 4],
-                        pointRadius: 0,
-                        tension: 0.3,
-                        fill: false
-                    },
-                    {
-                        label: `Banda de Desvio-Padrão (±${sd.toFixed(2)}h)`,
-                        data: lower,
-                        borderColor: hexToRgba(colorHex, 0.45),
-                        backgroundColor: hexToRgba(colorHex, 0.16),
-                        borderWidth: 1,
-                        borderDash: [4, 4],
-                        pointRadius: 0,
-                        tension: 0.3,
-                        fill: '-1'
-                    }
-                );
-            }
-            return datasets;
-        }
-
-        function renderMetricsView() {
-            if (typeof Chart === 'undefined') return;
-            const sel = document.getElementById('activity-chart-target');
-            if (sel && sel.options.length === 0) populateActivityChartTargetSelect();
-
-            const xLabels = weekDays.map(d => d.shortName);
-
-            // 1. PAINEL TOTAL
-            const ctxTotal = document.getElementById('totalPanelChart').getContext('2d');
-            if (totalChartInstance) totalChartInstance.destroy();
-
-            const dailyHoursSum = [0, 0, 0, 0, 0, 0, 0];
-            const dailyChecksSum = [0, 0, 0, 0, 0, 0, 0];
-            habits.forEach(h => {
-                h.dailyHours.forEach((hr, i) => dailyHoursSum[i] += (parseFloat(hr) || 0));
-                h.checks.forEach((c, i) => { if (c) dailyChecksSum[i]++; });
-            });
-
-            totalChartInstance = new Chart(ctxTotal, {
-                type: 'bar',
-                data: {
-                    labels: xLabels,
-                    datasets: [
-                        {
-                            type: 'bar',
-                            label: 'Horas Totais no Dia (h)',
-                            data: dailyHoursSum.map(v => parseFloat(v.toFixed(2))),
-                            backgroundColor: 'rgba(251, 191, 36, 0.45)',
-                            borderColor: '#fbbf24',
-                            borderWidth: 1.5,
-                            borderRadius: 6,
-                            yAxisID: 'y'
-                        },
-                        {
-                            type: 'line',
-                            label: 'Taxa de Conclusão Diária (%)',
-                            data: dailyChecksSum.map(c => habits.length > 0 ? Math.round((c / habits.length) * 100) : 0),
-                            borderColor: '#10b981',
-                            backgroundColor: '#10b981',
-                            borderWidth: 2.5,
-                            tension: 0.3,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51,65,85,0.25)' } },
-                        y: { position: 'left', min: 0, title: { display: true, text: 'Horas (h)', color: '#fbbf24', font: { size: 11 } }, ticks: { color: '#fbbf24' }, grid: { color: 'rgba(51,65,85,0.25)' } },
-                        y1: { position: 'right', min: 0, max: 100, title: { display: true, text: 'Adesão (%)', color: '#10b981', font: { size: 11 } }, ticks: { color: '#10b981' }, grid: { drawOnChartArea: false } }
-                    }
-                }
-            });
-
-            // 2. PAINEL POR ATIVIDADE (Eixo X = Dias da Semana, Eixo Y = Horas de Atividade, Linha c/ DP)
-            const ctxAct = document.getElementById('activityPanelChart').getContext('2d');
-            if (activityChartInstance) activityChartInstance.destroy();
-
-            const targetVal = sel ? sel.value : '0';
-            let datasets = [];
-
-            if (activityChartScope === 'molecular') {
-                if (targetVal === 'all') {
-                    habits.forEach((h, idx) => {
-                        const color = PALETTE[idx % PALETTE.length];
-                        const series = h.dailyHours.map(v => parseFloat(v) || 0);
-                        datasets.push(...buildLineWithSdDatasets(h.name, series, color, false));
-                    });
-                } else {
-                    const hIdx = parseInt(targetVal, 10) || 0;
-                    const h = habits[hIdx] || habits[0];
-                    if (h) {
-                        const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
-                        const series = h.dailyHours.map(v => parseFloat(v) || 0);
-                        datasets.push(...buildLineWithSdDatasets(h.name, series, cat.hex, true));
-                    }
-                }
-            } else {
-                // Escopo por Grupo de Atividade (Saúde, Estudos, Academia)
-                if (targetVal === 'all') {
-                    Object.keys(CATEGORIES).forEach(key => {
-                        const cat = CATEGORIES[key];
-                        const groupSeries = [0, 0, 0, 0, 0, 0, 0];
-                        habits.filter(h => h.category === key).forEach(h => {
-                            h.dailyHours.forEach((hr, dIdx) => groupSeries[dIdx] += (parseFloat(hr) || 0));
-                        });
-                        datasets.push(...buildLineWithSdDatasets(cat.label, groupSeries, cat.hex, false));
-                    });
-                } else {
-                    const cat = CATEGORIES[targetVal] || CATEGORIES.estudos;
-                    const groupSeries = [0, 0, 0, 0, 0, 0, 0];
-                    habits.filter(h => h.category === targetVal).forEach(h => {
-                        h.dailyHours.forEach((hr, dIdx) => groupSeries[dIdx] += (parseFloat(hr) || 0));
-                    });
-                    datasets.push(...buildLineWithSdDatasets(`Grupo ${cat.label}`, groupSeries, cat.hex, true));
-                }
-            }
-
-            activityChartInstance = new Chart(ctxAct, {
-                type: 'line',
-                data: {
-                    labels: xLabels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(ctx) {
-                                    return `${ctx.dataset.label.split(' (')[0]}: ${ctx.parsed.y}h`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: { display: true, text: 'Dias da Semana', color: '#94a3b8', font: { size: 11 } },
-                            ticks: { color: '#94a3b8' },
-                            grid: { color: 'rgba(51,65,85,0.25)' }
-                        },
-                        y: {
-                            min: 0,
-                            title: { display: true, text: 'Horas de Atividade (h)', color: '#22d3ee', font: { size: 11 } },
-                            ticks: { color: '#22d3ee', callback: v => v + 'h' },
-                            grid: { color: 'rgba(51,65,85,0.25)' }
-                        }
-                    }
-                }
-            });
-        }
-
-        // =========================================================================
-        // AGENDA SEMANAL
-        // =========================================================================
-        window.deleteCalEvent = function(evId) {
-            if (confirm('Remover bloco da agenda?')) { calendarEvents = calendarEvents.filter(e => e.id !== evId); saveData(); }
-        };
-
-        function renderCalendarView() {
-            const headerGrid = document.getElementById('calendar-header-grid');
-            let hHTML = `<div class="p-2 text-center text-[10px] font-mono text-slate-500 border-r border-slate-800">GMT-3</div>`;
-            weekDays.forEach(d => {
-                hHTML += `<div class="p-2 text-center border-r border-slate-800/60 ${d.isToday ? 'bg-blue-950/40 text-blue-400 border-b-2 border-blue-500' : 'text-slate-300'}"><div class="text-[11px] font-semibold uppercase">${d.shortName}</div><div class="text-xs font-mono opacity-80">${d.dateNum}</div></div>`;
-            });
-            headerGrid.innerHTML = hHTML;
-
-            const hoursGrid = document.getElementById('calendar-hours-grid');
-            hoursGrid.innerHTML = '';
-            for (let hour = 6; hour <= 22; hour++) {
-                let rowHTML = `<div class="calendar-grid min-h-[46px]"><div class="p-1.5 text-right pr-2 text-[10px] font-mono text-slate-500 border-r border-slate-800">${String(hour).padStart(2, '0')}:00</div>`;
-                for (let dIdx = 0; dIdx < 7; dIdx++) {
-                    const evs = calendarEvents.filter(e => e.dayIndex === dIdx && Math.floor(e.startHour) === hour);
-                    let cellContent = '';
-                    evs.forEach(ev => {
-                        const habit = habits.find(h => h.id === ev.habitId) || habits[0];
-                        if (habit) {
-                            const cat = CATEGORIES[habit.category] || CATEGORIES.estudos;
-                            cellContent += `<div onclick="event.stopPropagation(); deleteCalEvent('${ev.id}')" class="p-1 rounded text-[10px] ${cat.bg} ${cat.border} border ${cat.color} font-medium cursor-pointer mb-1"><div class="font-bold truncate">${cat.emoji} ${habit.name}</div><div class="font-mono opacity-80">${hour}:00 (${ev.duration}h)</div></div>`;
-                        }
-                    });
-                    rowHTML += `<div onclick="openEventModal(${dIdx}, ${hour})" class="p-1 border-r border-slate-800/40 hover:bg-slate-900/60 cursor-pointer">${cellContent}</div>`;
-                }
-                hoursGrid.innerHTML += rowHTML + `</div>`;
-            }
-        }
-
-        window.openHabitModal = function(index = -1) {
-            document.getElementById('modal-habit-index').value = index;
-            const container = document.getElementById('modal-daily-hours-inputs');
-            container.innerHTML = '';
-            const h = index >= 0 && habits[index] ? habits[index] : null;
-            document.getElementById('modal-habit-name').value = h ? h.name : '';
-            document.getElementById('modal-habit-category').value = h ? h.category : 'estudos';
-            document.getElementById('modal-habit-target-hours').value = h ? h.targetHours : 5.0;
-            weekDays.forEach((d, dIdx) => {
-                container.innerHTML += `<div class="text-center"><label class="block text-[10px] text-slate-400 mb-1">${d.shortName}</label><input type="number" id="modal-day-hr-${dIdx}" step="0.1" min="0" max="24" value="${h ? (h.dailyHours[dIdx] || 0) : 0}" class="w-full bg-slate-900 border border-slate-700 rounded px-1 py-1 text-xs font-mono text-center text-slate-100"></div>`;
-            });
-            const m = document.getElementById('habit-modal');
-            m.classList.remove('hidden'); m.classList.add('flex');
-        };
-
-        window.closeHabitModal = function() {
-            const m = document.getElementById('habit-modal');
-            m.classList.add('hidden'); m.classList.remove('flex');
-        };
-
-        window.openEventModal = function(dayIndex = 0, startHour = 9) {
-            populateSelects();
-            document.getElementById('event-day-select').value = dayIndex;
-            document.getElementById('event-start-hour').value = startHour;
-            const m = document.getElementById('event-modal');
-            m.classList.remove('hidden'); m.classList.add('flex');
-        };
-
-        window.closeEventModal = function() {
-            const m = document.getElementById('event-modal');
-            m.classList.add('hidden'); m.classList.remove('flex');
-        };
-
-        function saveEventFromModal() {
-            const hIdx = parseInt(document.getElementById('event-habit-select').value, 10) || 0;
-            const dIdx = parseInt(document.getElementById('event-day-select').value, 10) || 0;
-            const startHour = parseInt(document.getElementById('event-start-hour').value, 10) || 9;
-            const duration = parseFloat(document.getElementById('event-duration').value) || 1.0;
-            const habit = habits[hIdx];
-            if (!habit) return null;
-            const newEv = { id: 'ev_' + Date.now(), habitId: habit.id, dayIndex: dIdx, startHour, duration };
-            calendarEvents.push(newEv);
-            saveData();
-            return { newEv, habit };
-        }
-
-        window.saveAndOpenGoogleCal = function() {
-            const res = saveEventFromModal();
-            if (!res) return;
-            const { newEv, habit } = res;
-            const cat = CATEGORIES[habit.category] || CATEGORIES.estudos;
-            const start = new Date(weekDays[newEv.dayIndex].rawDate);
-            start.setHours(newEv.startHour, 0, 0, 0);
-            const end = new Date(start.getTime() + newEv.duration * 3600 * 1000);
-            const fmt = d => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-            window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(cat.emoji + ' ' + habit.name)}&dates=${fmt(start)}/${fmt(end)}`, '_blank');
-            closeEventModal();
-        };
-
-        window.openCloudModal = function() {
-            document.getElementById('gist-token-input').value = SafeStorage.getItem('hq_gist_token') || '';
-            document.getElementById('gist-id-input').value = SafeStorage.getItem('hq_gist_id') || '';
-            const m = document.getElementById('cloud-modal');
-            m.classList.remove('hidden'); m.classList.add('flex');
-        };
-
-        window.closeCloudModal = function() {
-            const m = document.getElementById('cloud-modal');
-            m.classList.add('hidden'); m.classList.remove('flex');
-        };
-
-        window.exportToCSV = function() {
-            let csv = "data:text/csv;charset=utf-8,habit_id,habit_name,category,target_hours_week,total_hours_week,mean_hours_day,sd_hours_week,freq_pct,sensitivity_deriv,elasticity,day_of_week,date_iso,completed,hours_day\n";
-            habits.forEach(h => {
-                const m = calcHabitMetrics(h), cleanName = `"${h.name.replace(/"/g, '""')}"`;
-                weekDays.forEach((day, dIdx) => {
-                    csv += `${h.id},${cleanName},${h.category},${h.targetHours},${m.totalHours.toFixed(2)},${m.meanHours.toFixed(2)},${m.sdHours.toFixed(2)},${m.freqPct.toFixed(1)},${m.sensitivityDerivative.toFixed(2)},${m.elasticity.toFixed(3)},${day.shortName},${day.iso},${h.checks[dIdx] ? 1 : 0},${h.dailyHours[dIdx] || 0}\n`;
-                });
-            });
-            const link = document.createElement("a");
-            link.href = encodeURI(csv);
-            link.download = `habitquant_${weekDays[0].iso}.csv`;
-            link.click();
-        };
-
-        window.exportCalendarICS = function() {
-            let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//HabitQuant Pro//PT-BR\n";
-            const fmt = d => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-            calendarEvents.forEach(ev => {
-                const habit = habits.find(h => h.id === ev.habitId);
-                if (!habit) return;
-                const start = new Date(weekDays[ev.dayIndex].rawDate);
-                start.setHours(ev.startHour, 0, 0, 0);
-                const end = new Date(start.getTime() + ev.duration * 3600 * 1000);
-                ics += `BEGIN:VEVENT\nSUMMARY:${CATEGORIES[habit.category].emoji} ${habit.name}\nDTSTART:${fmt(start)}\nDTEND:${fmt(end)}\nEND:VEVENT\n`;
-            });
-            ics += "END:VCALENDAR";
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
-            link.download = `agenda_habitos_${weekDays[0].iso}.ics`;
-            link.click();
-        };
-
-        function updateCloudBadge(state, text) {
-            const pill = document.getElementById('cloud-status-pill');
-            const icon = document.getElementById('cloud-pill-icon');
-            const label = document.getElementById('cloud-pill-text');
-            if (!pill || !icon || !label) return;
-
-            label.textContent = text;
-            if (state === 'ok') {
-                icon.textContent = '✅';
-                pill.className = "flex items-center gap-1.5 px-3 py-2 bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-mono transition";
-            } else if (state === 'syncing') {
-                icon.textContent = '⏳';
-                pill.className = "flex items-center gap-1.5 px-3 py-2 bg-amber-950/50 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-mono transition animate-pulse";
-            } else if (state === 'error') {
-                icon.textContent = '❌';
-                pill.className = "flex items-center gap-1.5 px-3 py-2 bg-rose-950/50 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-mono transition";
-            } else {
-                icon.textContent = '☁️';
-                pill.className = "flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-xs font-mono transition";
-            }
-        }
-
-        window.pushToGist = async function() {
-            const token = document.getElementById('gist-token-input').value.trim();
-            const gistId = document.getElementById('gist-id-input').value.trim();
-            const status = document.getElementById('cloud-status-msg');
-            if (!token) { status.textContent = "⚠️ Informe o Token do GitHub."; return; }
-            
-            SafeStorage.setItem('hq_gist_token', token);
-            if (gistId) SafeStorage.setItem('hq_gist_id', gistId);
-
-            status.textContent = "⏳ Enviando para o GitHub Gist...";
-            updateCloudBadge('syncing', 'Enviando...');
-
-            try {
-                const url = gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`;
-                const res = await fetch(url, {
-                    method: gistId ? 'PATCH' : 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/vnd.github+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        description: "HabitQuant Pro Cloud Sync",
-                        public: false,
-                        files: { "habitquant_data.json": { content: JSON.stringify({ updatedAt: Date.now(), habits, calendarEvents, timerConfig }) } }
-                    })
-                });
-                const data = await res.json();
-                if (res.ok && data.id) {
-                    SafeStorage.setItem('hq_gist_id', data.id);
-                    document.getElementById('gist-id-input').value = data.id;
-                    status.textContent = `✅ Sincronizado! Copie este Gist ID para usar no outro aparelho: ${data.id}`;
-                    updateCloudBadge('ok', 'Sync Ativo');
-                } else {
-                    status.textContent = `❌ Erro (${res.status}): ${data.message || 'Verifique o Token/ID'}`;
-                    updateCloudBadge('error', 'Erro Sync');
-                }
-            } catch (e) {
-                status.textContent = "❌ Falha de conexão com a API do GitHub.";
-                updateCloudBadge('error', 'Erro Rede');
-            }
-        };
-
-        window.pullFromGist = async function() {
-            const token = document.getElementById('gist-token-input').value.trim();
-            const gistId = document.getElementById('gist-id-input').value.trim();
-            const status = document.getElementById('cloud-status-msg');
-            if (!token || !gistId) { status.textContent = "⚠️ Informe o Token e o Gist ID."; return; }
-
-            SafeStorage.setItem('hq_gist_token', token);
-            SafeStorage.setItem('hq_gist_id', gistId);
-
-            status.textContent = "⏳ Baixando dados da nuvem...";
-            updateCloudBadge('syncing', 'Baixando...');
-
-            try {
-                const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/vnd.github+json'
-                    },
-                    cache: 'no-store'
-                });
-                const data = await res.json();
-                if (res.ok && data.files && data.files["habitquant_data.json"]) {
-                    const content = JSON.parse(data.files["habitquant_data.json"].content);
-                    habits = content.habits || habits;
-                    calendarEvents = content.calendarEvents || calendarEvents;
-                    timerConfig = content.timerConfig || timerConfig;
-                    saveData(true);
-                    status.textContent = "✅ Dados baixados e Auto-Sync ativado neste aparelho!";
-                    updateCloudBadge('ok', 'Sync Ativo');
-                } else {
-                    status.textContent = `❌ Arquivo não encontrado no Gist (${res.status}).`;
-                    updateCloudBadge('error', 'Erro ID');
-                }
-            } catch (e) {
-                status.textContent = "❌ Erro ao buscar dados do Gist.";
-                updateCloudBadge('error', 'Erro Rede');
-            }
-        };
-
-        let syncTimeout = null;
-
-        function saveData(skipCloud = false) {
-            SafeStorage.setItem(STORAGE_KEY, JSON.stringify({ habits, calendarEvents, timerConfig }));
-            renderAll();
-
-            if (!skipCloud && SafeStorage.getItem('hq_gist_token') && SafeStorage.getItem('hq_gist_id')) {
-                updateCloudBadge('syncing', 'Salvando...');
-                clearTimeout(syncTimeout);
-                syncTimeout = setTimeout(() => {
-                    autoPushToGist();
-                }, 1000);
-            }
-        }
-
-        async function autoPushToGist() {
-            const token = SafeStorage.getItem('hq_gist_token');
-            const gistId = SafeStorage.getItem('hq_gist_id');
-            if (!token || !gistId) return;
-
-            try {
-                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/vnd.github+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        files: { "habitquant_data.json": { content: JSON.stringify({ updatedAt: Date.now(), habits, calendarEvents, timerConfig }) } }
-                    })
-                });
-                if (res.ok) {
-                    const now = new Date();
-                    const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-                    updateCloudBadge('ok', `Salvo ${timeStr}`);
-                } else {
-                    updateCloudBadge('error', 'Erro Push');
-                }
-            } catch (e) {
-                updateCloudBadge('error', 'Offline');
-            }
-        }
-
-        async function autoPullFromGist() {
-            const token = SafeStorage.getItem('hq_gist_token');
-            const gistId = SafeStorage.getItem('hq_gist_id');
-            if (!token || !gistId) {
-                updateCloudBadge('idle', 'Conectar Sync');
-                return;
-            }
-
-            updateCloudBadge('syncing', 'Sincronizando...');
-            try {
-                const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/vnd.github+json'
-                    },
-                    cache: 'no-store'
-                });
-                const data = await res.json();
-                if (res.ok && data.files && data.files["habitquant_data.json"]) {
-                    const content = JSON.parse(data.files["habitquant_data.json"].content);
-                    habits = content.habits || habits;
-                    calendarEvents = content.calendarEvents || calendarEvents;
-                    timerConfig = content.timerConfig || timerConfig;
-                    saveData(true);
-                    const now = new Date();
-                    const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-                    updateCloudBadge('ok', `Sync ${timeStr}`);
-                } else {
-                    updateCloudBadge('error', 'Erro Pull');
-                }
-            } catch (e) {
-                updateCloudBadge('error', 'Offline');
-            }
-        }
-
-        function renderAll(activeRoute) {
-            document.getElementById('week-range-badge').textContent = `${weekDays[0].dateNum} a ${weekDays[6].dateNum}`;
-            populateSelects();
-            populateActivityChartTargetSelect();
-            renderDashboardView();
-            const current = activeRoute || (window.location.hash || '#dashboard').replace('#', '');
-            if (current === 'metrics') renderMetricsView();
-            if (current === 'calendar') renderCalendarView();
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            loadData();
-
-            document.getElementById('manual-hours-form').addEventListener('submit', e => {
-                e.preventDefault();
-                const hIdx = parseInt(document.getElementById('manual-habit-select').value, 10);
-                const dIdx = parseInt(document.getElementById('manual-day-select').value, 10);
-                const hrs = parseFloat(document.getElementById('manual-hours-input').value) || 0;
-                if (habits[hIdx] && hrs > 0) {
-                    habits[hIdx].dailyHours[dIdx] = parseFloat(((habits[hIdx].dailyHours[dIdx] || 0) + hrs).toFixed(2));
-                    habits[hIdx].checks[dIdx] = true;
-                    saveData();
-                }
-            });
-
-            document.getElementById('habit-modal-form').addEventListener('submit', e => {
-                e.preventDefault();
-                const idx = parseInt(document.getElementById('modal-habit-index').value, 10);
-                const name = document.getElementById('modal-habit-name').value.trim();
-                const category = document.getElementById('modal-habit-category').value;
-                const targetHours = parseFloat(document.getElementById('modal-habit-target-hours').value) || 1;
-                const dailyHours = weekDays.map((_, dIdx) => parseFloat(document.getElementById('modal-day-hr-' + dIdx).value) || 0);
-                if (!name) return;
-                if (idx >= 0 && habits[idx]) {
-                    Object.assign(habits[idx], { name, category, targetHours, dailyHours });
-                    dailyHours.forEach((hr, i) => { if (hr > 0) habits[idx].checks[i] = true; });
-                } else {
-                    habits.push({ id: 'h_' + Date.now(), name, category, targetHours, checks: dailyHours.map(hr => hr > 0), dailyHours });
-                }
-                closeHabitModal();
-                saveData();
-            });
-
-            document.getElementById('event-modal-form').addEventListener('submit', e => {
-                e.preventDefault();
-                saveEventFromModal();
-                closeEventModal();
-            });
-
-            selectTimerMode('stopwatch');
-            applyRoute();
-
-            autoPullFromGist();
-            window.addEventListener('focus', autoPullFromGist);
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') autoPullFromGist();
-            });
-        });
-    </script>
+    <!-- Módulos JS -->
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/math.js"></script>
+    <script src="assets/js/charts.js"></script>
+    <script src="assets/js/timer.js"></script>
+    <script src="assets/js/app.js"></script>
 </body>
 </html>

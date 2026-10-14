@@ -1,0 +1,31 @@
+/* Transição e Estado da Sidebar Expandível */
+#desktop-sidebar.sidebar-expanded {
+    width: 15.5rem; /* 248px */
+}
+#desktop-sidebar.sidebar-collapsed {
+    width: 4.75rem; /* 76px */
+}
+#desktop-sidebar.sidebar-collapsed .sidebar-label {
+    display: none;
+}
+
+/* Custom Checkboxes na Tabela Métrica Semanal */
+.habit-check:checked + div {
+    background-color: #18181b;
+    border-color: #18181b;
+}
+.habit-check:checked + div svg {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Grade Semanal da Agenda */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: 64px repeat(7, minmax(115px, 1fr));
+}
+
+/* Scrollbar limpa */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f4f4f5; }
+::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
