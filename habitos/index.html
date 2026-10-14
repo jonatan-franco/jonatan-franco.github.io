@@ -1056,7 +1056,7 @@
             if (current === 'calendar') renderCalendarView();
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
+          window.addEventListener('DOMContentLoaded', () => {
             loadData();
             document.getElementById('manual-hours-form').addEventListener('submit', e => {
                 e.preventDefault();
@@ -1087,14 +1087,3 @@
                 closeHabitModal();
                 saveData();
             });
-            document.getElementById('event-modal-form').addEventListener('submit', e => {
-                e.preventDefault();
-                saveEventFromModal();
-                closeEventModal();
-            });
-            selectTimerMode('stopwatch');
-            applyRoute();
-        });
-    </script>
-</body>
-</html>
