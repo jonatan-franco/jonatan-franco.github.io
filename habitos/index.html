@@ -9,8 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@0.451.0/dist/umd/lucide.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
+<<<<<<< HEAD
         tailwind.config = { theme: { extend: { fontFamily: {
             sans: ['Inter', 'sans-serif'],
             mono: ['JetBrains Mono', 'monospace'],
@@ -22,6 +23,21 @@
 
     <!-- TOPBAR (MOBILE) -->
     <div class="md:hidden bg-black text-white px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-40 h-[56px]">
+=======
+        tailwind.config = {
+            theme: { extend: { fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                mono: ['JetBrains Mono', 'monospace'],
+            }}}
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="bg-[#fafafa] text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row pt-[56px] pb-20">
+
+    <!-- TOPBAR (fixed) -->
+    <div class="bg-black text-white px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-40 h-[56px]">
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
         <div class="flex items-center gap-3 cursor-pointer" onclick="openProfileModal()">
             <div id="mobile-user-avatar" class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-base flex items-center justify-center">🧑‍💻</div>
             <span class="font-bold text-sm tracking-tight" id="mobile-user-name">HabitQuant Pro</span>
@@ -31,8 +47,13 @@
         </button>
     </div>
 
+<<<<<<< HEAD
     <!-- GAVETA (MOBILE) -->
     <div id="mobile-drawer" class="hidden md:hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
+=======
+    <!-- GAVETA -->
+    <div id="mobile-drawer" class="hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
         <button type="button" onclick="openProfileModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
             <i data-lucide="user" class="w-4 h-4"></i> <span>Editar Perfil &amp; Avatar</span>
         </button>
@@ -47,8 +68,13 @@
         </button>
     </div>
 
+<<<<<<< HEAD
     <!-- SIDEBAR (DESKTOP — sticky, expandível) -->
     <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex self-start flex-col justify-between bg-black text-white shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 select-none">
+=======
+    <!-- SIDEBAR (sticky, expandível) -->
+    <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex self-start flex-col justify-between bg-black text-white shrink-0 sticky top-[56px] h-[calc(100vh-136px)] z-30 transition-all duration-300 select-none">
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
         <div class="p-4 space-y-6">
             <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
                 <div onclick="openProfileModal()" class="flex items-center gap-3 overflow-hidden cursor-pointer group" title="Personalizar perfil">
@@ -95,8 +121,13 @@
         </div>
     </aside>
 
+<<<<<<< HEAD
     <!-- BOTTOM NAV (MOBILE) -->
     <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
+=======
+    <!-- BOTTOM NAV -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
         <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold">
             <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span>
         </button>
@@ -112,6 +143,10 @@
     </nav>
 
     <main class="flex-1 p-5 md:p-8 max-w-7xl mx-auto w-full space-y-8">
+<<<<<<< HEAD
+=======
+
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <div class="flex items-center gap-2.5">
@@ -135,6 +170,7 @@
         <!-- DASHBOARD -->
         <section id="view-dashboard" class="space-y-8">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
                 <div class="bg-[#b9f6ca] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -147,7 +183,12 @@
                         <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
                     </div>
                     <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between">
+<<<<<<< HEAD
                         <span id="kpi-today-progress">Hoje: 0/0</span><span>Engajamento semanal</span>
+=======
+                        <span id="kpi-today-progress">Hoje: 0/0</span>
+                        <span>Engajamento semanal</span>
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
                     </div>
                 </div>
 
@@ -160,10 +201,20 @@
                                 <span class="text-xs text-zinc-600 font-mono" id="kpi-sleep-slept">→ —</span>
                             </div>
                         </div>
+<<<<<<< HEAD
                         <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="moon" class="w-5 h-5"></i></div>
                     </div>
                     <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-700 flex justify-between font-mono">
                         <span id="kpi-sleep-sens">Sensib.: ε —</span><span id="kpi-sleep-eff">Efic.: —</span>
+=======
+                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900">
+                            <i data-lucide="moon" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-2.5 border-t border-black/10 text-xs text-zinc-700 flex justify-between font-mono">
+                        <span id="kpi-sleep-sens">Sensib.: ε —</span>
+                        <span id="kpi-sleep-eff">Efic.: —</span>
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
                     </div>
                 </div>
 

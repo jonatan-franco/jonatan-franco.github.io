@@ -24,7 +24,11 @@ const AVATAR_ROLES = [
 ];
 
 let currentProfile = { name: 'HabitQuant Pro', gender: 'nb', role: 'dev', skinTone: '' };
+<<<<<<< HEAD
 let selectedRoleId  = 'dev';
+=======
+let selectedRoleId = 'dev';
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
 let selectedSkinTone = '';
 let isFirstRunModal = false;
 
@@ -40,6 +44,7 @@ function buildAvatarEmoji(roleId, tone) {
     const tk  = (tone !== undefined) ? tone : (currentProfile.skinTone || '');
     const role = AVATAR_ROLES.find(r => r.id === rid) || AVATAR_ROLES[0];
     return applySkinToneToEmoji(role.emoji, tk);
+<<<<<<< HEAD
 }
 
 /* -------------------------------------------------------------------
@@ -67,6 +72,14 @@ window.getUserGreeting = function () {
         return `Bom dia, ${currentProfile.name}! ${ready} para ${phase} a semana?`;
     }
     return `Bom dia! ${ready} para ${phase} a semana?`;
+=======
+}
+
+/* Cumprimento ESTÁVEL — sempre "Bom dia, [nome]!" */
+window.getUserGreeting = function () {
+    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HabitQuant Pro';
+    return hasName ? `Bom dia, ${currentProfile.name}!` : 'Bom dia, Semana Corrente';
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
 };
 
 function renderRoleGrid() {
@@ -117,17 +130,25 @@ window.updateAvatarPreview = function () {
 
     const greet = document.getElementById('avatar-greeting-preview');
     if (greet) {
+<<<<<<< HEAD
         const phase = getWeekPhaseAction();
         const ready = getReadyWordForGender(gender);
         greet.textContent = `Bom dia, ${name}! ${ready} para ${phase} a semana?`;
+=======
+        const readyWord = gender === 'fem' ? 'Pronta' : 'Pronto';
+        greet.textContent = `Bom dia, ${name}! ${readyWord} para o dia?`;
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
     }
 };
 
 window.getAvatarDraft = () => ({ role: selectedRoleId, skinTone: selectedSkinTone });
 
+<<<<<<< HEAD
 /* -------------------------------------------------------------------
  * Modal do Perfil
  * ------------------------------------------------------------------- */
+=======
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
 window.openProfileModal = function (opts = {}) {
     isFirstRunModal = !!opts.firstRun;
     const m = document.getElementById('profile-modal');
@@ -153,7 +174,11 @@ window.openProfileModal = function (opts = {}) {
 };
 
 window.closeProfileModal = function () {
+<<<<<<< HEAD
     if (isFirstRunModal) return;   /* bloqueia fechamento APENAS no primeiro acesso */
+=======
+    if (isFirstRunModal) return;   /* bloqueia APENAS no primeiro acesso */
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
     const m = document.getElementById('profile-modal');
     if (!m) return;
     m.classList.add('hidden');
@@ -193,4 +218,8 @@ function applyProfileToUI() {
     if (typeof window.refreshHeaderTitle === 'function') window.refreshHeaderTitle();
 }
 
+<<<<<<< HEAD
 console.log('[profile.js] carregado. getUserGreeting:', typeof window.getUserGreeting);
+=======
+console.log('[profile.js] carregado. openProfileModal:', typeof window.openProfileModal);
+>>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
