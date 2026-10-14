@@ -198,34 +198,18 @@
             </div>
         </section>
 
-        <!-- VIEW: ATIVIDADE FÍSICA -->
+        <!-- VIEW: ATIVIDADE FÍSICA (Tabela Interativa Nativa com Carga Decimal) -->
         <section id="view-atv_fisica" class="hidden space-y-6">
             <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
                 <div class="flex justify-between items-center">
                     <div>
                         <span class="text-[10px] font-mono uppercase tracking-widest text-rose-600 font-bold">GRUPO</span>
                         <h2 class="text-xl font-bold text-zinc-900">🏋️ Atividade Física</h2>
-                        <p class="text-xs text-zinc-500">Acompanhamento e metas semanais de treinos (Upper/Lower) e exercícios.</p>
+                        <p class="text-xs text-zinc-500">Registro diário de exercícios, cargas com 2 casas decimais e observações.</p>
                     </div>
-                    <button type="button" onclick="openHabitModal(-1); document.getElementById('modal-habit-category').value='atv_fisica';" class="px-4 py-2 bg-black text-white rounded-full text-xs font-semibold">+ Nova Atividade Física</button>
+                    <button type="button" onclick="openHabitModal(-1); document.getElementById('modal-habit-category').value='atv_fisica';" class="px-4 py-2 bg-black text-white rounded-full text-xs font-semibold">+ Nova Atividade</button>
                 </div>
                 <div id="atv-fisica-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4"></div>
-            </div>
-
-            <!-- PLANILHA INTERATIVA DE ATIVIDADE FÍSICA (EMBED GOOGLE SHEETS)[span_1](start_span)[span_1](end_span) -->
-            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">PLANILHA DE ATIVIDADE FÍSICA</span>
-                        <h2 class="text-lg font-bold text-zinc-900">Planilha Interativa Integrada</h2>
-                    </div>
-                    <a href="https://docs.google.com/spreadsheets/d/1zGeUgdOLsWAN83ulLImb_2dIKswnNZvHg0shPDcKMvU/edit?gid=0#gid=0" target="_blank" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-                        <span>↗ Abrir Planilha no Google Sheets</span>
-                    </a>
-                </div>
-                <div class="w-full h-[450px] rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-50">
-                    <iframe src="https://docs.google.com/spreadsheets/d/1zGeUgdOLsWAN83ulLImb_2dIKswnNZvHg0shPDcKMvU/edit?embedded=true&gid=0" class="w-full h-full border-0"></iframe>
-                </div>
             </div>
         </section>
 
@@ -647,6 +631,7 @@
     <script src="assets/js/charts.js"></script>
     <script src="assets/js/timer.js"></script>
     <script src="assets/js/profile.js"></script>
+    <script src="assets/js/atv.js"></script>
     <script src="assets/js/app.js"></script>
 </body>
 </html>
