@@ -24,13 +24,9 @@ const AVATAR_ROLES = [
 ];
 
 let currentProfile = { name: 'HaQt', gender: 'nb', role: 'dev', skinTone: '' };
-<<<<<<< HEAD
-let selectedRoleId  = 'dev';
-=======
-let selectedRoleId = 'dev';
->>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
+let selectedRoleId   = 'dev';
 let selectedSkinTone = '';
-let isFirstRunModal = false;
+let isFirstRunModal  = false;
 
 function applySkinToneToEmoji(baseEmoji, tone) {
     if (!tone) return baseEmoji;
@@ -44,16 +40,13 @@ function buildAvatarEmoji(roleId, tone) {
     const tk  = (tone !== undefined) ? tone : (currentProfile.skinTone || '');
     const role = AVATAR_ROLES.find(r => r.id === rid) || AVATAR_ROLES[0];
     return applySkinToneToEmoji(role.emoji, tk);
-<<<<<<< HEAD
 }
 
-/* -------------------------------------------------------------------
- * Fase da semana:
+/* Fase da semana:
  *   Seg, Ter, Qua → "iniciar a semana"
- *   Qui, Sex, Sáb, Dom → "finalizar a semana"
- * ------------------------------------------------------------------- */
+ *   Qui, Sex, Sáb, Dom → "finalizar a semana" */
 function getWeekPhaseAction() {
-    const dow = new Date().getDay();   /* 0=Dom, 1=Seg, ..., 6=Sáb */
+    const dow = new Date().getDay();
     if (dow >= 1 && dow <= 3) return 'iniciar';
     return 'finalizar';
 }
@@ -62,8 +55,6 @@ function getReadyWordForGender(gender) {
     return gender === 'fem' ? 'Pronta' : 'Pronto';
 }
 
-/* Cumprimento OFICIAL — usado pelo header do dashboard
- * Formato: "Bom dia, [nome]! [Pronto|Pronta] para [iniciar|finalizar] a semana?" */
 window.getUserGreeting = function () {
     const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HaQt';
     const phase   = getWeekPhaseAction();
@@ -72,14 +63,6 @@ window.getUserGreeting = function () {
         return `Bom dia, ${currentProfile.name}! ${ready} para ${phase} a semana?`;
     }
     return `Bom dia! ${ready} para ${phase} a semana?`;
-=======
-}
-
-/* Cumprimento ESTÁVEL — sempre "Bom dia, [nome]!" */
-window.getUserGreeting = function () {
-    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HaQt';
-    return hasName ? `Bom dia, ${currentProfile.name}!` : 'Bom dia, Semana Corrente';
->>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
 };
 
 function renderRoleGrid() {
@@ -117,8 +100,6 @@ window.selectSkinTone = function (tone) {
     updateAvatarPreview();
 };
 
-/* Prévia dentro do modal — mesma regra do cumprimento oficial,
- * usando o nome que o usuário está digitando no momento */
 window.updateAvatarPreview = function () {
     const nameInput   = document.getElementById('profile-name-input');
     const genderInput = document.getElementById('profile-gender-input');
@@ -130,25 +111,14 @@ window.updateAvatarPreview = function () {
 
     const greet = document.getElementById('avatar-greeting-preview');
     if (greet) {
-<<<<<<< HEAD
         const phase = getWeekPhaseAction();
         const ready = getReadyWordForGender(gender);
         greet.textContent = `Bom dia, ${name}! ${ready} para ${phase} a semana?`;
-=======
-        const readyWord = gender === 'fem' ? 'Pronta' : 'Pronto';
-        greet.textContent = `Bom dia, ${name}! ${readyWord} para o dia?`;
->>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
     }
 };
 
 window.getAvatarDraft = () => ({ role: selectedRoleId, skinTone: selectedSkinTone });
 
-<<<<<<< HEAD
-/* -------------------------------------------------------------------
- * Modal do Perfil
- * ------------------------------------------------------------------- */
-=======
->>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
 window.openProfileModal = function (opts = {}) {
     isFirstRunModal = !!opts.firstRun;
     const m = document.getElementById('profile-modal');
@@ -174,11 +144,7 @@ window.openProfileModal = function (opts = {}) {
 };
 
 window.closeProfileModal = function () {
-<<<<<<< HEAD
-    if (isFirstRunModal) return;   /* bloqueia fechamento APENAS no primeiro acesso */
-=======
-    if (isFirstRunModal) return;   /* bloqueia APENAS no primeiro acesso */
->>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
+    if (isFirstRunModal) return;
     const m = document.getElementById('profile-modal');
     if (!m) return;
     m.classList.add('hidden');
@@ -218,8 +184,4 @@ function applyProfileToUI() {
     if (typeof window.refreshHeaderTitle === 'function') window.refreshHeaderTitle();
 }
 
-<<<<<<< HEAD
 console.log('[profile.js] carregado. getUserGreeting:', typeof window.getUserGreeting);
-=======
-console.log('[profile.js] carregado. openProfileModal:', typeof window.openProfileModal);
->>>>>>> 95c0572cb2534591be7539033a93de6aadb3f83b
