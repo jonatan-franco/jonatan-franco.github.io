@@ -24,10 +24,10 @@
     </script>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="bg-[#fafafa] text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
+<body class="bg-[#fafafa] text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row pt-[56px] pb-20">
 
-    <!-- TOPBAR (visível apenas em mobile) -->
-    <div class="md:hidden bg-black text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+    <!-- TOPBAR (todas as telas) -->
+    <div class="bg-black text-white px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-40 h-[56px]">
         <div class="flex items-center gap-3 cursor-pointer" onclick="openProfileModal()">
             <div id="mobile-user-avatar" class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-base flex items-center justify-center">🧑‍💻</div>
             <span class="font-bold text-sm tracking-tight" id="mobile-user-name">HabitQuant Pro</span>
@@ -37,8 +37,8 @@
         </button>
     </div>
 
-    <!-- GAVETA DE AÇÕES (mobile) -->
-    <div id="mobile-drawer" class="hidden md:hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
+    <!-- GAVETA DE AÇÕES -->
+    <div id="mobile-drawer" class="hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
         <button type="button" onclick="openProfileModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
             <i data-lucide="user" class="w-4 h-4"></i> <span>Editar Perfil &amp; Avatar</span>
         </button>
@@ -53,8 +53,8 @@
         </button>
     </div>
 
-    <!-- SIDEBAR (desktop) — expandível/recolhível + STICKY -->
-    <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex self-start flex-col justify-between bg-black text-white shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 select-none">
+    <!-- SIDEBAR PRETA EXPANDÍVEL (DESKTOP) — STICKY ABAIXO DA TOPBAR -->
+    <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex self-start flex-col justify-between bg-black text-white shrink-0 sticky top-[56px] h-[calc(100vh-136px)] z-30 transition-all duration-300 select-none">
         <div class="p-4 space-y-6">
             <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
                 <div onclick="openProfileModal()" class="flex items-center gap-3 overflow-hidden cursor-pointer group" title="Clique para personalizar seu perfil e ícone">
@@ -111,8 +111,8 @@
         </div>
     </aside>
 
-    <!-- BOTTOM NAV (mobile) -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
+    <!-- BOTTOM NAV (todas as telas) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
         <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold">
             <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span>
         </button>
@@ -130,6 +130,7 @@
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 p-5 md:p-8 max-w-7xl mx-auto w-full space-y-8">
 
+        <!-- CABEÇALHO DINÂMICO -->
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <div class="flex items-center gap-2.5">
@@ -157,6 +158,7 @@
         <section id="view-dashboard" class="space-y-8">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
+                <!-- CARD 1: ENGAJAMENTO -->
                 <div class="bg-[#b9f6ca] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -176,6 +178,7 @@
                     </div>
                 </div>
 
+                <!-- CARD 2: SONO -->
                 <div class="bg-[#e0e7ff] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -195,6 +198,7 @@
                     </div>
                 </div>
 
+                <!-- CARD 3: VOLUME -->
                 <div class="bg-[#fef3c7] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -214,6 +218,7 @@
                     </div>
                 </div>
 
+                <!-- CARD 4: STREAK -->
                 <div class="bg-[#ffedd5] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -532,16 +537,15 @@
                     <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Meta de Horas / Semana (H*)</label>
                     <input type="number" id="modal-habit-target-hours" step="0.5" min="0.5" required value="5" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono text-zinc-900">
                 </div>
-
                 <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200 space-y-2">
-                    <label class="block text-[11px] font-semibold uppercase text-zinc-600">Horas de Sono por Dia (dormido — h)</label>
+                    <label class="block text-[11px] font-semibold uppercase text-zinc-600">Horas Realizadas por Dia (h<sub>it</sub>)</label>
                     <div class="grid grid-cols-7 gap-1.5" id="modal-daily-hours-inputs"></div>
                 </div>
 
                 <div id="modal-bedtime-section" class="bg-[#e0e7ff] p-3.5 rounded-2xl border border-indigo-200 space-y-2 hidden">
-                    <label class="block text-[11px] font-semibold uppercase text-indigo-900">🌙 Tempo de Cama por Dia (cama — hh:mm)</label>
+                    <label class="block text-[11px] font-semibold uppercase text-indigo-900">🌙 Tempo de Cama por Dia (hh:mm)</label>
                     <div class="grid grid-cols-7 gap-1" id="modal-bedtime-inputs"></div>
-                    <p class="text-[10px] text-indigo-700 mt-1">Informe quantas horas e minutos você passou <strong>na cama</strong>. A sensibilidade comportamental mede como o tempo dormido responde ao tempo de cama.</p>
+                    <p class="text-[10px] text-indigo-700 mt-1">A <strong>Sensibilidade Comportamental</strong> mede como o tempo dormido responde ao tempo de cama.</p>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
