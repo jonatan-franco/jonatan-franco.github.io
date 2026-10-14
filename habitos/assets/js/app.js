@@ -1,544 +1,763 @@
-// ============================================================================
-// assets/js/app.js — Controlador Original Restaurado (Painel de Hábitos)
-// ============================================================================
-
 let activeCategoryFilter = 'all';
 let isSidebarCollapsed = false;
-const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-
-const ROUTE_CONFIG = {
-    dashboard:  { eyebrow: 'PAINEL LONGITUDINAL', title: 'Visão Geral & Matriz Semanal' },
-    atv_fisica: { eyebrow: 'GRUPO: ATIVIDADE FÍSICA', title: 'Treinamento Upper/Lower & Adesão' },
-    sono:       { eyebrow: 'GRUPO: SONO & RECUPERAÇÃO', title: 'Diário Clínico & Eficiência do Sono' },
-    timer:      { eyebrow: 'CRONOMETRIA & FOCO', title: 'Timer & Registro de Sessões' },
-    metrics:    { eyebrow: 'PSICOMETRIA & SÉRIES TEMPORAIS', title: 'Elasticidade (ε) & Bandas de Desvio-Padrão' },
-    calendar:   { eyebrow: 'PLANEJAMENTO DE BLOCOS', title: 'Agenda Semanal & Google Calendar' }
-};
 
 function refreshIcons() {
-    if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons();
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        try { window.lucide.createIcons(); } catch (e) {}
     }
 }
 
-function toggleDesktopSidebar() {
+window.toggleDesktopSidebar = function() {
     const sb = document.getElementById('desktop-sidebar');
+    const icon = document.getElementById('sidebar-toggle-icon');
     if (!sb) return;
     isSidebarCollapsed = !isSidebarCollapsed;
-    sb.classList.toggle('w-64', !isSidebarCollapsed);
-    sb.classList.toggle('w-20', isSidebarCollapsed);
-    document.querySelectorAll('.sidebar-text').forEach(el => {
-        el.classList.toggle('hidden', isSidebarCollapsed);
-    });
-}
+    sb.classList.toggle('sidebar-expanded', !isSidebarCollapsed);
+    sb.classList.toggle('sidebar-collapsed', isSidebarCollapsed);
+    if (icon) icon.setAttribute('data-lucide', isSidebarCollapsed ? 'panel-left-open' : 'panel-left-close');
+    refreshIcons();
+};
 
-function toggleMobileDrawer() {
-    const drawer = document.getElementById('mobile-drawer');
-    if (drawer) drawer.classList.toggle('hidden');
-}
+window.toggleMobileDrawer = function() {
+    document.getElementById('mobile-drawer').classList.toggle('hidden');
+};
 
-function refreshHeaderTitle(route) {
-    const cfg = ROUTE_CONFIG[route] || ROUTE_CONFIG.dashboard;
-    const eyebrowEl = document.getElementById('view-eyebrow');
-    const titleEl = document.getElementById('view-title');
-    if (eyebrowEl) eyebrowEl.textContent = cfg.eyebrow;
-    if (titleEl) {
-        if (route === 'dashboard' && typeof buildDynamicGreeting === 'function') {
-            titleEl.textContent = buildDynamicGreeting();
-        } else {
-            titleEl.textContent = cfg.title;
-        }
-    }
-}
+const ROUTE_CONFIG = {
+    dashboard:  { eyebrow: 'DASHBOARD', title: 'Bom dia, Semana Corrente' },
+    atv_fisica: { eyebrow: 'GRUPO',     title: 'Atividade Física' },
+    sono:       { eyebrow: 'GRUPO',     title: 'Sono & Descanso' },
+    timer:      { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
+    metrics:    { eyebrow: 'ANÁLISE',   title: 'Métricas' },
+    calendar:   { eyebrow: 'AGENDA',    title: 'Calendário Semanal' }
+};
 
-function navigateTo(route) {
-    window.location.hash = route;
+window.navigateTo = function(route) {
+    if (window.location.hash !== '#' + route) history.pushState(null, null, '#' + route);
     applyRoute(route);
-}
+};
 
-function applyRoute(route) {
-    const cleanRoute = ROUTE_CONFIG[route] ? route : 'dashboard';
-    document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
-    const targetSec = document.getElementById(`view-${cleanRoute}`);
-    if (targetSec) targetSec.classList.remove('hidden');
+function applyRoute(routeParam) {
+    const hashRoute = (window.location.hash || '#dashboard').replace('#', '').trim();
+    const activeRoute = ROUTE_CONFIG[routeParam] ? routeParam : (ROUTE_CONFIG[hashRoute] ? hashRoute : 'dashboard');
 
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        const isAct = btn.getAttribute('data-route') === cleanRoute;
-        btn.className = isAct
-            ? 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 transition-all'
-            : 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all';
+    ['dashboard', 'atv_fisica', 'sono', 'timer', 'metrics', 'calendar'].forEach(r => {
+        const sec = document.getElementById('view-' + r);
+        if (sec) sec.classList.toggle('hidden', r !== activeRoute);
+
+        const btn = document.querySelector(`[data-route="${r}"]`);
+        if (btn) {
+            btn.className = r === activeRoute
+                ? "nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-white text-black transition w-full shadow-sm"
+                : "nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900 transition w-full";
+        }
+
+        const mBtn = document.querySelector(`[data-mobile-route="${r}"]`);
+        if (mBtn) {
+            mBtn.className = r === activeRoute
+                ? "mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold bg-white text-black"
+                : "mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400";
+        }
     });
 
-    refreshHeaderTitle(cleanRoute);
-    renderAll();
+    const cfg = ROUTE_CONFIG[activeRoute];
+    document.getElementById('header-eyebrow').innerText = cfg.eyebrow;
+
+    let titleText = cfg.title;
+    if (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function') {
+        titleText = window.getUserGreeting();
+    }
+    document.getElementById('view-title').innerText = titleText;
+
+    renderAll(activeRoute);
 }
 
-function setCategoryFilter(cat) {
+window.refreshHeaderTitle = function () {
+    const hashRoute = (window.location.hash || '#dashboard').replace('#', '').trim();
+    const activeRoute = ROUTE_CONFIG[hashRoute] ? hashRoute : 'dashboard';
+    if (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function') {
+        const el = document.getElementById('view-title');
+        if (el) el.innerText = window.getUserGreeting();
+    }
+};
+
+window.addEventListener('hashchange', () => applyRoute());
+
+window.setCategoryFilter = function(cat) {
     activeCategoryFilter = cat;
     ['all', 'atv_fisica', 'sono'].forEach(c => {
-        const btn = document.getElementById(`cat-btn-${c}`);
-        if (btn) {
-            btn.className = (c === cat)
-                ? 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white'
-                : 'px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700';
-        }
+        const btn = document.getElementById('cat-btn-' + c);
+        if (btn) btn.className = c === cat ? "px-3.5 py-1.5 rounded-full bg-black text-white font-semibold" : "px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black";
     });
     renderDashboardView();
-}
+};
 
-function toggleHabitDay(habitIdx, dayIdx) {
-    const h = habits[habitIdx];
-    if (!h) return;
-    if (!Array.isArray(h.days)) h.days = [false, false, false, false, false, false, false];
-    if (!Array.isArray(h.hoursPerDay)) h.hoursPerDay = [0, 0, 0, 0, 0, 0, 0];
-
-    h.days[dayIdx] = !h.days[dayIdx];
-    if (h.days[dayIdx] && (!h.hoursPerDay[dayIdx] || h.hoursPerDay[dayIdx] === 0)) {
-        const defaultDaily = Number(((h.targetHours || 5) / 5).toFixed(2));
-        h.hoursPerDay[dayIdx] = defaultDaily;
-    } else if (!h.days[dayIdx]) {
-        h.hoursPerDay[dayIdx] = 0;
+window.toggleHabitDay = function(hIdx, dIdx) {
+    const habit = habits[hIdx];
+    const state = !habit.checks[dIdx];
+    habit.checks[dIdx] = state;
+    if (state && (!habit.dailyHours[dIdx] || habit.dailyHours[dIdx] === 0)) {
+        habit.dailyHours[dIdx] = habit.category === 'sono' ? 8 : parseFloat((habit.targetHours / 5).toFixed(1));
+    } else if (!state) {
+        habit.dailyHours[dIdx] = 0;
     }
-
     saveData();
-    renderAll();
-}
+};
 
-function deleteHabitByIdx(idx) {
-    if (!confirm('Remover esta atividade permanentemente?')) return;
-    habits.splice(idx, 1);
-    saveData();
-    renderAll();
-}
+window.deleteHabitByIdx = function(hIdx) {
+    if (confirm(`Remover "${habits[hIdx].name}"?`)) { habits.splice(hIdx, 1); saveData(); }
+};
 
-function renderDashboardView() {
-    const globalMetrics = (typeof calcWeeklyGlobalMetrics === 'function')
-        ? calcWeeklyGlobalMetrics()
-        : { meanFreq: 0, todayDone: 0, todayTotal: habits.length, meanElasticity: 0, totalHours: 0, maxStreak: 0 };
+/* Diário do Sono no Menu de Métricas / Visão Dedicada */
+function renderSleepJournalView() {
+    const tbody = document.getElementById('sleep-journal-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
 
-    const elFreq = document.getElementById('kpi-freq-mean');
-    const elToday = document.getElementById('kpi-today-progress');
-    const elElast = document.getElementById('kpi-elasticity');
-    const elHours = document.getElementById('kpi-hours-total');
-    const elStreak = document.getElementById('kpi-streak');
-
-    if (elFreq) elFreq.textContent = `${Math.round(globalMetrics.meanFreq || 0)}%`;
-    if (elToday) elToday.textContent = `${globalMetrics.todayDone || 0}/${globalMetrics.todayTotal || habits.length}`;
-    if (elElast) elElast.textContent = Number(globalMetrics.meanElasticity || 0).toFixed(2);
-    if (elHours) elHours.textContent = `${Number(globalMetrics.totalHours || 0).toFixed(1)}h`;
-    if (elStreak) elStreak.textContent = `${globalMetrics.maxStreak || 0} dias`;
-
-    const headerRow = document.getElementById('matrix-header-row');
-    if (headerRow) {
-        headerRow.innerHTML = `
-            <th class="py-3 px-4">Atividade</th>
-            ${weekDays.map(d => `<th class="py-3 px-2 text-center font-mono">${d}</th>`).join('')}
-            <th class="py-3 px-3 text-right">Horas / Meta</th>
-            <th class="py-3 px-3 text-right">Elasticidade (ε)</th>
-            <th class="py-3 px-3 text-center">Ações</th>
-        `;
-    }
-
-    const filtered = habits
-        .map((h, idx) => ({ ...h, _idx: idx }))
-        .filter(h => activeCategoryFilter === 'all' || h.category === activeCategoryFilter);
-
-    // Cards Grid
-    const cardsGrid = document.getElementById('activity-cards-grid');
-    if (cardsGrid) {
-        if (filtered.length === 0) {
-            cardsGrid.innerHTML = `
-                <div class="col-span-full bg-slate-900/60 border border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-400">
-                    Nenhuma atividade cadastrada neste filtro. Clique em <strong>+ Nova Atividade</strong> ou acesse <strong class="text-indigo-400 cursor-pointer" onclick="navigateTo('atv_fisica')">Atividade Física</strong>.
-                </div>
-            `;
-        } else {
-            cardsGrid.innerHTML = filtered.map(h => {
-                const m = (typeof calcHabitMetrics === 'function') ? calcHabitMetrics(h) : { totalHours: 0, rate: 0, elasticity: 0 };
-                return `
-                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-3">
-                        <div class="flex items-start justify-between">
-                            <div>
-                                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${h.category || 'geral'}</span>
-                                <h3 class="text-sm font-bold text-white mt-1">${h.name}</h3>
-                            </div>
-                            <button onclick="openHabitModal(null, ${h._idx})" class="text-xs text-slate-400 hover:text-white">Editar</button>
-                        </div>
-                        <div class="flex items-baseline justify-between text-xs font-mono">
-                            <span class="text-slate-400">Volume: <strong class="text-white">${Number(m.totalHours || 0).toFixed(1)}h</strong> / ${h.targetHours || 5}h</span>
-                            <span class="text-emerald-400 font-bold">${Math.round(m.rate || 0)}%</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+    weekDays.forEach(d => {
+        const entry = sleepJournal[d.iso] || { bed: '—', slept: '—', wake: '—', getup: '—' };
+        let bedH = 0, sleptH = 0, eff = 0;
+        if (entry.bed !== '—' && entry.wake !== '—') {
+            const [bh, bm] = entry.bed.split(':').map(Number);
+            const [wh, wm] = entry.wake.split(':').map(Number);
+            let bMin = bh * 60 + bm;
+            let wMin = wh * 60 + wm;
+            if (wMin < bMin) wMin += 24 * 60;
+            bedH = (wMin - bMin) / 60;
         }
-    }
+        if (entry.slept !== '—' && entry.wake !== '—') {
+            const [sh, sm] = entry.slept.split(':').map(Number);
+            const [wh, wm] = entry.wake.split(':').map(Number);
+            let sMin = sh * 60 + sm;
+            let wMin = wh * 60 + wm;
+            if (wMin < sMin) wMin += 24 * 60;
+            sleptH = (wMin - sMin) / 60;
+        }
+        if (bedH > 0) eff = (sleptH / bedH) * 100;
 
-    // Matrix Tbody
-    const tbody = document.getElementById('habits-tbody');
-    if (tbody) {
-        tbody.innerHTML = filtered.map(h => {
-            const m = (typeof calcHabitMetrics === 'function') ? calcHabitMetrics(h) : { totalHours: 0, rate: 0, elasticity: 0 };
-            const daysArr = Array.isArray(h.days) ? h.days : [false, false, false, false, false, false, false];
-            const hoursArr = Array.isArray(h.hoursPerDay) ? h.hoursPerDay : [0, 0, 0, 0, 0, 0, 0];
-
-            return `
-                <tr class="hover:bg-slate-800/40 transition-colors">
-                    <td class="py-3 px-4 font-semibold text-white">${h.name}</td>
-                    ${daysArr.map((done, dIdx) => `
-                        <td class="py-2.5 px-1.5 text-center">
-                            <button onclick="toggleHabitDay(${h._idx},${dIdx})"
-                                class="w-9 h-9 rounded-xl font-mono text-xs font-bold transition-all ${done ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800/60 text-slate-500 hover:bg-slate-800'}">
-                                ${hoursArr[dIdx] ? Number(hoursArr[dIdx]).toFixed(1) : (done ? '✓' : '·')}
-                            </button>
-                        </td>
-                    `).join('')}
-                    <td class="py-3 px-3 text-right font-mono text-xs text-slate-300">${Number(m.totalHours || 0).toFixed(1)}h / ${h.targetHours || 5}h</td>
-                    <td class="py-3 px-3 text-right font-mono text-xs font-bold text-indigo-400">${Number(m.elasticity || 0).toFixed(2)}</td>
-                    <td class="py-3 px-3 text-center space-x-2">
-                        <button onclick="openHabitModal(null, ${h._idx})" class="text-xs text-indigo-400 hover:underline">Editar</button>
-                        <button onclick="deleteHabitByIdx(${h._idx})" class="text-xs text-rose-400 hover:underline">✕</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-}
-
-function renderDedicatedAtvFisicaView() {
-    const container = document.getElementById('dedicated-atv-cards');
-    if (container) {
-        const atvHabits = habits.map((h, i) => ({ ...h, _idx: i })).filter(h => h.category === 'atv_fisica');
-        container.innerHTML = atvHabits.map(h => {
-            const m = (typeof calcHabitMetrics === 'function') ? calcHabitMetrics(h) : { totalHours: 0, rate: 0 };
-            return `
-                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-                    <div>
-                        <h4 class="text-sm font-bold text-white">${h.name}</h4>
-                        <span class="text-xs font-mono text-slate-400">${Number(m.totalHours || 0).toFixed(1)}h / ${h.targetHours || 5}h (${Math.round(m.rate || 0)}%)</span>
-                    </div>
-                    <button onclick="openHabitModal(null, ${h._idx})" class="text-xs text-indigo-400 hover:underline">Configurar</button>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // Renderiza a Planilha Interativa Upper/Lower do módulo workout.js
-    if (typeof WorkoutSheetUI !== 'undefined') {
-        WorkoutSheetUI.render();
-    }
-}
-
-function computeSleepMetrics(entry) {
-    if (!entry || !entry.bedTime || !entry.sleepTime || !entry.wakeTime || !entry.upTime) return null;
-    const toMin = (str) => {
-        const [h, m] = str.split(':').map(Number);
-        return h * 60 + m;
-    };
-    const diff = (s, e) => {
-        let a = toMin(s), b = toMin(e);
-        if (b <= a) b += 1440;
-        return b - a;
-    };
-    const tib = diff(entry.bedTime, entry.upTime);
-    const tst = diff(entry.sleepTime, entry.wakeTime);
-    if (tib <= 0) return null;
-    return {
-        tibHours: (tib / 60).toFixed(2),
-        tstHours: (tst / 60).toFixed(2),
-        efficiency: Math.min(100, Math.max(0, (tst / tib) * 100)).toFixed(1)
-    };
+        tbody.innerHTML += `
+            <tr class="hover:bg-zinc-50 transition">
+                <td class="py-2.5 px-3 font-medium text-zinc-900">${d.shortName} (${d.dateNum})</td>
+                <td class="py-2.5 px-3 text-center font-mono">${entry.bed}</td>
+                <td class="py-2.5 px-3 text-center font-mono">${entry.slept}</td>
+                <td class="py-2.5 px-3 text-center font-mono">${entry.wake}</td>
+                <td class="py-2.5 px-3 text-center font-mono">${entry.getup}</td>
+                <td class="py-2.5 px-3 text-center font-mono font-bold text-indigo-600">${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</td>
+                <td class="py-2.5 px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
+                <td class="py-2.5 px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
+            </tr>`;
+    });
 }
 
 function renderDedicatedSleepView() {
     const tbody = document.getElementById('dedicated-sleep-tbody');
     if (!tbody) return;
+    tbody.innerHTML = '';
 
-    const daysList = (typeof getCurrentWeekDays === 'function') ? getCurrentWeekDays() : weekDays.map((d, i) => ({ label: d, iso: `dia-${i}` }));
-    let sumEff = 0, sumTst = 0, sumTib = 0, count = 0;
-
-    tbody.innerHTML = daysList.map((d, idx) => {
-        const key = d.iso || String(idx);
-        const entry = sleepJournal[key] || sleepJournal[idx];
-        const m = computeSleepMetrics(entry);
-        if (m) {
-            sumEff += parseFloat(m.efficiency);
-            sumTst += parseFloat(m.tstHours);
-            sumTib += parseFloat(m.tibHours);
-            count++;
+    weekDays.forEach(d => {
+        const entry = sleepJournal[d.iso] || { bed: '—', slept: '—', wake: '—', getup: '—' };
+        let bedH = 0, sleptH = 0, eff = 0;
+        if (entry.bed !== '—' && entry.wake !== '—') {
+            const [bh, bm] = entry.bed.split(':').map(Number);
+            const [wh, wm] = entry.wake.split(':').map(Number);
+            let bMin = bh * 60 + bm;
+            let wMin = wh * 60 + wm;
+            if (wMin < bMin) wMin += 24 * 60;
+            bedH = (wMin - bMin) / 60;
         }
-        return `
-            <tr class="hover:bg-slate-800/40">
-                <td class="py-3 px-4 font-semibold text-white">${d.label || weekDays[idx]}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.bedTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.sleepTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.wakeTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-slate-300">${entry?.upTime || '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs text-sky-400">${m ? m.tibHours + 'h' : '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs font-bold text-indigo-400">${m ? m.tstHours + 'h' : '-'}</td>
-                <td class="py-3 px-3 text-center font-mono text-xs font-bold text-emerald-400">${m ? m.efficiency + '%' : '-'}</td>
-                <td class="py-3 px-4 text-right">
-                    <button onclick="openSleepJournalModal(${idx}, '${key}')" class="text-xs font-semibold text-indigo-400 hover:underline">
-                        ${entry ? 'Editar' : '+ Registrar'}
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+        if (entry.slept !== '—' && entry.wake !== '—') {
+            const [sh, sm] = entry.slept.split(':').map(Number);
+            const [wh, wm] = entry.wake.split(':').map(Number);
+            let sMin = sh * 60 + sm;
+            let wMin = wh * 60 + wm;
+            if (wMin < sMin) wMin += 24 * 60;
+            sleptH = (wMin - sMin) / 60;
+        }
+        if (bedH > 0) eff = (sleptH / bedH) * 100;
 
-    const elEff = document.getElementById('sleep-kpi-efficiency');
-    const elTst = document.getElementById('sleep-kpi-tst');
-    const elTib = document.getElementById('sleep-kpi-tib');
-    if (elEff) elEff.textContent = count > 0 ? `${(sumEff / count).toFixed(1)}%` : '--%';
-    if (elTst) elTst.textContent = count > 0 ? `${(sumTst / count).toFixed(1)}h` : '--h';
-    if (elTib) elTib.textContent = count > 0 ? `${(sumTib / count).toFixed(1)}h` : '--h';
+        tbody.innerHTML += `
+            <tr class="hover:bg-zinc-50 transition">
+                <td class="py-3 px-3 font-medium text-zinc-900">${d.shortName} (${d.dateNum})</td>
+                <td class="py-3 px-3 text-center font-mono">${entry.bed}</td>
+                <td class="py-3 px-3 text-center font-mono">${entry.slept}</td>
+                <td class="py-3 px-3 text-center font-mono">${entry.wake}</td>
+                <td class="py-3 px-3 text-center font-mono">${entry.getup}</td>
+                <td class="py-3 px-3 text-center font-mono font-bold text-indigo-600">${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</td>
+                <td class="py-3 px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
+                <td class="py-3 px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
+            </tr>`;
+    });
 }
 
-const renderSleepJournalView = renderDedicatedSleepView;
-
-function openSleepJournalModal(dayIdx = 0, key = '') {
-    const modal = document.getElementById('sleep-journal-modal');
-    document.getElementById('sleep-journal-day').value = key || String(dayIdx);
-    const existing = sleepJournal[key] || sleepJournal[dayIdx] || {};
-    document.getElementById('sleep-bedtime-input').value = existing.bedTime || '23:30';
-    document.getElementById('sleep-sleeptime-input').value = existing.sleepTime || '23:50';
-    document.getElementById('sleep-waketime-input').value = existing.wakeTime || '07:10';
-    document.getElementById('sleep-uptime-input').value = existing.upTime || '07:30';
-    document.getElementById('sleep-quality-input').value = existing.quality || '4';
-    document.getElementById('sleep-notes-input').value = existing.notes || '';
-    if (modal) modal.classList.remove('hidden');
+function renderDedicatedAtvFisicaView() {
+    const grid = document.getElementById('atv-fisica-cards-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const atvHabits = habits.map((h, i) => ({ habit: h, index: i })).filter(item => item.habit.category === 'atv_fisica');
+    if (atvHabits.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-zinc-400 text-xs py-6 text-center">Nenhuma atividade física cadastrada.</div>`;
+        return;
+    }
+    atvHabits.forEach(({ habit, index: hIndex }) => {
+        const m = calcHabitMetrics(habit);
+        const cat = CATEGORIES[habit.category];
+        grid.innerHTML += `
+            <div class="${cat.cardBg} p-5 rounded-3xl flex flex-col justify-between space-y-4 shadow-xs">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-white/70 flex items-center justify-center text-lg shrink-0">${cat.emoji}</div>
+                        <div>
+                            <h3 class="font-bold text-zinc-900 text-sm leading-snug">${habit.name}</h3>
+                            <span class="text-[11px] font-mono text-zinc-600">Meta: ${habit.targetHours}h/sem</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="openHabitModal(${hIndex})" class="p-1">✏️</button>
+                </div>
+                <div class="font-mono"><span class="text-2xl font-bold text-zinc-950">${m.totalHours.toFixed(1)}h</span> <span class="text-xs text-zinc-600">/ ${habit.targetHours}h</span></div>
+            </div>`;
+    });
 }
 
-function closeSleepJournalModal() {
-    const modal = document.getElementById('sleep-journal-modal');
-    if (modal) modal.classList.add('hidden');
-}
+window.openSleepJournalModal = function() {
+    const sel = document.getElementById('sleep-journal-day');
+    if (sel) {
+        sel.innerHTML = '';
+        weekDays.forEach((d) => {
+            sel.innerHTML += `<option value="${d.iso}">${d.shortName} (${d.dateNum})</option>`;
+        });
+    }
+    const m = document.getElementById('sleep-journal-modal');
+    if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+};
 
-function saveSleepJournalEntry(e) {
-    if (e) e.preventDefault();
-    const key = document.getElementById('sleep-journal-day').value || document.getElementById('sleep-date-input').value || '0';
-    sleepJournal[key] = {
-        bedTime: document.getElementById('sleep-bedtime-input').value,
-        sleepTime: document.getElementById('sleep-sleeptime-input').value,
-        wakeTime: document.getElementById('sleep-waketime-input').value,
-        upTime: document.getElementById('sleep-uptime-input').value,
-        quality: document.getElementById('sleep-quality-input').value,
-        notes: document.getElementById('sleep-notes-input').value
-    };
-    saveData();
-    closeSleepJournalModal();
-    renderAll();
+window.closeSleepJournalModal = function() {
+    const m = document.getElementById('sleep-journal-modal');
+    if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+};
+
+function renderDashboardView() {
+    const g = calcWeeklyGlobalMetrics();
+    document.getElementById('kpi-freq-mean').textContent = `${g.avgFreqPct.toFixed(1)}%`;
+    document.getElementById('kpi-freq-checks').textContent = `(${g.totalChecks}/${g.possibleChecks}d)`;
+    document.getElementById('kpi-today-progress').textContent = `Hoje: ${g.todayDone}/${habits.length}`;
+    document.getElementById('kpi-hours-total').textContent = `${g.sumTotalHours.toFixed(1)}h`;
+    document.getElementById('kpi-hours-target').textContent = `/ ${g.sumTargetHours.toFixed(1)}h`;
+    document.getElementById('kpi-hours-mean-sd').textContent = `${g.dailyTotalMeanHours.toFixed(1)}h/d ± ${g.dailyTotalSdHours.toFixed(2)}h`;
+    document.getElementById('kpi-streak').textContent = `🔥 ${g.bestStreak}d`;
+    document.getElementById('kpi-streak-leader').textContent = g.leaderName;
+
+    const sleepHabit = habits.find(h => h.category === 'sono');
+    if (sleepHabit) {
+        const agg = calcSleepAggregates(sleepHabit);
+        const m = calcHabitMetrics(sleepHabit);
+        document.getElementById('kpi-sleep-bed').textContent = agg.activeDays > 0 ? agg.meanBed.toFixed(1) + 'h' : '—';
+        document.getElementById('kpi-sleep-slept').textContent = agg.activeDays > 0 ? '→ ' + agg.meanSlept.toFixed(1) + 'h' : '→ —';
+        document.getElementById('kpi-sleep-sens').textContent = 'Sensib.: ε ' + m.elasticity.toFixed(2);
+        document.getElementById('kpi-sleep-eff').textContent = 'Efic.: ' + agg.efficiency.toFixed(0) + '%';
+    } else {
+        document.getElementById('kpi-sleep-bed').textContent = '—';
+        document.getElementById('kpi-sleep-slept').textContent = '→ —';
+        document.getElementById('kpi-sleep-sens').textContent = 'Sensib.: ε —';
+        document.getElementById('kpi-sleep-eff').textContent = 'Efic.: —';
+    }
+
+    const cardsGrid = document.getElementById('activity-cards-grid');
+    cardsGrid.innerHTML = '';
+
+    const filtered = habits.map((h, i) => ({ habit: h, index: i }))
+        .filter(item => activeCategoryFilter === 'all' || item.habit.category === activeCategoryFilter);
+
+    const trHead = document.getElementById('table-header-days');
+    let headHTML = `<th class="py-3 px-2 font-semibold min-w-[200px]">ATIVIDADE</th>`;
+    weekDays.forEach(day => {
+        headHTML += `<th class="py-2 px-1 text-center ${day.isToday ? 'text-black font-bold underline' : ''}"><div class="text-[11px]">${day.shortName}</div><div class="text-[9px] font-mono">${day.dateNum}</div></th>`;
+    });
+    headHTML += `<th class="py-2 px-2 text-center">HORAS (H/H*)</th><th class="py-2 px-2 text-center">ENGAJAMENTO</th><th class="py-2 px-2 text-center">SENSIB. (ε)</th><th class="py-2 px-2 text-right">AÇÕES</th>`;
+    trHead.innerHTML = headHTML;
+
+    const tbody = document.getElementById('habits-tbody');
+    tbody.innerHTML = '';
+
+    if (filtered.length === 0) {
+        cardsGrid.innerHTML = `
+            <div class="col-span-full bg-white border border-dashed border-zinc-300 rounded-3xl p-10 text-center space-y-3">
+                <div class="text-2xl">🌱</div>
+                <div class="text-sm font-semibold text-zinc-800">Nenhuma atividade cadastrada</div>
+                <p class="text-xs text-zinc-500 max-w-sm mx-auto">Clique em <strong>+ Nova Atividade</strong> para começar.</p>
+            </div>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-zinc-400 text-xs">Sem dados registrados na semana.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(({ habit, index: hIndex }) => {
+        const m = calcHabitMetrics(habit);
+        const cat = CATEGORIES[habit.category] || CATEGORIES.atv_fisica;
+        const pctBar = Math.min(100, Math.round(m.hoursPct));
+        const isSleep = habit.category === 'sono';
+
+        let daysPillsHTML = '';
+        weekDays.forEach((day, dIdx) => {
+            const done = habit.checks[dIdx];
+            const hrs = habit.dailyHours[dIdx] || 0;
+            const todayBorder = day.isToday ? 'ring-2 ring-black/20 bg-white' : 'bg-white/50';
+            const bedH = (habit.bedtimeHours && habit.bedtimeHours[dIdx]) || 0;
+            const bedLine = (isSleep && bedH > 0) ? `<span class="text-[8px] font-mono text-indigo-600 mt-0.5">🛏 ${bedH.toFixed(1)}h</span>` : '';
+            daysPillsHTML += `
+                <div onclick="toggleHabitDay(${hIndex}, ${dIdx})" class="cursor-pointer flex flex-col items-center py-2 px-1 rounded-2xl ${todayBorder} transition hover:scale-105">
+                    <span class="text-[10px] text-zinc-600 font-medium mb-1">${day.shortName}</span>
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs ${done ? 'bg-black text-white' : 'border border-zinc-300 text-transparent'}">✓</div>
+                    <span class="text-[9px] font-mono text-zinc-600 mt-1">${hrs.toFixed(1)}h</span>
+                    ${bedLine}
+                </div>`;
+        });
+
+        cardsGrid.innerHTML += `
+            <div class="${cat.cardBg} p-5 rounded-3xl flex flex-col justify-between space-y-4 shadow-xs">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-white/70 flex items-center justify-center text-lg shrink-0">${cat.emoji}</div>
+                        <div>
+                            <h3 class="font-bold text-zinc-900 text-sm leading-snug">${habit.name}</h3>
+                            <span class="text-[11px] font-mono text-zinc-600">${cat.label} • Meta: ${habit.targetHours}h/sem</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 text-zinc-600">
+                        <button type="button" onclick="openHabitModal(${hIndex})" class="p-1 hover:text-black">✏️</button>
+                        <button type="button" onclick="deleteHabitByIdx(${hIndex})" class="p-1 hover:text-rose-600">🗑️</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-baseline mb-1.5">
+                        <div class="font-mono"><span class="text-2xl font-bold text-zinc-950">${m.totalHours.toFixed(1)}h</span> <span class="text-xs text-zinc-600">/ ${habit.targetHours}h</span></div>
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-[#fef3c7] text-amber-900">ε ${m.elasticity.toFixed(2)}</span>
+                    </div>
+                    <div class="w-full bg-white/60 h-2 rounded-full overflow-hidden">
+                        <div class="bg-zinc-800 h-full rounded-full transition-all" style="width: ${pctBar}%"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-7 gap-1">${daysPillsHTML}</div>
+                <div class="pt-2 border-t border-black/5 flex justify-between text-[11px] text-zinc-700 font-medium">
+                    <span>Streak: 🔥 <strong>${m.streak}d</strong></span>
+                    <span>Média: <strong>${m.meanHours.toFixed(1)}h/d</strong></span>
+                    <span>Sensib.: <strong>ε ${m.elasticity.toFixed(2)}</strong></span>
+                </div>
+            </div>`;
+
+        let row = `<tr class="hover:bg-zinc-50 transition"><td class="py-3 px-2 font-medium text-zinc-900">${cat.emoji} ${habit.name}</td>`;
+        weekDays.forEach((day, dIndex) => {
+            const checked = habit.checks[dIndex] ? 'checked' : '';
+            const dayHrs = habit.dailyHours[dIndex] || 0;
+            row += `<td class="py-2 px-1 text-center"><div class="flex flex-col items-center gap-0.5"><label class="inline-flex items-center justify-center cursor-pointer"><input type="checkbox" class="sr-only habit-check" onchange="toggleHabitDay(${hIndex}, ${dIndex})" ${checked}><div class="w-5 h-5 rounded-full border border-zinc-300 bg-white flex items-center justify-center"><svg class="w-3 h-3 text-white opacity-0 transform scale-50 transition-all pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div></label><span class="text-[9px] font-mono text-zinc-500">${dayHrs.toFixed(1)}h</span></div></td>`;
+        });
+        row += `<td class="py-2.5 px-2 text-center font-mono text-xs"><strong>${m.totalHours.toFixed(1)}h</strong> / ${m.targetH}h <div class="text-[10px] text-purple-600">${m.meanHours.toFixed(1)}h ± ${m.sdHours.toFixed(2)}h</div></td><td class="py-2.5 px-2 text-center font-mono text-xs font-bold text-emerald-600">${m.freqPct.toFixed(1)}%</td><td class="py-2.5 px-2 text-center font-mono text-xs font-bold">${m.elasticity.toFixed(2)}</td><td class="py-2.5 px-2 text-right"><button type="button" onclick="openHabitModal(${hIndex})" class="p-1">✏️</button><button type="button" onclick="deleteHabitByIdx(${hIndex})" class="p-1">🗑️</button></td></tr>`;
+        tbody.innerHTML += row;
+    });
 }
 
 function populateSelects() {
-    const habitSelectIds = ['timer-habit-select', 'manual-habit-select', 'event-habit-select', 'activity-chart-target'];
-    habitSelectIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.innerHTML = habits.map((h, i) => `<option value="${i}">${h.name}</option>`).join('');
+    ['timer-habit-select', 'manual-habit-select', 'event-habit-select'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '';
+        if (habits.length === 0) {
+            sel.innerHTML = `<option value="">Sem atividades cadastradas</option>`;
+        } else {
+            habits.forEach((h, idx) => {
+                const cat = CATEGORIES[h.category] || CATEGORIES.atv_fisica;
+                sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name}</option>`;
+            });
+            if (cur !== '' && cur < habits.length) sel.value = cur;
+        }
     });
-
-    const daySelectIds = ['timer-day-select', 'manual-day-select', 'event-day-select'];
-    daySelectIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.innerHTML = weekDays.map((d, i) => `<option value="${i}">${d}</option>`).join('');
+    ['timer-day-select', 'manual-day-select', 'event-day-select'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '';
+        weekDays.forEach((d, idx) => {
+            sel.innerHTML += `<option value="${idx}">${d.shortName} (${d.dateNum})${d.isToday ? ' - Hoje' : ''}</option>`;
+        });
+        sel.value = cur !== '' ? cur : (todayIndex !== -1 ? todayIndex : 0);
     });
-}
-
-function openHabitModal(defaultCategory = null, editIndex = -1) {
-    const modal = document.getElementById('habit-modal');
-    document.getElementById('modal-habit-index').value = editIndex;
-    const nameInput = document.getElementById('modal-habit-name');
-    const catInput = document.getElementById('modal-habit-category');
-    const targetInput = document.getElementById('modal-habit-target-hours');
-
-    if (editIndex >= 0 && habits[editIndex]) {
-        const h = habits[editIndex];
-        nameInput.value = h.name;
-        catInput.value = h.category || 'atv_fisica';
-        targetInput.value = h.targetHours || 6;
-    } else {
-        nameInput.value = '';
-        catInput.value = defaultCategory || 'atv_fisica';
-        targetInput.value = 6;
+    const catSummary = document.getElementById('category-hours-summary');
+    if (catSummary) {
+        catSummary.innerHTML = '';
+        Object.keys(CATEGORIES).forEach(key => {
+            const cat = CATEGORIES[key];
+            const catHabits = habits.filter(h => h.category === key);
+            const doneH = catHabits.reduce((acc, h) => acc + calcHabitMetrics(h).totalHours, 0);
+            const targH = catHabits.reduce((acc, h) => acc + h.targetHours, 0);
+            const pct = targH > 0 ? Math.min(Math.round((doneH / targH) * 100), 100) : 0;
+            catSummary.innerHTML += `<div class="space-y-1"><div class="flex justify-between text-xs"><span class="font-semibold text-zinc-800">${cat.emoji} ${cat.label}</span><span class="font-mono text-zinc-600">${doneH.toFixed(1)}h / ${targH.toFixed(1)}h</span></div><div class="w-full bg-white/80 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%; background-color:${cat.hex}"></div></div></div>`;
+        });
     }
-    if (modal) modal.classList.remove('hidden');
 }
 
-function closeHabitModal() {
-    const modal = document.getElementById('habit-modal');
-    if (modal) modal.classList.add('hidden');
-}
-
-function onHabitCategoryChange() {
-    const cat = document.getElementById('modal-habit-category')?.value;
-    const bedContainer = document.getElementById('modal-bedtime-container');
-    if (bedContainer) bedContainer.classList.toggle('hidden', cat !== 'sono');
-}
+window.deleteCalEvent = function(evId) {
+    if (confirm('Remover bloco da agenda?')) { calendarEvents = calendarEvents.filter(e => e.id !== evId); saveData(); }
+};
 
 function renderCalendarView() {
     const headerGrid = document.getElementById('calendar-header-grid');
+    let hHTML = `<div class="p-3 text-center text-[10px] font-mono text-zinc-400 border-r border-zinc-200">GMT-3</div>`;
+    weekDays.forEach(d => {
+        hHTML += `<div class="p-3 text-center border-r border-zinc-200 ${d.isToday ? 'bg-[#b9f6ca] text-zinc-950 font-bold' : 'text-zinc-600'}"><div class="text-xs uppercase">${d.shortName}</div><div class="text-[11px] font-mono opacity-75">${d.dateNum}</div></div>`;
+    });
+    headerGrid.innerHTML = hHTML;
+
     const hoursGrid = document.getElementById('calendar-hours-grid');
-    if (!headerGrid || !hoursGrid) return;
-
-    headerGrid.innerHTML = `<div>Hora</div>` + weekDays.map(d => `<div>${d}</div>`).join('');
-    let rowsHtml = '';
-    for (let h = 6; h <= 22; h++) {
-        rowsHtml += `<div class="grid grid-cols-8 gap-2 py-2 items-center">
-            <div class="font-mono text-center text-slate-500">${String(h).padStart(2, '0')}:00</div>
-            ${weekDays.map((_, dIdx) => {
-                const ev = calendarEvents.find(e => Number(e.day) === dIdx && Number(e.startHour) === h);
-                if (ev) {
-                    return `<div class="p-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 text-[11px] flex items-center justify-between">
-                        <span class="truncate">${ev.title || 'Bloco'}</span>
-                        <button onclick="deleteCalEvent('${ev.id}')" class="text-rose-400 ml-1">✕</button>
-                    </div>`;
+    hoursGrid.innerHTML = '';
+    for (let hour = 6; hour <= 22; hour++) {
+        let rowHTML = `<div class="calendar-grid min-h-[52px]"><div class="p-2 text-right pr-3 text-[11px] font-mono text-zinc-400 border-r border-zinc-200">${String(hour).padStart(2, '0')}:00</div>`;
+        for (let dIdx = 0; dIdx < 7; dIdx++) {
+            const evs = calendarEvents.filter(e => e.dayIndex === dIdx && Math.floor(e.startHour) === hour);
+            let cellContent = '';
+            evs.forEach(ev => {
+                const habit = habits.find(h => h.id === ev.habitId) || habits[0];
+                if (habit) {
+                    const cat = CATEGORIES[habit.category] || CATEGORIES.atv_fisica;
+                    cellContent += `<div onclick="event.stopPropagation(); openEventModalForEdit('${ev.id}')" class="p-2 rounded-2xl text-[11px] ${cat.cardBg} text-zinc-900 font-medium cursor-pointer mb-1 shadow-xs hover:ring-2 hover:ring-black/30 transition"><div class="font-bold truncate">${cat.emoji} ${habit.name}</div><div class="font-mono text-[10px] opacity-75">${hour}:00 (${ev.duration}h)</div></div>`;
                 }
-                return `<div onclick="openEventModal(${dIdx},${h})" class="h-7 rounded-lg hover:bg-slate-800/60 cursor-pointer"></div>`;
-            }).join('')}
-        </div>`;
+            });
+            rowHTML += `<div onclick="openEventModal(${dIdx}, ${hour}, null)" class="p-1 border-r border-zinc-100 ${weekDays[dIdx].isToday ? 'bg-[#b9f6ca]/15' : ''} hover:bg-zinc-50 cursor-pointer">${cellContent}</div>`;
+        }
+        hoursGrid.innerHTML += rowHTML + `</div>`;
     }
-    hoursGrid.innerHTML = rowsHtml;
 }
 
-function openEventModal(dayIdx = 0, hour = 16) {
-    document.getElementById('event-day-select').value = dayIdx;
-    document.getElementById('event-start-hour').value = hour;
-    document.getElementById('event-modal').classList.remove('hidden');
+window.onHabitCategoryChange = function() {
+    const cat = document.getElementById('modal-habit-category').value;
+    const sec = document.getElementById('modal-bedtime-section');
+    if (sec) sec.classList.toggle('hidden', cat !== 'sono');
+};
+
+function renderBedtimeInputs(existingHours) {
+    const container = document.getElementById('modal-bedtime-inputs');
+    if (!container) return;
+    container.innerHTML = '';
+    const arr = Array.isArray(existingHours) ? existingHours : [0,0,0,0,0,0,0];
+    weekDays.forEach((d, dIdx) => {
+        const totalMin = Math.round((parseFloat(arr[dIdx]) || 0) * 60);
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        container.innerHTML += `
+            <div class="text-center">
+                <label class="block text-[10px] text-indigo-900 font-semibold mb-1">${d.shortName}</label>
+                <div class="flex gap-0.5">
+                    <input type="number" id="modal-bed-h-${dIdx}" min="0" max="24" value="${h}" class="w-full bg-white border border-indigo-200 rounded-lg px-0.5 py-1 text-[10px] font-mono text-center">
+                    <input type="number" id="modal-bed-m-${dIdx}" min="0" max="59" value="${m}" class="w-full bg-white border border-indigo-200 rounded-lg px-0.5 py-1 text-[10px] font-mono text-center">
+                </div>
+            </div>`;
+    });
 }
 
-function closeEventModal() {
-    document.getElementById('event-modal').classList.add('hidden');
-}
+window.openHabitModal = function(index = -1) {
+    document.getElementById('modal-habit-index').value = index;
+    const container = document.getElementById('modal-daily-hours-inputs');
+    container.innerHTML = '';
+    const h = index >= 0 && habits[index] ? habits[index] : null;
+    document.getElementById('modal-habit-name').value = h ? h.name : '';
+    document.getElementById('modal-habit-category').value = h ? h.category : 'atv_fisica';
+    document.getElementById('modal-habit-target-hours').value = h ? h.targetHours : 5.0;
+    weekDays.forEach((d, dIdx) => {
+        container.innerHTML += `<div class="text-center"><label class="block text-[10px] text-zinc-500 mb-1">${d.shortName}</label><input type="number" id="modal-day-hr-${dIdx}" step="0.1" min="0" max="24" value="${h ? (h.dailyHours[dIdx] || 0) : 0}" class="w-full bg-white border border-zinc-200 rounded-lg px-1 py-1 text-xs font-mono text-center"></div>`;
+    });
+    renderBedtimeInputs(h ? h.bedtimeHours : null);
+    window.onHabitCategoryChange();
+    const m = document.getElementById('habit-modal');
+    m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.closeHabitModal = function() {
+    const m = document.getElementById('habit-modal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+};
+
+window.openEventModal = function(dayIndex = 0, startHour = 9, eventId = null) {
+    if (habits.length === 0) { alert('Crie pelo menos uma atividade antes de agendar.'); return; }
+    populateSelects();
+    document.getElementById('event-modal-id').value = eventId || '';
+    const titleEl = document.getElementById('event-modal-title');
+    const deleteBtn = document.getElementById('btn-delete-event');
+
+    if (eventId) {
+        const ev = calendarEvents.find(e => e.id === eventId);
+        if (ev) {
+            if (titleEl) titleEl.textContent = 'Editar Bloco na Agenda';
+            if (deleteBtn) deleteBtn.classList.remove('hidden');
+            document.getElementById('event-day-select').value = ev.dayIndex;
+            document.getElementById('event-start-hour').value = ev.startHour;
+            document.getElementById('event-duration').value = ev.duration;
+            const hIdx = habits.findIndex(h => h.id === ev.habitId);
+            if (hIdx >= 0) document.getElementById('event-habit-select').value = hIdx;
+        }
+    } else {
+        if (titleEl) titleEl.textContent = 'Agendar Bloco Semanal';
+        if (deleteBtn) deleteBtn.classList.add('hidden');
+        document.getElementById('event-day-select').value = dayIndex;
+        document.getElementById('event-start-hour').value = startHour;
+        document.getElementById('event-duration').value = 1.5;
+    }
+
+    const m = document.getElementById('event-modal');
+    m.classList.remove('hidden'); m.classList.add('flex');
+};
+
+window.openEventModalForEdit = function(evId) {
+    window.openEventModal(0, 9, evId);
+};
+
+window.closeEventModal = function() {
+    const m = document.getElementById('event-modal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+};
 
 function saveEventFromModal() {
-    const hIdx = document.getElementById('event-habit-select').value;
-    const day = Number(document.getElementById('event-day-select').value);
-    const startHour = Number(document.getElementById('event-start-hour').value);
-    const duration = Number(document.getElementById('event-duration').value) || 1;
-    const title = habits[hIdx] ? habits[hIdx].name : 'Sessão';
+    const evId = document.getElementById('event-modal-id').value;
+    const hIdx = parseInt(document.getElementById('event-habit-select').value, 10) || 0;
+    const dIdx = parseInt(document.getElementById('event-day-select').value, 10) || 0;
+    const startHour = parseInt(document.getElementById('event-start-hour').value, 10) || 9;
+    const duration = parseFloat(document.getElementById('event-duration').value) || 1.0;
+    const habit = habits[hIdx];
+    if (!habit) return null;
 
-    calendarEvents.push({ id: 'ev-' + Date.now(), title, day, startHour, duration });
+    if (evId) {
+        const ev = calendarEvents.find(e => e.id === evId);
+        if (ev) {
+            ev.habitId = habit.id;
+            ev.dayIndex = dIdx;
+            ev.startHour = startHour;
+            ev.duration = duration;
+        }
+    } else {
+        const newEv = { id: 'ev_' + Date.now(), habitId: habit.id, dayIndex: dIdx, startHour, duration };
+        calendarEvents.push(newEv);
+    }
     saveData();
-    closeEventModal();
-    renderCalendarView();
+    return { habit };
 }
 
-function deleteCalEvent(id) {
-    calendarEvents = calendarEvents.filter(e => e.id !== id);
-    saveData();
-    renderCalendarView();
-}
+window.deleteCurrentEditingEvent = function() {
+    const evId = document.getElementById('event-modal-id').value;
+    if (!evId) return;
+    if (confirm('Deseja excluir este bloco da agenda?')) {
+        calendarEvents = calendarEvents.filter(e => e.id !== evId);
+        saveData();
+        closeEventModal();
+    }
+};
 
-function saveAndOpenGoogleCal() {
-    saveEventFromModal();
-    window.open('https://calendar.google.com/calendar/r/eventedit', '_blank');
-}
-
-function openCloudModal() {
+window.openCloudModal = function() {
     document.getElementById('gist-token-input').value = SafeStorage.getItem('hq_gist_token') || '';
     document.getElementById('gist-id-input').value = SafeStorage.getItem('hq_gist_id') || '';
-    document.getElementById('cloud-modal').classList.remove('hidden');
-}
+    const m = document.getElementById('cloud-modal');
+    m.classList.remove('hidden'); m.classList.add('flex');
+};
 
-function closeCloudModal() {
-    document.getElementById('cloud-modal').classList.add('hidden');
-}
+window.closeCloudModal = function() {
+    const m = document.getElementById('cloud-modal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+};
 
-function pushToGist() {
-    SafeStorage.setItem('hq_gist_token', document.getElementById('gist-token-input').value.trim());
-    SafeStorage.setItem('hq_gist_id', document.getElementById('gist-id-input').value.trim());
-    autoPushToGist();
-    closeCloudModal();
-}
+window.pushToGist = async function() {
+    const token = document.getElementById('gist-token-input').value.trim();
+    const gistId = document.getElementById('gist-id-input').value.trim();
+    const status = document.getElementById('cloud-status-msg');
+    if (!token) { status.textContent = "Informe o Token."; return; }
+    SafeStorage.setItem('hq_gist_token', token);
+    if (gistId) SafeStorage.setItem('hq_gist_id', gistId);
+    status.textContent = "Enviando...";
+    try {
+        const res = await fetch(gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`, {
+            method: gistId ? 'PATCH' : 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+            body: JSON.stringify({ description: "HabitQuant Pro Cloud Sync", public: false, files: { "habitquant_data.json": { content: JSON.stringify({ updatedAt: Date.now(), habits, calendarEvents, timerConfig }) } } })
+        });
+        const data = await res.json();
+        if (res.ok && data.id) {
+            SafeStorage.setItem('hq_gist_id', data.id);
+            document.getElementById('gist-id-input').value = data.id;
+            status.textContent = `✅ Sincronizado! ID: ${data.id}`;
+            updateCloudBadge('✅ Sync Ativo');
+        }
+    } catch (e) { status.textContent = "❌ Erro de rede."; }
+};
 
-function pullFromGist() {
-    SafeStorage.setItem('hq_gist_token', document.getElementById('gist-token-input').value.trim());
-    SafeStorage.setItem('hq_gist_id', document.getElementById('gist-id-input').value.trim());
-    autoPullFromGist(() => renderAll());
-    closeCloudModal();
-}
+window.pullFromGist = async function() {
+    const token = document.getElementById('gist-token-input').value.trim();
+    const gistId = document.getElementById('gist-id-input').value.trim();
+    const status = document.getElementById('cloud-status-msg');
+    if (!token || !gistId) { status.textContent = "Informe Token e ID."; return; }
+    SafeStorage.setItem('hq_gist_token', token);
+    SafeStorage.setItem('hq_gist_id', gistId);
+    await autoPullFromGist();
+    status.textContent = "✅ Sincronizado!";
+};
 
-function exportToCSV() {
-    if (typeof WorkoutSheetUI !== 'undefined') WorkoutSheetUI.exportCSV();
-}
+window.exportToCSV = function() {
+    let csv = "data:text/csv;charset=utf-8,habit_id,habit_name,category,target_hours_week,total_hours_week,mean_hours_day,sd_hours_week,freq_pct,sensitivity_deriv,elasticity,day_of_week,date_iso,completed,hours_day\n";
+    habits.forEach(h => {
+        const m = calcHabitMetrics(h), cleanName = `"${h.name.replace(/"/g, '""')}"`;
+        weekDays.forEach((day, dIdx) => {
+            csv += `${h.id},${cleanName},${h.category},${h.targetHours},${m.totalHours.toFixed(2)},${m.meanHours.toFixed(2)},${m.sdHours.toFixed(2)},${m.freqPct.toFixed(1)},${m.sensitivityDerivative.toFixed(2)},${m.elasticity.toFixed(3)},${day.shortName},${day.iso},${h.checks[dIdx] ? 1 : 0},${h.dailyHours[dIdx] || 0}\n`;
+        });
+    });
+    const link = document.createElement("a");
+    link.href = encodeURI(csv);
+    link.download = `habitquant_${weekDays[0].iso}.csv`;
+    link.click();
+};
 
-function exportCalendarICS() {
-    alert('Arquivo .ICS gerado para importação na agenda.');
-}
+window.exportCalendarICS = function() {
+    let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//HabitQuant Pro//PT-BR\n";
+    const fmt = d => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    calendarEvents.forEach(ev => {
+        const habit = habits.find(h => h.id === ev.habitId);
+        if (!habit) return;
+        const start = new Date(weekDays[ev.dayIndex].rawDate);
+        start.setHours(ev.startHour, 0, 0, 0);
+        const end = new Date(start.getTime() + ev.duration * 3600 * 1000);
+        ics += `BEGIN:VEVENT\nSUMMARY:${CATEGORIES[habit.category].emoji} ${habit.name}\nDTSTART:${fmt(start)}\nDTEND:${fmt(end)}\nEND:VEVENT\n`;
+    });
+    ics += "END:VCALENDAR";
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+    link.download = `agenda_habitos_${weekDays[0].iso}.ics`;
+    link.click();
+};
 
-function resetAllData() {
-    if (!confirm('Resetar todos os dados locais?')) return;
-    SafeStorage.removeItem(STORAGE_KEY);
-    location.reload();
-}
+window.resetAllData = function() {
+    if (confirm('Deseja zerar todos os dados?')) {
+        habits = [];
+        calendarEvents = [];
+        sleepJournal = {};
+        saveData();
+    }
+};
 
-function renderAll() {
+function renderAll(activeRoute) {
+    document.getElementById('week-range-badge').textContent = `${weekDays[0].dateNum} a ${weekDays[6].dateNum}`;
     populateSelects();
+    populateActivityChartTargetSelect();
     renderDashboardView();
-    renderDedicatedAtvFisicaView();
-    renderDedicatedSleepView();
-    renderCalendarView();
-    if (typeof renderMetricsView === 'function') renderMetricsView();
-    if (typeof renderProfileUI === 'function') renderProfileUI();
+    const current = activeRoute || (window.location.hash || '#dashboard').replace('#', '').trim();
+    if (current === 'metrics') {
+        renderMetricsView();
+        renderSleepJournalView();
+    }
+    if (current === 'sono') {
+        renderDedicatedSleepView();
+    }
+    if (current === 'atv_fisica') {
+        renderDedicatedAtvFisicaView();
+    }
+    if (current === 'calendar') renderCalendarView();
     refreshIcons();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', () => {
     loadData();
+    if (typeof window.loadProfile === 'function') window.loadProfile();
 
-    const habitForm = document.getElementById('habit-modal-form');
-    if (habitForm) {
-        habitForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const idx = Number(document.getElementById('modal-habit-index').value);
-            const name = document.getElementById('modal-habit-name').value.trim();
-            const category = document.getElementById('modal-habit-category').value;
-            const targetHours = parseFloat(document.getElementById('modal-habit-target-hours').value) || 6;
-            if (!name) return;
-
-            if (idx >= 0 && habits[idx]) {
-                habits[idx].name = name;
-                habits[idx].category = category;
-                habits[idx].targetHours = targetHours;
-            } else {
-                habits.push({
-                    name,
-                    category,
-                    targetHours,
-                    days: [false, false, false, false, false, false, false],
-                    hoursPerDay: [0, 0, 0, 0, 0, 0, 0]
-                });
-            }
+    document.getElementById('manual-hours-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const hIdx = parseInt(document.getElementById('manual-habit-select').value, 10);
+        const dIdx = parseInt(document.getElementById('manual-day-select').value, 10);
+        const hrs = parseFloat(document.getElementById('manual-hours-input').value) || 0;
+        if (habits[hIdx] && hrs > 0) {
+            habits[hIdx].dailyHours[dIdx] = parseFloat(((habits[hIdx].dailyHours[dIdx] || 0) + hrs).toFixed(2));
+            habits[hIdx].checks[dIdx] = true;
             saveData();
-            closeHabitModal();
-            renderAll();
-        });
-    }
-
-    const manualForm = document.getElementById('manual-hours-form');
-    if (manualForm) {
-        manualForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const hIdx = Number(document.getElementById('manual-habit-select').value);
-            const dIdx = Number(document.getElementById('manual-day-select').value);
-            const hrs = parseFloat(document.getElementById('manual-hours-input').value) || 0;
-            if (habits[hIdx] && hrs > 0) {
-                habits[hIdx].days[dIdx] = true;
-                habits[hIdx].hoursPerDay[dIdx] = Number(((habits[hIdx].hoursPerDay[dIdx] || 0) + hrs).toFixed(2));
-                saveData();
-                renderAll();
-            }
-        });
-    }
-
-    const initialRoute = (window.location.hash || '#dashboard').replace('#', '');
-    applyRoute(initialRoute);
-
-    window.addEventListener('hashchange', () => {
-        applyRoute((window.location.hash || '#dashboard').replace('#', ''));
+        }
     });
 
-    autoPullFromGist(() => renderAll());
+    document.getElementById('habit-modal-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const idx = parseInt(document.getElementById('modal-habit-index').value, 10);
+        const name = document.getElementById('modal-habit-name').value.trim();
+        const category = document.getElementById('modal-habit-category').value;
+        const targetHours = parseFloat(document.getElementById('modal-habit-target-hours').value) || 1;
+        const dailyHours = weekDays.map((_, dIdx) => parseFloat(document.getElementById('modal-day-hr-' + dIdx).value) || 0);
+
+        let bedtimeHours = null;
+        if (category === 'sono') {
+            bedtimeHours = weekDays.map((_, dIdx) => {
+                const hh = parseFloat(document.getElementById('modal-bed-h-' + dIdx).value) || 0;
+                const mm = parseFloat(document.getElementById('modal-bed-m-' + dIdx).value) || 0;
+                return parseFloat((hh + mm / 60).toFixed(2));
+            });
+        }
+
+        if (!name) return;
+        if (idx >= 0 && habits[idx]) {
+            Object.assign(habits[idx], { name, category, targetHours, dailyHours });
+            if (bedtimeHours) habits[idx].bedtimeHours = bedtimeHours;
+            else delete habits[idx].bedtimeHours;
+            dailyHours.forEach((hr, i) => { if (hr > 0) habits[idx].checks[i] = true; });
+        } else {
+            const newHabit = {
+                id: 'h_' + Date.now(), name, category, targetHours,
+                checks: dailyHours.map(hr => hr > 0), dailyHours
+            };
+            if (bedtimeHours) newHabit.bedtimeHours = bedtimeHours;
+            habits.push(newHabit);
+        }
+        closeHabitModal();
+        saveData();
+    });
+
+    document.getElementById('event-modal-form').addEventListener('submit', e => {
+        e.preventDefault();
+        saveEventFromModal();
+        closeEventModal();
+    });
+
+    const profileForm = document.getElementById('profile-modal-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const name = document.getElementById('profile-name-input').value.trim();
+            const gender = document.getElementById('profile-gender-input').value;
+            if (!name) return;
+            const draft = (typeof window.getAvatarDraft === 'function') ? window.getAvatarDraft() : {};
+            window.saveProfile({ name, gender, role: draft.role, skinTone: draft.skinTone });
+            if (typeof window.markFirstRunDone === 'function') window.markFirstRunDone();
+            window.closeProfileModal();
+        });
+    }
+
+    const sleepForm = document.getElementById('sleep-journal-form');
+    if (sleepForm) {
+        sleepForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const iso = document.getElementById('sleep-journal-day').value;
+            const bed = document.getElementById('sleep-journal-bed').value;
+            const slept = document.getElementById('sleep-journal-slept').value;
+            const wake = document.getElementById('sleep-journal-wake').value;
+            const getup = document.getElementById('sleep-journal-getup').value;
+
+            sleepJournal[iso] = { bed, slept, wake, getup };
+            saveData();
+            closeSleepJournalModal();
+        });
+    }
+
+    selectTimerMode('stopwatch');
+    applyRoute();
+
+    if (typeof window.hasProfile === 'function' && !window.hasProfile()) {
+        if (typeof window.openProfileModal === 'function') {
+            window.openProfileModal({ firstRun: true });
+        }
+    }
+
+    refreshIcons();
+    setTimeout(refreshIcons, 300);
+    setTimeout(refreshIcons, 1000);
+
+    autoPullFromGist();
+    window.addEventListener('focus', autoPullFromGist);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') autoPullFromGist();
+    });
 });
