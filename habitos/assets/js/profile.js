@@ -1,6 +1,5 @@
 /* ===================================================================
  * profile.js — Perfil, Avatar e Cumprimento — HabitQuant Pro
- * VERSÃO CORRIGIDA
  * =================================================================== */
 
 const PROFILE_STORAGE_KEY = 'hq_profile_v1';
@@ -24,23 +23,16 @@ const AVATAR_ROLES = [
     { id: 'ninja',      emoji: '🥷',   label: 'Ninja' },
 ];
 
-let currentProfile = {
-    name: 'HabitQuant Pro',
-    gender: 'nb',
-    role: 'dev',
-    skinTone: ''
-};
-
-let selectedRoleId   = 'dev';
+let currentProfile = { name: 'HabitQuant Pro', gender: 'nb', role: 'dev', skinTone: '' };
+let selectedRoleId = 'dev';
 let selectedSkinTone = '';
+let isFirstRunModal = false;
 
 function applySkinToneToEmoji(baseEmoji, tone) {
     if (!tone) return baseEmoji;
-    const codepoints = Array.from(baseEmoji);
-    if (codepoints.length === 0) return baseEmoji;
-    const first = codepoints[0];
-    const rest = codepoints.slice(1).join('');
-    return first + tone + rest;
+    const cp = Array.from(baseEmoji);
+    if (cp.length === 0) return baseEmoji;
+    return cp[0] + tone + cp.slice(1).join('');
 }
 
 function buildAvatarEmoji(roleId, tone) {
@@ -50,30 +42,15 @@ function buildAvatarEmoji(roleId, tone) {
     return applySkinToneToEmoji(role.emoji, tk);
 }
 
-function getGreetingPhrase() {
-    const h = new Date().getHours();
-    if (h >= 12 && h < 18) return 'Boa tarde';
-    if (h >= 18 || h < 6)  return 'Boa noite';
-    return 'Bom dia';
-}
-
-function getReadyWord(gender) {
-    return gender === 'fem' ? 'Pronta' : 'Pronto';
-}
-
+/* Cumprimento ESTÁVEL — sempre "Bom dia, [nome]!" */
 window.getUserGreeting = function () {
-    const hasCustomName = currentProfile && currentProfile.name && currentProfile.name !== 'HabitQuant Pro';
-    return hasCustomName
-        ? `${getGreetingPhrase()}, ${currentProfile.name}!`
-        : `${getGreetingPhrase()}!`;
+    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HabitQuant Pro';
+    return hasName ? `Bom dia, ${currentProfile.name}!` : 'Bom dia, Semana Corrente';
 };
 
 function renderRoleGrid() {
     const grid = document.getElementById('avatar-role-grid');
-    if (!grid) {
-        console.warn('[profile.js] #avatar-role-grid não encontrado no DOM.');
-        return;
-    }
+    if (!grid) return;
     grid.innerHTML = '';
     AVATAR_ROLES.forEach(role => {
         const isActive = role.id === selectedRoleId;
@@ -117,48 +94,46 @@ window.updateAvatarPreview = function () {
 
     const greet = document.getElementById('avatar-greeting-preview');
     if (greet) {
-        greet.textContent = `${getGreetingPhrase()}, ${name}! ${getReadyWord(gender)} para o dia?`;
+        const readyWord = gender === 'fem' ? 'Pronta' : 'Pronto';
+        greet.textContent = `Bom dia, ${name}! ${readyWord} para o dia?`;
     }
 };
 
 window.getAvatarDraft = () => ({ role: selectedRoleId, skinTone: selectedSkinTone });
 
 window.openProfileModal = function (opts = {}) {
+    isFirstRunModal = !!opts.firstRun;
     const m = document.getElementById('profile-modal');
-    if (!m) {
-        console.error('[profile.js] #profile-modal não encontrado no DOM.');
-        return;
-    }
-    try {
-        const nameInput = document.getElementById('profile-name-input');
-        if (nameInput) nameInput.value = (currentProfile.name && currentProfile.name !== 'HabitQuant Pro') ? currentProfile.name : '';
-        const genderInput = document.getElementById('profile-gender-input');
-        if (genderInput) genderInput.value = currentProfile.gender || 'nb';
+    if (!m) return;
 
-        selectedRoleId   = currentProfile.role || 'dev';
-        selectedSkinTone = currentProfile.skinTone || '';
+    const nameInput = document.getElementById('profile-name-input');
+    if (nameInput) nameInput.value = (currentProfile.name && currentProfile.name !== 'HabitQuant Pro') ? currentProfile.name : '';
+    const genderInput = document.getElementById('profile-gender-input');
+    if (genderInput) genderInput.value = currentProfile.gender || 'nb';
 
-        renderRoleGrid();
-        window.selectSkinTone(selectedSkinTone);
-        updateAvatarPreview();
+    selectedRoleId   = currentProfile.role || 'dev';
+    selectedSkinTone = currentProfile.skinTone || '';
 
-        const closeBtn = document.getElementById('profile-modal-close-btn');
-        if (closeBtn) closeBtn.classList.toggle('hidden', !!opts.firstRun);
+    renderRoleGrid();
+    window.selectSkinTone(selectedSkinTone);
+    updateAvatarPreview();
 
-        m.classList.remove('hidden');
-        m.classList.add('flex');
-    } catch (err) {
-        console.error('[profile.js] Erro ao abrir modal:', err);
-    }
+    const closeBtn = document.getElementById('profile-modal-close-btn');
+    if (closeBtn) closeBtn.style.display = isFirstRunModal ? 'none' : '';
+
+    m.classList.remove('hidden');
+    m.classList.add('flex');
 };
 
 window.closeProfileModal = function () {
-    if (!window.hasProfile()) return;
+    if (isFirstRunModal) return;   /* bloqueia APENAS no primeiro acesso */
     const m = document.getElementById('profile-modal');
     if (!m) return;
     m.classList.add('hidden');
     m.classList.remove('flex');
 };
+
+window.markFirstRunDone = function () { isFirstRunModal = false; };
 
 window.loadProfile = function () {
     const raw = SafeStorage.getItem(PROFILE_STORAGE_KEY);
