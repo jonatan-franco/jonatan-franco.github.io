@@ -1,7 +1,6 @@
 let activeCategoryFilter = 'all';
 let isSidebarCollapsed = false;
 
-/* ---------- Sidebar expandir/recolher (restaurado) ---------- */
 window.toggleDesktopSidebar = function() {
     const sb = document.getElementById('desktop-sidebar');
     const icon = document.getElementById('sidebar-toggle-icon');
@@ -17,8 +16,9 @@ window.toggleMobileDrawer = function() {
     document.getElementById('mobile-drawer').classList.toggle('hidden');
 };
 
+/* Títulos originais — sem greeting dinâmico */
 const ROUTE_CONFIG = {
-    dashboard: { eyebrow: 'DASHBOARD', title: 'Bom dia!' },
+    dashboard: { eyebrow: 'DASHBOARD', title: 'Bom dia, Semana Corrente' },
     timer:     { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
     metrics:   { eyebrow: 'ANÁLISE',   title: 'Métricas' },
     calendar:  { eyebrow: 'AGENDA',    title: 'Calendário Semanal' }
@@ -37,7 +37,6 @@ function applyRoute(routeParam) {
         const sec = document.getElementById('view-' + r);
         if (sec) sec.classList.toggle('hidden', r !== activeRoute);
 
-        /* Sidebar desktop */
         const btn = document.querySelector(`[data-route="${r}"]`);
         if (btn) {
             btn.className = r === activeRoute
@@ -45,7 +44,6 @@ function applyRoute(routeParam) {
                 : "nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900 transition w-full";
         }
 
-        /* Bottom nav mobile */
         const mBtn = document.querySelector(`[data-mobile-route="${r}"]`);
         if (mBtn) {
             mBtn.className = r === activeRoute
@@ -56,23 +54,14 @@ function applyRoute(routeParam) {
 
     const cfg = ROUTE_CONFIG[activeRoute];
     document.getElementById('header-eyebrow').innerText = cfg.eyebrow;
-
-    const titleText = (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function')
-        ? window.getUserGreeting()
-        : cfg.title;
-    document.getElementById('view-title').innerText = titleText;
+    document.getElementById('view-title').innerText = cfg.title;
 
     renderAll(activeRoute);
 }
 
-window.refreshHeaderTitle = function () {
-    const hashRoute = (window.location.hash || '#dashboard').replace('#', '').trim();
-    const activeRoute = ROUTE_CONFIG[hashRoute] ? hashRoute : 'dashboard';
-    if (activeRoute === 'dashboard' && typeof window.getUserGreeting === 'function') {
-        const el = document.getElementById('view-title');
-        if (el) el.innerText = window.getUserGreeting();
-    }
-};
+/* No-op — o título é estático via ROUTE_CONFIG.
+   Mantida para compatibilidade com profile.js. */
+window.refreshHeaderTitle = function () {};
 
 window.addEventListener('hashchange', () => applyRoute());
 
@@ -101,7 +90,7 @@ window.deleteHabitByIdx = function(hIdx) {
     if (confirm(`Remover "${habits[hIdx].name}"?`)) { habits.splice(hIdx, 1); saveData(); }
 };
 
-/* ---------- KPI de Sono ---------- */
+/* KPI de Sono (substitui a antiga elasticidade global) */
 function renderSleepKPI() {
     const sleepHabit = habits.find(h => h.category === 'sono');
     const bedEl = document.getElementById('kpi-sleep-bed');
@@ -199,6 +188,7 @@ function renderDashboardView() {
                 </div>`;
         });
 
+        /* Sono: só Streak, Média e Sensib. (sem frequência) */
         const footerHTML = habit.category === 'sono'
             ? `<div class="pt-2 border-t border-black/5 flex justify-between text-[11px] text-zinc-700 font-medium">
                    <span>Streak: 🔥 <strong>${m.streak}d</strong></span>
@@ -239,6 +229,7 @@ function renderDashboardView() {
                 ${footerHTML}
             </div>`;
 
+        /* Engajamento oculto para sono */
         const engajCell = habit.category === 'sono' ? '—' : `${m.freqPct.toFixed(1)}%`;
         let row = `<tr class="hover:bg-zinc-50 transition"><td class="py-3 px-2 font-medium text-zinc-900">${cat.emoji} ${habit.name}</td>`;
         weekDays.forEach((day, dIndex) => {
@@ -323,7 +314,7 @@ function renderCalendarView() {
     }
 }
 
-/* ---------- Modal de Atividade: sono ---------- */
+/* Modal de Atividade: exibe/oculta Tempo de Cama */
 window.onHabitCategoryChange = function() {
     const cat = document.getElementById('modal-habit-category').value;
     const sec = document.getElementById('modal-bedtime-section');
@@ -549,7 +540,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const targetHours = parseFloat(document.getElementById('modal-habit-target-hours').value) || 1;
         const dailyHours = weekDays.map((_, dIdx) => parseFloat(document.getElementById('modal-day-hr-' + dIdx).value) || 0);
 
-        /* Coleta tempo de cama (somente sono) */
         let bedtimeHours = null;
         if (category === 'sono') {
             bedtimeHours = weekDays.map((_, dIdx) => {
@@ -595,7 +585,6 @@ window.addEventListener('DOMContentLoaded', () => {
             const draft = (typeof window.getAvatarDraft === 'function') ? window.getAvatarDraft() : {};
             window.saveProfile({ name, gender, role: draft.role, skinTone: draft.skinTone });
             window.closeProfileModal();
-            window.refreshHeaderTitle();
         });
     }
 
