@@ -4,15 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HabitQuant Pro — Análise de Hábitos</title>
-    <!-- Fontes Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
@@ -21,17 +17,6 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        pastel: {
-                            mint: '#b9f6ca',
-                            mintSoft: '#dcfce7',
-                            lavender: '#e9d5ff',
-                            lavenderSoft: '#f3e8ff',
-                            cream: '#fef3c7',
-                            peach: '#ffedd5',
-                            pink: '#fce7f3'
-                        }
                     }
                 }
             }
@@ -41,21 +26,22 @@
 </head>
 <body class="bg-[#fafafa] text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
 
-    <!-- ================================================================= -->
-    <!-- TOPBAR MOBILE (Com Menu Hambúrguer Expandível igual ao print)      -->
-    <!-- ================================================================= -->
+    <!-- TOPBAR MOBILE -->
     <div class="md:hidden bg-black text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-xs flex items-center justify-center">HQ</div>
-            <span class="font-bold text-sm tracking-tight">HabitQuant Pro</span>
+        <div class="flex items-center gap-3 cursor-pointer" onclick="openProfileModal()">
+            <div id="mobile-user-avatar" class="w-8 h-8 rounded-full bg-[#00e5ff] text-black font-extrabold text-base flex items-center justify-center">🧑‍💻</div>
+            <span class="font-bold text-sm tracking-tight" id="mobile-user-name">HabitQuant Pro</span>
         </div>
         <button type="button" onclick="toggleMobileDrawer()" class="p-1.5 text-zinc-300 hover:text-white">
-            <i data-lucide="menu" id="mobile-menu-icon" class="w-6 h-6"></i>
+            <i data-lucide="menu" class="w-6 h-6"></i>
         </button>
     </div>
 
-    <!-- Gaveta Mobile Expandível (Exportar CSV / Sync / Resetar) -->
+    <!-- GAVETA MOBILE -->
     <div id="mobile-drawer" class="hidden md:hidden bg-black text-white px-5 py-4 border-b border-zinc-800 space-y-3 fixed top-[56px] left-0 right-0 z-40 shadow-xl">
+        <button type="button" onclick="openProfileModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
+            <i data-lucide="user" class="w-4 h-4"></i> <span>Editar Perfil &amp; Avatar</span>
+        </button>
         <button type="button" onclick="openCloudModal(); toggleMobileDrawer();" class="flex items-center gap-3 text-sm text-zinc-300 hover:text-white w-full py-1.5">
             <i data-lucide="cloud" class="w-4 h-4"></i> <span>GitHub Gist Sync</span>
         </button>
@@ -67,20 +53,17 @@
         </button>
     </div>
 
-    <!-- ================================================================= -->
-    <!-- SIDEBAR PRETA EXPANDÍVEL / RETRÁTIL (DESKTOP)                     -->
-    <!-- ================================================================= -->
+    <!-- SIDEBAR PRETA EXPANDÍVEL (DESKTOP) -->
     <aside id="desktop-sidebar" class="sidebar-expanded hidden md:flex flex-col justify-between bg-black text-white shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 select-none">
         <div class="p-4 space-y-6">
-            <!-- Topo da Sidebar + Botão de Expandir/Recolher -->
             <div class="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-                <div class="flex items-center gap-3 overflow-hidden">
-                    <div class="w-9 h-9 rounded-full bg-[#00e5ff] text-black font-extrabold text-sm flex items-center justify-center shrink-0 shadow">
-                        HQ
+                <div onclick="openProfileModal()" class="flex items-center gap-3 overflow-hidden cursor-pointer group" title="Clique para personalizar seu perfil e ícone">
+                    <div id="sidebar-user-avatar" class="w-9 h-9 rounded-full bg-[#00e5ff] text-black font-extrabold text-lg flex items-center justify-center shrink-0 shadow group-hover:scale-105 transition">
+                        🧑‍💻
                     </div>
                     <div class="sidebar-label overflow-hidden whitespace-nowrap">
-                        <div class="font-bold text-sm text-white leading-none">HabitQuant Pro</div>
-                        <div class="text-[11px] font-mono text-[#00e676] mt-1">Análise de Hábitos</div>
+                        <div id="sidebar-user-name" class="font-bold text-sm text-white leading-none truncate max-w-[120px]">HabitQuant Pro</div>
+                        <div class="text-[11px] font-mono text-[#00e676] mt-1">Editar Perfil ✎</div>
                     </div>
                 </div>
                 <button type="button" onclick="toggleDesktopSidebar()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-900 transition shrink-0" title="Expandir / Recolher Menu">
@@ -88,7 +71,6 @@
                 </button>
             </div>
 
-            <!-- Links de Navegação -->
             <nav class="space-y-1.5">
                 <button type="button" onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition w-full">
                     <i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i>
@@ -109,11 +91,14 @@
             </nav>
         </div>
 
-        <!-- Rodapé da Sidebar -->
         <div class="p-4 border-t border-zinc-900 space-y-2 text-xs">
+            <button type="button" onclick="openProfileModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
+                <i data-lucide="user-check" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-label truncate">Perfil &amp; Ícone</span>
+            </button>
             <button type="button" onclick="openCloudModal()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
                 <i data-lucide="cloud" class="w-4 h-4 shrink-0"></i>
-                <span class="sidebar-label truncate" id="sidebar-sync-text">GitHub Gist Sync</span>
+                <span class="sidebar-label truncate">GitHub Gist Sync</span>
             </button>
             <button type="button" onclick="exportToCSV()" class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition w-full">
                 <i data-lucide="download" class="w-4 h-4 shrink-0"></i>
@@ -126,31 +111,23 @@
         </div>
     </aside>
 
-    <!-- ================================================================= -->
-    <!-- BARRA DE NAVEGAÇÃO INFERIOR PRETA (MOBILE)                        -->
-    <!-- ================================================================= -->
+    <!-- BARRA DE NAVEGAÇÃO INFERIOR (MOBILE) -->
     <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
         <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold">
-            <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i>
-            <span>Dashboard</span>
+            <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span>
         </button>
         <button type="button" onclick="navigateTo('timer')" data-mobile-route="timer" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
-            <i data-lucide="timer" class="w-4 h-4 mb-0.5"></i>
-            <span>Timer</span>
+            <i data-lucide="timer" class="w-4 h-4 mb-0.5"></i><span>Timer</span>
         </button>
         <button type="button" onclick="navigateTo('metrics')" data-mobile-route="metrics" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
-            <i data-lucide="bar-chart-2" class="w-4 h-4 mb-0.5"></i>
-            <span>Métricas</span>
+            <i data-lucide="bar-chart-2" class="w-4 h-4 mb-0.5"></i><span>Métricas</span>
         </button>
         <button type="button" onclick="navigateTo('calendar')" data-mobile-route="calendar" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400">
-            <i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i>
-            <span>Agenda</span>
+            <i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span>Agenda</span>
         </button>
     </nav>
 
-    <!-- ================================================================= -->
-    <!-- ÁREA DE CONTEÚDO PRINCIPAL (TEMA CLARO PASTEL)                    -->
-    <!-- ================================================================= -->
+    <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 p-5 md:p-8 max-w-7xl mx-auto w-full space-y-8">
 
         <!-- CABEÇALHO DINÂMICO -->
@@ -163,7 +140,7 @@
                         ☁️ Sync
                     </button>
                 </div>
-                <h1 id="view-title" class="text-2xl md:text-3xl font-bold text-zinc-900 mt-1 tracking-tight">Bom dia, Semana Corrente</h1>
+                <h1 id="view-title" class="text-xl md:text-2xl lg:text-3xl font-bold text-zinc-900 mt-1.5 tracking-tight">Bom dia!</h1>
                 <p id="week-range-badge" class="text-sm text-zinc-500 mt-0.5 font-mono"></p>
             </div>
 
@@ -171,19 +148,15 @@
                 <button type="button" onclick="navigateTo('timer')" id="mini-timer-pill" class="hidden items-center gap-2 px-3.5 py-2 bg-zinc-900 text-white rounded-full text-xs font-mono animate-pulse">
                     <span>⏱️</span><span id="mini-timer-text">00:00:00</span>
                 </button>
-                <button type="button" id="header-action-btn" onclick="openHabitModal(-1)" class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white rounded-full text-xs md:text-sm font-semibold shadow-sm transition flex items-center gap-1.5">
+                <button type="button" onclick="openHabitModal(-1)" class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white rounded-full text-xs md:text-sm font-semibold shadow-sm transition flex items-center gap-1.5 shrink-0">
                     <span>+ Nova Atividade</span>
                 </button>
             </div>
         </header>
 
-        <!-- ============================================================= -->
-        <!-- VIEW 1: DASHBOARD PRINCIPAL                                   -->
-        <!-- ============================================================= -->
+        <!-- VIEW 1: DASHBOARD PRINCIPAL -->
         <section id="view-dashboard" class="space-y-8">
-            <!-- 4 KPI CARDS PASTÉIS -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- 1. Consistência (Menta) -->
                 <div class="bg-[#b9f6ca] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -203,14 +176,13 @@
                     </div>
                 </div>
 
-                <!-- 2. Elasticidade (Lavanda) -->
                 <div class="bg-[#ede9fe] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
                             <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">ELASTICIDADE</span>
                             <div class="flex items-baseline gap-2 mt-1.5">
                                 <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-elasticity">ε 0.00</span>
-                                <span class="text-xs text-zinc-600 font-mono" id="kpi-elasticity-status">Sub-meta</span>
+                                <span class="text-xs text-zinc-600 font-mono" id="kpi-elasticity-status">Sem dados</span>
                             </div>
                         </div>
                         <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900">
@@ -222,7 +194,6 @@
                     </div>
                 </div>
 
-                <!-- 3. Volume de Horas (Creme/Amarelo) -->
                 <div class="bg-[#fef3c7] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -242,7 +213,6 @@
                     </div>
                 </div>
 
-                <!-- 4. Maior Streak (Pêssego) -->
                 <div class="bg-[#ffedd5] p-5 rounded-3xl flex flex-col justify-between min-h-[148px]">
                     <div class="flex justify-between items-start">
                         <div>
@@ -262,7 +232,6 @@
                 </div>
             </div>
 
-            <!-- PAINÉIS DE ATIVIDADES (CARDS COLORIDOS INDIVIDUAIS) -->
             <div class="space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
@@ -276,12 +245,9 @@
                         <button type="button" onclick="setCategoryFilter('saude')" id="cat-btn-saude" class="px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black">❤️ Saúde</button>
                     </div>
                 </div>
-
-                <!-- Grid de Cards de Hábitos -->
                 <div id="activity-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
             </div>
 
-            <!-- TABELA: MÉTRICA SEMANAL (Mantendo a estrutura limpa sem DP% e sem Deadlines) -->
             <div class="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-sm space-y-4">
                 <div class="flex justify-between items-center">
                     <div>
@@ -292,7 +258,6 @@
                         <span>Ver Gráficos de Métricas →</span>
                     </button>
                 </div>
-
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -304,49 +269,34 @@
             </div>
         </section>
 
-        <!-- ============================================================= -->
-        <!-- VIEW 2: TIMER (Com Contador Regressivo, Cronômetro, Pomodoro) -->
-        <!-- ============================================================= -->
+        <!-- VIEW 2: TIMER -->
         <section id="view-timer" class="hidden">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Card Esquerdo do Timer -->
                 <div class="lg:col-span-7 bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
-                    <!-- 4 Modalidades Editáveis -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div onclick="selectTimerMode('stopwatch')" id="card-tmode-stopwatch" class="cursor-pointer p-3.5 rounded-2xl border-2 border-purple-300 bg-[#ede9fe] transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
-                                <span>CRONÔMETRO</span><span>🕒</span>
-                            </div>
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>CRONÔMETRO</span><span>🕒</span></div>
                             <div class="my-2.5" onclick="event.stopPropagation()">
                                 <input type="number" id="input-min-stopwatch" value="0" min="0" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
                             </div>
                             <span class="text-[11px] text-zinc-600">Progressivo</span>
                         </div>
-
                         <div onclick="selectTimerMode('countdown')" id="card-tmode-countdown" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
-                                <span>REGRESSIVO</span><span>⏳</span>
-                            </div>
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>REGRESSIVO</span><span>⏳</span></div>
                             <div class="my-2.5" onclick="event.stopPropagation()">
                                 <input type="number" id="input-min-countdown" value="30" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
                             </div>
                             <span class="text-[11px] text-zinc-600">Regressivo</span>
                         </div>
-
                         <div onclick="selectTimerMode('pomodoro')" id="card-tmode-pomodoro" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
-                                <span>POMODORO</span><span>🔥</span>
-                            </div>
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>POMODORO</span><span>🔥</span></div>
                             <div class="my-2.5" onclick="event.stopPropagation()">
                                 <input type="number" id="input-min-pomodoro" value="25" min="1" max="240" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
                             </div>
                             <span class="text-[11px] text-zinc-600">Regressivo</span>
                         </div>
-
                         <div onclick="selectTimerMode('deepwork')" id="card-tmode-deepwork" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800">
-                                <span>DEEP WORK</span><span>🧠</span>
-                            </div>
+                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>DEEP WORK</span><span>🧠</span></div>
                             <div class="my-2.5" onclick="event.stopPropagation()">
                                 <input type="number" id="input-min-deepwork" value="50" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
                             </div>
@@ -354,7 +304,6 @@
                         </div>
                     </div>
 
-                    <!-- Seletores de Atividade e Dia -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-100 p-4 rounded-2xl">
                         <div>
                             <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
@@ -366,15 +315,12 @@
                         </div>
                     </div>
 
-                    <!-- Visor Preto igual ao print -->
                     <div class="bg-black text-white rounded-3xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
                         <span id="timer-mode-badge" class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 mb-2">MODO: CRONÔMETRO</span>
                         <div id="timer-display" class="text-5xl sm:text-6xl font-mono font-bold tracking-wider">00:00:00</div>
-                        
                         <div id="countdown-progress-container" class="hidden w-full max-w-xs bg-zinc-800 h-1.5 rounded-full overflow-hidden mt-4">
                             <div id="countdown-progress-bar" class="bg-[#00e676] h-full transition-all duration-300" style="width: 100%"></div>
                         </div>
-
                         <div class="flex items-center gap-2 mt-5">
                             <button type="button" onclick="adjustTimerMinutes(-5)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-5m</button>
                             <button type="button" onclick="adjustTimerMinutes(-1)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-1m</button>
@@ -389,25 +335,17 @@
                             <span>Marcar presença ao salvar</span>
                         </label>
                         <div class="flex items-center gap-3">
-                            <button type="button" onclick="toggleTimer()" id="btn-timer-toggle" class="flex-1 py-3 bg-black hover:bg-zinc-800 text-white rounded-full text-sm font-semibold transition">
-                                ▷ Iniciar
-                            </button>
-                            <button type="button" onclick="finishAndLogSession(false)" class="px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-900 border border-zinc-300 rounded-full text-sm font-semibold transition">
-                                ✓ Salvar
-                            </button>
-                            <button type="button" onclick="selectTimerMode(timerMode)" class="p-3 bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-full transition">
-                                ↺
-                            </button>
+                            <button type="button" onclick="toggleTimer()" id="btn-timer-toggle" class="flex-1 py-3 bg-black hover:bg-zinc-800 text-white rounded-full text-sm font-semibold transition">▷ Iniciar</button>
+                            <button type="button" onclick="finishAndLogSession(false)" class="px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-900 border border-zinc-300 rounded-full text-sm font-semibold transition">✓ Salvar</button>
+                            <button type="button" onclick="selectTimerMode(timerMode)" class="p-3 bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-full transition">↺</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Card Direito Creme: Registro Rápido -->
                 <div class="lg:col-span-5 bg-[#fef3c7] rounded-3xl p-6 flex flex-col justify-between space-y-6">
                     <div>
                         <h3 class="text-lg font-bold text-zinc-900">Registro Rápido</h3>
                         <p class="text-xs text-zinc-600 mb-4">Adicione horas diretamente a qualquer atividade</p>
-
                         <form id="manual-hours-form" class="bg-white/70 p-4 rounded-2xl space-y-3.5">
                             <div>
                                 <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
@@ -423,12 +361,9 @@
                                     <input type="number" id="manual-hours-input" step="0.25" min="0.1" max="24" value="1" required class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-mono text-zinc-900">
                                 </div>
                             </div>
-                            <button type="submit" class="w-full py-2.5 bg-black hover:bg-zinc-800 text-white font-semibold rounded-full text-xs transition">
-                                Adicionar Horas
-                            </button>
+                            <button type="submit" class="w-full py-2.5 bg-black hover:bg-zinc-800 text-white font-semibold rounded-full text-xs transition">Adicionar Horas</button>
                         </form>
                     </div>
-
                     <div class="pt-4 border-t border-black/10">
                         <h4 class="text-[10px] font-mono uppercase tracking-wider text-zinc-600 mb-3">VOLUME POR CATEGORIA</h4>
                         <div id="category-hours-summary" class="space-y-3"></div>
@@ -437,9 +372,7 @@
             </div>
         </section>
 
-        <!-- ============================================================= -->
         <!-- VIEW 3: MÉTRICAS (Apenas Painel Total e Painel por Atividade) -->
-        <!-- ============================================================= -->
         <section id="view-metrics" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- GRÁFICO 1: PAINEL TOTAL -->
@@ -451,7 +384,7 @@
                     <div class="relative h-80 w-full"><canvas id="totalPanelChart"></canvas></div>
                 </div>
 
-                <!-- GRÁFICO 2: PAINEL POR ATIVIDADE (Linha c/ DP + Molecular vs Grupo) -->
+                <!-- GRÁFICO 2: PAINEL POR ATIVIDADE -->
                 <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
                     <div class="space-y-3 mb-3">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -465,8 +398,18 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-between gap-2 bg-zinc-50 px-3.5 py-2 rounded-2xl border border-zinc-200">
-                            <span id="activity-target-label" class="text-xs text-zinc-600 font-medium">Visualizar:</span>
+                        <!-- Sub-opção quando "Por Grupo" está ativo: Visualização Total (Default) vs Particular -->
+                        <div id="group-view-mode-bar" class="hidden items-center justify-between gap-2 bg-purple-50/80 px-3.5 py-2 rounded-2xl border border-purple-200/80">
+                            <span class="text-[11px] font-semibold text-purple-900">Modo de Grupo:</span>
+                            <div class="flex bg-white p-0.5 rounded-full border border-purple-200 text-[11px]">
+                                <button type="button" onclick="setGroupViewMode('total')" id="btn-group-total" class="px-3 py-1 rounded-full bg-purple-600 text-white font-semibold transition">Visualização Total (Todos)</button>
+                                <button type="button" onclick="setGroupViewMode('particular')" id="btn-group-particular" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Visualização Particular</button>
+                            </div>
+                        </div>
+
+                        <!-- Seletor de Atividade ou Grupo Particular -->
+                        <div id="activity-target-selector-row" class="flex items-center justify-between gap-2 bg-zinc-50 px-3.5 py-2 rounded-2xl border border-zinc-200">
+                            <span id="activity-target-label" class="text-xs text-zinc-600 font-medium">Selecionar Atividade Molecular:</span>
                             <select id="activity-chart-target" onchange="renderMetricsView()" class="bg-white border border-zinc-200 rounded-full px-3 py-1 text-xs font-medium text-zinc-900 max-w-[240px]"></select>
                         </div>
                     </div>
@@ -475,17 +418,18 @@
             </div>
         </section>
 
-        <!-- ============================================================= -->
-        <!-- VIEW 4: AGENDA SEMANAL                                        -->
-        <!-- ============================================================= -->
+        <!-- VIEW 4: AGENDA SEMANAL EDITÁVEL -->
         <section id="view-calendar" class="hidden space-y-4">
-            <div class="flex justify-end gap-2">
-                <button type="button" onclick="exportCalendarICS()" class="px-4 py-2 bg-white hover:bg-zinc-50 text-zinc-800 rounded-full text-xs font-semibold border border-zinc-200 shadow-sm">
-                    📥 Exportar .ICS
-                </button>
-                <button type="button" onclick="openEventModal(0, 9)" class="px-4 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold shadow-sm">
-                    + Agendar
-                </button>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <p class="text-xs text-zinc-500">💡 Clique em um horário vazio para criar ou <strong>clique sobre uma atividade agendada para editá-la ou excluí-la</strong>.</p>
+                <div class="flex gap-2">
+                    <button type="button" onclick="exportCalendarICS()" class="px-4 py-2 bg-white hover:bg-zinc-50 text-zinc-800 rounded-full text-xs font-semibold border border-zinc-200 shadow-sm">
+                        📥 Exportar .ICS
+                    </button>
+                    <button type="button" onclick="openEventModal(0, 9, null)" class="px-4 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold shadow-sm">
+                        + Agendar
+                    </button>
+                </div>
             </div>
 
             <div class="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
@@ -499,9 +443,73 @@
         </section>
     </main>
 
-    <!-- ================================================================= -->
-    <!-- MODAIS (Nova Atividade sem Deadline, Agendar e Gist Sync)         -->
-    <!-- ================================================================= -->
+    <!-- MODAL 0: TELA DE INICIAÇÃO / PERFIL & CONSTRUTOR DE AVATAR -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <div>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">IDENTIFICAÇÃO &amp; PERSONALIZAÇÃO</span>
+                    <h3 class="text-lg font-bold text-zinc-900">Como gostaria de ser chamado(a)?</h3>
+                </div>
+                <button type="button" onclick="closeProfileModal()" class="text-zinc-400 hover:text-black">✕</button>
+            </div>
+
+            <form id="profile-modal-form" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Seu Nome / Apelido</label>
+                        <input type="text" id="profile-name-input" required oninput="updateAvatarPreview()" placeholder="Ex: Jonatan" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-2 text-sm text-zinc-900 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Identificação (Flexão)</label>
+                        <select id="profile-gender-input" onchange="updateAvatarPreview()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-2 text-sm text-zinc-900 font-medium">
+                            <option value="masc">Masculino ("Pronto")</option>
+                            <option value="fem">Feminino ("Pronta")</option>
+                            <option value="nb">Neutro / Outro ("Pronto")</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Preview do Avatar e Cumprimento -->
+                <div class="bg-zinc-900 text-white p-4 rounded-2xl flex items-center gap-3.5">
+                    <div id="avatar-live-preview" class="w-14 h-14 rounded-full bg-[#00e5ff] flex items-center justify-center text-3xl shadow-md shrink-0">
+                        🧑‍💻
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="text-[10px] text-zinc-400 font-mono uppercase">PRÉVIA DO CUMPRIMENTO</div>
+                        <div id="avatar-greeting-preview" class="text-xs sm:text-sm font-bold text-white mt-0.5 leading-snug"></div>
+                    </div>
+                </div>
+
+                <!-- 1. Tom de Pele -->
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1.5">1. Tom de Pele</label>
+                    <div class="grid grid-cols-6 gap-2" id="skin-tone-selector">
+                        <button type="button" onclick="selectSkinTone('')" data-tone="" class="skin-btn py-2 rounded-xl border-2 border-black bg-zinc-50 text-xs font-semibold">💛 Padrão</button>
+                        <button type="button" onclick="selectSkinTone('\u{1F3FB}')" data-tone="&#x1F3FB;" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏻 Claro</button>
+                        <button type="button" onclick="selectSkinTone('\u{1F3FC}')" data-tone="&#x1F3FC;" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏼 Méd-Cl</button>
+                        <button type="button" onclick="selectSkinTone('\u{1F3FD}')" data-tone="&#x1F3FD;" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏽 Médio</button>
+                        <button type="button" onclick="selectSkinTone('\u{1F3FE}')" data-tone="&#x1F3FE;" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏾 Méd-Esc</button>
+                        <button type="button" onclick="selectSkinTone('\u{1F3FF}')" data-tone="&#x1F3FF;" class="skin-btn py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs">🏿 Escuro</button>
+                    </div>
+                </div>
+
+                <!-- 2. Profissão, Cabelo & Acessórios -->
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1.5">2. Profissão, Cabelo &amp; Acessórios</label>
+                    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1" id="avatar-role-grid"></div>
+                </div>
+
+                <div class="pt-3 border-t border-zinc-100">
+                    <button type="submit" class="w-full py-3 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-bold uppercase tracking-wider transition">
+                        Salvar Perfil &amp; Continuar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<!-- MODAL 1: EDITAR ATIVIDADE -->
     <div id="habit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
@@ -540,13 +548,15 @@
         </div>
     </div>
 
+    <!-- MODAL 2: CRIAR / EDITAR BLOCO NA AGENDA -->
     <div id="event-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                <h3 class="text-base font-bold text-zinc-900">Agendar Bloco Semanal</h3>
+                <h3 id="event-modal-title" class="text-base font-bold text-zinc-900">Agendar Bloco Semanal</h3>
                 <button type="button" onclick="closeEventModal()" class="text-zinc-400 hover:text-black">✕</button>
             </div>
             <form id="event-modal-form" class="space-y-3.5">
+                <input type="hidden" id="event-modal-id" value="">
                 <div>
                     <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Atividade</label>
                     <select id="event-habit-select" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-900"></select>
@@ -566,13 +576,17 @@
                     </div>
                 </div>
                 <div class="flex flex-col gap-2 pt-3 border-t border-zinc-100">
-                    <button type="submit" class="w-full py-2.5 bg-black text-white rounded-full text-xs font-semibold">Salvar na Grade</button>
+                    <button type="submit" class="w-full py-2.5 bg-black text-white rounded-full text-xs font-semibold">Salvar Alterações na Grade</button>
                     <button type="button" onclick="saveAndOpenGoogleCal()" class="w-full py-2.5 bg-[#b9f6ca] text-emerald-950 rounded-full text-xs font-semibold">🔗 Salvar e Abrir no Google Agenda</button>
+                    <button type="button" id="btn-delete-event" onclick="deleteCurrentEditingEvent()" class="hidden w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-full text-xs font-semibold transition">
+                        🗑️ Excluir Este Bloco da Agenda
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- MODAL 3: GITHUB GIST SYNC -->
     <div id="cloud-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
@@ -591,7 +605,7 @@
         </div>
     </div>
 
-    <!-- Módulos JS -->
+    <!-- MÓDULOS JAVASCRIPT -->
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/math.js"></script>
     <script src="assets/js/charts.js"></script>
