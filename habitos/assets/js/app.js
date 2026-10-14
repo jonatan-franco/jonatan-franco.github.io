@@ -87,7 +87,7 @@ function renderDashboardView() {
     document.getElementById('kpi-freq-checks').textContent = `(${g.totalChecks}/${g.possibleChecks}d)`;
     document.getElementById('kpi-today-progress').textContent = `Hoje: ${g.todayDone}/${habits.length}`;
     document.getElementById('kpi-elasticity').textContent = `ε ${g.globalElasticity.toFixed(2)}`;
-    document.getElementById('kpi-elasticity-status').textContent = g.globalElasticity > 1.08 ? 'Super-Elástica' : (g.globalElasticity >= 0.95 ? 'Calibrada' : 'Sub-meta');
+    document.getElementById('kpi-elasticity-status').textContent = habits.length === 0 ? 'Sem dados' : (g.globalElasticity > 1.08 ? 'Super-Elástica' : (g.globalElasticity >= 0.95 ? 'Calibrada' : 'Sub-meta'));
     document.getElementById('kpi-sensitivity-slope').textContent = `Derivada: +${g.avgSensitivity.toFixed(1)}%/h`;
     document.getElementById('kpi-hours-total').textContent = `${g.sumTotalHours.toFixed(1)}h`;
     document.getElementById('kpi-hours-target').textContent = `/ ${g.sumTargetHours.toFixed(1)}h`;
@@ -100,6 +100,28 @@ function renderDashboardView() {
 
     const filtered = habits.map((h, i) => ({ habit: h, index: i }))
         .filter(item => activeCategoryFilter === 'all' || item.habit.category === activeCategoryFilter);
+
+    const trHead = document.getElementById('table-header-days');
+    let headHTML = `<th class="py-3 px-2 font-semibold min-w-[200px]">ATIVIDADE</th>`;
+    weekDays.forEach(day => {
+        headHTML += `<th class="py-2 px-1 text-center ${day.isToday ? 'text-black font-bold underline' : ''}"><div class="text-[11px]">${day.shortName}</div><div class="text-[9px] font-mono">${day.dateNum}</div></th>`;
+    });
+    headHTML += `<th class="py-2 px-2 text-center">HORAS (H/H*)</th><th class="py-2 px-2 text-center">MÉDIA FREQ.</th><th class="py-2 px-2 text-center">ELAST. (ε)</th><th class="py-2 px-2 text-right">AÇÕES</th>`;
+    trHead.innerHTML = headHTML;
+
+    const tbody = document.getElementById('habits-tbody');
+    tbody.innerHTML = '';
+
+    if (filtered.length === 0) {
+        cardsGrid.innerHTML = `
+            <div class="col-span-full bg-white border border-dashed border-zinc-300 rounded-3xl p-10 text-center space-y-3">
+                <div class="text-2xl">🌱</div>
+                <div class="text-sm font-semibold text-zinc-800">Nenhuma atividade cadastrada</div>
+                <p class="text-xs text-zinc-500 max-w-sm mx-auto">O painel está zerado. Clique no botão <strong>+ Nova Atividade</strong> no canto superior direito para criar sua primeira meta semanal.</p>
+            </div>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-zinc-400 text-xs">Sem dados registrados na semana.</td></tr>`;
+        return;
+    }
 
     filtered.forEach(({ habit, index: hIndex }) => {
         const m = calcHabitMetrics(habit);
@@ -150,21 +172,7 @@ function renderDashboardView() {
                     <span>Média: <strong>${m.meanHours.toFixed(1)}h/d</strong></span>
                 </div>
             </div>`;
-    });
 
-    const trHead = document.getElementById('table-header-days');
-    let headHTML = `<th class="py-3 px-2 font-semibold min-w-[200px]">ATIVIDADE</th>`;
-    weekDays.forEach(day => {
-        headHTML += `<th class="py-2 px-1 text-center ${day.isToday ? 'text-black font-bold underline' : ''}"><div class="text-[11px]">${day.shortName}</div><div class="text-[9px] font-mono">${day.dateNum}</div></th>`;
-    });
-    headHTML += `<th class="py-2 px-2 text-center">HORAS (H/H*)</th><th class="py-2 px-2 text-center">MÉDIA FREQ.</th><th class="py-2 px-2 text-center">ELAST. (ε)</th><th class="py-2 px-2 text-right">AÇÕES</th>`;
-    trHead.innerHTML = headHTML;
-
-    const tbody = document.getElementById('habits-tbody');
-    tbody.innerHTML = '';
-    filtered.forEach(({ habit, index: hIndex }) => {
-        const m = calcHabitMetrics(habit);
-        const cat = CATEGORIES[habit.category] || CATEGORIES.estudos;
         let row = `<tr class="hover:bg-zinc-50 transition"><td class="py-3 px-2 font-medium text-zinc-900">${cat.emoji} ${habit.name}</td>`;
         weekDays.forEach((day, dIndex) => {
             const checked = habit.checks[dIndex] ? 'checked' : '';
@@ -182,11 +190,15 @@ function populateSelects() {
         if (!sel) return;
         const cur = sel.value;
         sel.innerHTML = '';
-        habits.forEach((h, idx) => {
-            const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
-            sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name}</option>`;
-        });
-        if (cur !== '' && cur < habits.length) sel.value = cur;
+        if (habits.length === 0) {
+            sel.innerHTML = `<option value="">Sem atividades cadastradas</option>`;
+        } else {
+            habits.forEach((h, idx) => {
+                const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
+                sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name}</option>`;
+            });
+            if (cur !== '' && cur < habits.length) sel.value = cur;
+        }
     });
     ['timer-day-select', 'manual-day-select', 'event-day-select'].forEach(id => {
         const sel = document.getElementById(id);
@@ -265,6 +277,10 @@ window.closeHabitModal = function() {
 };
 
 window.openEventModal = function(dayIndex = 0, startHour = 9) {
+    if (habits.length === 0) {
+        alert('Crie pelo menos uma atividade antes de agendar no calendário.');
+        return;
+    }
     populateSelects();
     document.getElementById('event-day-select').value = dayIndex;
     document.getElementById('event-start-hour').value = startHour;
@@ -383,10 +399,10 @@ window.exportCalendarICS = function() {
 };
 
 window.resetAllData = function() {
-    if (confirm('Restaurar atividades padrão?')) {
-        SafeStorage.removeItem(STORAGE_KEY);
-        loadData();
-        renderAll();
+    if (confirm('Deseja zerar todos os dados e deixar o painel sem atividades?')) {
+        habits = [];
+        calendarEvents = [];
+        saveData();
     }
 };
 

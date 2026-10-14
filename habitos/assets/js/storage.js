@@ -36,21 +36,11 @@ function getCurrentWeekDays() {
 
 const weekDays = getCurrentWeekDays();
 const todayIndex = weekDays.findIndex(d => d.isToday);
-const STORAGE_KEY = 'habit_quant_pro_v6_modular';
+const STORAGE_KEY = 'habit_quant_pro_v7_clean';
 
-const defaultHabits = [
-    { id: 'h1', name: 'Treino de Força (Upper/Lower)', category: 'academia', targetHours: 4.5, checks: [true, true, false, true, true, false, false], dailyHours: [1.0, 1.2, 0.0, 1.1, 1.0, 0.0, 0.0] },
-    { id: 'h2', name: 'Cardio Zona 2 & Mobilidade', category: 'saude', targetHours: 3.0, checks: [false, true, true, false, true, true, false], dailyHours: [0.0, 0.7, 0.8, 0.0, 0.7, 0.8, 0.0] },
-    { id: 'h3', name: 'Matemática Aplicada & Psicometria', category: 'estudos', targetHours: 8.0, checks: [true, true, true, true, true, false, false], dailyHours: [1.5, 2.0, 1.5, 1.5, 2.0, 0.0, 0.0] },
-    { id: 'h4', name: 'Leitura Científica (Inglês/Espanhol)', category: 'estudos', targetHours: 4.0, checks: [true, false, true, false, true, false, false], dailyHours: [1.0, 0.0, 1.2, 0.0, 1.0, 0.0, 0.0] },
-    { id: 'h5', name: 'Higiene do Sono & Hidratação', category: 'saude', targetHours: 7.0, checks: [true, true, true, true, true, true, false], dailyHours: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0] }
-];
-
-const defaultEvents = [
-    { id: 'ev1', habitId: 'h1', dayIndex: 0, startHour: 7, duration: 1.0 },
-    { id: 'ev2', habitId: 'h3', dayIndex: 0, startHour: 14, duration: 2.0 },
-    { id: 'ev3', habitId: 'h1', dayIndex: 1, startHour: 7, duration: 1.2 }
-];
+// Padrão 100% zerado: sem atividades e sem eventos iniciais
+const defaultHabits = [];
+const defaultEvents = [];
 
 let habits = [];
 let calendarEvents = [];
@@ -62,16 +52,17 @@ function loadData() {
     if (raw) {
         try {
             const parsed = JSON.parse(raw);
-            habits = Array.isArray(parsed.habits) && parsed.habits.length > 0 ? parsed.habits : JSON.parse(JSON.stringify(defaultHabits));
-            calendarEvents = Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : JSON.parse(JSON.stringify(defaultEvents));
+            // Permite que a lista de hábitos seja vazia ([]) sem forçar recarregamento
+            habits = Array.isArray(parsed.habits) ? parsed.habits : [];
+            calendarEvents = Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [];
             if (parsed.timerConfig) timerConfig = { ...timerConfig, ...parsed.timerConfig };
         } catch (e) {
-            habits = JSON.parse(JSON.stringify(defaultHabits));
-            calendarEvents = JSON.parse(JSON.stringify(defaultEvents));
+            habits = [];
+            calendarEvents = [];
         }
     } else {
-        habits = JSON.parse(JSON.stringify(defaultHabits));
-        calendarEvents = JSON.parse(JSON.stringify(defaultEvents));
+        habits = [];
+        calendarEvents = [];
     }
 }
 
@@ -117,8 +108,8 @@ async function autoPullFromGist() {
         const data = await res.json();
         if (res.ok && data.files && data.files["habitquant_data.json"]) {
             const content = JSON.parse(data.files["habitquant_data.json"].content);
-            habits = content.habits || habits;
-            calendarEvents = content.calendarEvents || calendarEvents;
+            habits = Array.isArray(content.habits) ? content.habits : [];
+            calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : [];
             timerConfig = content.timerConfig || timerConfig;
             saveData(true);
             updateCloudBadge('✅ Sync Ativo');
