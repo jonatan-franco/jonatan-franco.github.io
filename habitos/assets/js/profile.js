@@ -1,5 +1,6 @@
 /* ===================================================================
  * profile.js — Perfil, Avatar e Cumprimento — HabitQuant Pro
+ * VERSÃO CORRIGIDA
  * =================================================================== */
 
 const PROFILE_STORAGE_KEY = 'hq_profile_v1';
@@ -30,10 +31,9 @@ let currentProfile = {
     skinTone: ''
 };
 
-let selectedRoleId  = 'dev';
+let selectedRoleId   = 'dev';
 let selectedSkinTone = '';
 
-/* ---------- Aplica tom de pele em emoji com ZWJ ---------- */
 function applySkinToneToEmoji(baseEmoji, tone) {
     if (!tone) return baseEmoji;
     const codepoints = Array.from(baseEmoji);
@@ -43,12 +43,13 @@ function applySkinToneToEmoji(baseEmoji, tone) {
     return first + tone + rest;
 }
 
-function buildAvatarEmoji() {
-    const role = AVATAR_ROLES.find(r => r.id === selectedRoleId) || AVATAR_ROLES[0];
-    return applySkinToneToEmoji(role.emoji, selectedSkinTone);
+function buildAvatarEmoji(roleId, tone) {
+    const rid = roleId || currentProfile.role || 'dev';
+    const tk  = (tone !== undefined) ? tone : (currentProfile.skinTone || '');
+    const role = AVATAR_ROLES.find(r => r.id === rid) || AVATAR_ROLES[0];
+    return applySkinToneToEmoji(role.emoji, tk);
 }
 
-/* ---------- Cumprimento dinâmico ---------- */
 function getGreetingPhrase() {
     const h = new Date().getHours();
     if (h >= 12 && h < 18) return 'Boa tarde';
@@ -67,10 +68,12 @@ window.getUserGreeting = function () {
         : `${getGreetingPhrase()}!`;
 };
 
-/* ---------- Grade de papéis ---------- */
 function renderRoleGrid() {
     const grid = document.getElementById('avatar-role-grid');
-    if (!grid) return;
+    if (!grid) {
+        console.warn('[profile.js] #avatar-role-grid não encontrado no DOM.');
+        return;
+    }
     grid.innerHTML = '';
     AVATAR_ROLES.forEach(role => {
         const isActive = role.id === selectedRoleId;
@@ -110,7 +113,7 @@ window.updateAvatarPreview = function () {
     const gender = genderInput?.value || 'nb';
 
     const preview = document.getElementById('avatar-live-preview');
-    if (preview) preview.textContent = buildAvatarEmoji();
+    if (preview) preview.textContent = buildAvatarEmoji(selectedRoleId, selectedSkinTone);
 
     const greet = document.getElementById('avatar-greeting-preview');
     if (greet) {
@@ -120,28 +123,33 @@ window.updateAvatarPreview = function () {
 
 window.getAvatarDraft = () => ({ role: selectedRoleId, skinTone: selectedSkinTone });
 
-/* ---------- Abrir / fechar modal ---------- */
 window.openProfileModal = function (opts = {}) {
     const m = document.getElementById('profile-modal');
-    if (!m) return;
+    if (!m) {
+        console.error('[profile.js] #profile-modal não encontrado no DOM.');
+        return;
+    }
+    try {
+        const nameInput = document.getElementById('profile-name-input');
+        if (nameInput) nameInput.value = (currentProfile.name && currentProfile.name !== 'HabitQuant Pro') ? currentProfile.name : '';
+        const genderInput = document.getElementById('profile-gender-input');
+        if (genderInput) genderInput.value = currentProfile.gender || 'nb';
 
-    const nameInput = document.getElementById('profile-name-input');
-    if (nameInput) nameInput.value = (currentProfile.name && currentProfile.name !== 'HabitQuant Pro') ? currentProfile.name : '';
-    const genderInput = document.getElementById('profile-gender-input');
-    if (genderInput) genderInput.value = currentProfile.gender || 'nb';
+        selectedRoleId   = currentProfile.role || 'dev';
+        selectedSkinTone = currentProfile.skinTone || '';
 
-    selectedRoleId   = currentProfile.role || 'dev';
-    selectedSkinTone = currentProfile.skinTone || '';
+        renderRoleGrid();
+        window.selectSkinTone(selectedSkinTone);
+        updateAvatarPreview();
 
-    renderRoleGrid();
-    window.selectSkinTone(selectedSkinTone);
-    updateAvatarPreview();
+        const closeBtn = document.getElementById('profile-modal-close-btn');
+        if (closeBtn) closeBtn.classList.toggle('hidden', !!opts.firstRun);
 
-    const closeBtn = document.getElementById('profile-modal-close-btn');
-    if (closeBtn) closeBtn.classList.toggle('hidden', !!opts.firstRun);
-
-    m.classList.remove('hidden');
-    m.classList.add('flex');
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+    } catch (err) {
+        console.error('[profile.js] Erro ao abrir modal:', err);
+    }
 };
 
 window.closeProfileModal = function () {
@@ -152,7 +160,6 @@ window.closeProfileModal = function () {
     m.classList.remove('flex');
 };
 
-/* ---------- Persistência ---------- */
 window.loadProfile = function () {
     const raw = SafeStorage.getItem(PROFILE_STORAGE_KEY);
     if (raw) {
@@ -172,7 +179,7 @@ window.hasProfile = function () {
 };
 
 function applyProfileToUI() {
-    const avatarEmoji = buildAvatarEmoji();
+    const avatarEmoji = buildAvatarEmoji(currentProfile.role, currentProfile.skinTone);
     ['sidebar-user-avatar', 'mobile-user-avatar'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.textContent = avatarEmoji;
@@ -183,3 +190,5 @@ function applyProfileToUI() {
     });
     if (typeof window.refreshHeaderTitle === 'function') window.refreshHeaderTitle();
 }
+
+console.log('[profile.js] carregado. openProfileModal:', typeof window.openProfileModal);
