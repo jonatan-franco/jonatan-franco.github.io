@@ -16,8 +16,8 @@ const PALETTE = ['#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1
 
 function getCurrentWeekDays() {
     const today = new Date();
-    const dayOfWeek = today.getDay();
-    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const dow = today.getDay();
+    const diffToMonday = dow === 0 ? -6 : 1 - dow;
     const monday = new Date(today);
     monday.setDate(today.getDate() + diffToMonday);
     const shortNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -55,19 +55,16 @@ function loadData() {
             habits = Array.isArray(parsed.habits) ? parsed.habits : [];
             calendarEvents = Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [];
             if (parsed.timerConfig) timerConfig = { ...timerConfig, ...parsed.timerConfig };
-            /* Migração: garante arrays de bedtimeHours em hábitos de sono antigos */
             habits.forEach(h => {
                 if (h.category === 'sono' && !Array.isArray(h.bedtimeHours)) {
                     h.bedtimeHours = [0, 0, 0, 0, 0, 0, 0];
                 }
             });
         } catch (e) {
-            habits = [];
-            calendarEvents = [];
+            habits = []; calendarEvents = [];
         }
     } else {
-        habits = [];
-        calendarEvents = [];
+        habits = []; calendarEvents = [];
     }
 }
 
@@ -75,54 +72,4 @@ function saveData(skipCloud = false) {
     SafeStorage.setItem(STORAGE_KEY, JSON.stringify({ habits, calendarEvents, timerConfig }));
     if (typeof renderAll === 'function') renderAll();
 
-    if (!skipCloud && SafeStorage.getItem('hq_gist_token') && SafeStorage.getItem('hq_gist_id')) {
-        updateCloudBadge('⏳ Salvando...');
-        clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(autoPushToGist, 1000);
-    }
-}
-
-function updateCloudBadge(text) {
-    const pill = document.getElementById('cloud-status-pill');
-    if (pill) pill.textContent = text;
-}
-
-async function autoPushToGist() {
-    const token = SafeStorage.getItem('hq_gist_token');
-    const gistId = SafeStorage.getItem('hq_gist_id');
-    if (!token || !gistId) return;
-    try {
-        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-            method: 'PATCH',
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
-            body: JSON.stringify({ files: { "habitquant_data.json": { content: JSON.stringify({ updatedAt: Date.now(), habits, calendarEvents, timerConfig }) } } })
-        });
-        if (res.ok) updateCloudBadge('✅ Sync Ativo');
-    } catch (e) { updateCloudBadge('⚠️ Offline'); }
-}
-
-async function autoPullFromGist() {
-    const token = SafeStorage.getItem('hq_gist_token');
-    const gistId = SafeStorage.getItem('hq_gist_id');
-    if (!token || !gistId) return;
-    try {
-        const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
-            cache: 'no-store'
-        });
-        const data = await res.json();
-        if (res.ok && data.files && data.files["habitquant_data.json"]) {
-            const content = JSON.parse(data.files["habitquant_data.json"].content);
-            habits = Array.isArray(content.habits) ? content.habits : [];
-            calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : [];
-            timerConfig = content.timerConfig || timerConfig;
-            habits.forEach(h => {
-                if (h.category === 'sono' && !Array.isArray(h.bedtimeHours)) {
-                    h.bedtimeHours = [0, 0, 0, 0, 0, 0, 0];
-                }
-            });
-            saveData(true);
-            updateCloudBadge('✅ Sync Ativo');
-        }
-    } catch (e) {}
-}}
+    if (!skipCloud && SafeStorage.getItem('hq_gist_token') && SafeStorage.getItem('
