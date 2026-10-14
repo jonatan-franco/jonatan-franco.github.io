@@ -8,7 +8,8 @@ const SafeStorage = {
 const CATEGORIES = {
     academia: { label: 'Academia', emoji: '🏋️', cardBg: 'bg-[#fce7f3]', pillBg: 'bg-[#f9a8d4]', hex: '#ec4899' },
     estudos:  { label: 'Estudos',  emoji: '📚', cardBg: 'bg-[#ede9fe]', pillBg: 'bg-[#c4b5fd]', hex: '#8b5cf6' },
-    saude:    { label: 'Saúde',    emoji: '❤️', cardBg: 'bg-[#b9f6ca]', pillBg: 'bg-[#6ee7b7]', hex: '#10b981' }
+    saude:    { label: 'Saúde',    emoji: '❤️', cardBg: 'bg-[#b9f6ca]', pillBg: 'bg-[#6ee7b7]', hex: '#10b981' },
+    sono:     { label: 'Sono',     emoji: '🌙', cardBg: 'bg-[#e0e7ff]', pillBg: 'bg-[#a5b4fc]', hex: '#6366f1' }
 };
 
 const PALETTE = ['#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1'];
@@ -54,6 +55,12 @@ function loadData() {
             habits = Array.isArray(parsed.habits) ? parsed.habits : [];
             calendarEvents = Array.isArray(parsed.calendarEvents) ? parsed.calendarEvents : [];
             if (parsed.timerConfig) timerConfig = { ...timerConfig, ...parsed.timerConfig };
+            /* Migração: garante arrays de bedtimeHours em hábitos de sono antigos */
+            habits.forEach(h => {
+                if (h.category === 'sono' && !Array.isArray(h.bedtimeHours)) {
+                    h.bedtimeHours = [0, 0, 0, 0, 0, 0, 0];
+                }
+            });
         } catch (e) {
             habits = [];
             calendarEvents = [];
@@ -109,8 +116,13 @@ async function autoPullFromGist() {
             habits = Array.isArray(content.habits) ? content.habits : [];
             calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : [];
             timerConfig = content.timerConfig || timerConfig;
+            habits.forEach(h => {
+                if (h.category === 'sono' && !Array.isArray(h.bedtimeHours)) {
+                    h.bedtimeHours = [0, 0, 0, 0, 0, 0, 0];
+                }
+            });
             saveData(true);
             updateCloudBadge('✅ Sync Ativo');
         }
     } catch (e) {}
-}
+}}
