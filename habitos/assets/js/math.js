@@ -193,8 +193,73 @@ function calcSleepWeekSeries() {
     bed.forEach((b, i) => { if (b > 0) { sumBed += b; sumSlept += slept[i]; activeDays++; } });
     const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
     const meanSlept = activeDays > 0 ? sumSlept / activeDays : 0;
+
+    let varianceSlept = 0;
+    if (activeDays > 0) {
+        bed.forEach((b, i) => {
+            if (b > 0) {
+                varianceSlept += Math.pow(slept[i] - meanSlept, 2);
+            }
+        });
+        varianceSlept = varianceSlept / activeDays;
+    }
+    const sdSlept = Math.sqrt(varianceSlept);
+
     const efficiency = meanBed > 0 ? (meanSlept / meanBed) * 100 : 0;
     const elasticity = calcSleepElasticity(slept, bed);
 
-    return { bed, slept, eff, meanBed, meanSlept, efficiency, activeDays, elasticity, source };
+    return { bed, slept, eff, meanBed, meanSlept, sdSlept, efficiency, activeDays, elasticity, source };
 }
+
+/* Formata horas decimais para [Valor_Horas][hminutos] com duas casas de minutos (ex: 7h30, 8h05) */
+function formatSleepDuration(hours) {
+    if (hours === null || hours === undefined || isNaN(hours) || hours <= 0) return '—';
+    const totalMinutes = Math.round(hours * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h}h${String(m).padStart(2, '0')}`;
+}
+
+/* Volume de Carga dos últimos 7 dias (baseado em atvLogs / hq_atv_logs_v1) */
+function calcWeeklyLoadMetrics() {
+    let logs = {};
+    try {
+        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch (e) {
+        logs = {};
+    }
+
+    const dailyLoads = weekDays.map(d => {
+        const list = Array.isArray(logs[d.iso]) ? logs[d.iso] : [];
+        return list.reduce((acc, item) => acc + (parseFloat(item.weight) || 0), 0);
+    });
+
+    const totalLoad = dailyLoads.reduce((a, b) => a + b, 0);
+    const meanDailyLoad = totalLoad / 7;
+    const activeDays = dailyLoads.filter(v => v > 0).length;
+    const meanSessionLoad = activeDays > 0 ? totalLoad / activeDays : 0;
+    const variance = dailyLoads.reduce((acc, v) => acc + Math.pow(v - meanDailyLoad, 2), 0) / 7;
+    const sdDailyLoad = Math.sqrt(variance);
+
+    let maxSingleLoad = 0;
+    weekDays.forEach(d => {
+        const list = Array.isArray(logs[d.iso]) ? logs[d.iso] : [];
+        list.forEach(item => {
+            const w = parseFloat(item.weight) || 0;
+            if (w > maxSingleLoad) maxSingleLoad = w;
+        });
+    });
+
+    return {
+        dailyLoads,
+        totalLoad,
+        meanDailyLoad,
+        meanSessionLoad,
+        sdDailyLoad,
+        activeDays,
+        maxSingleLoad
+    };
+}
+

@@ -211,47 +211,61 @@ function renderSparkBars(elId, values, formatter) {
 function renderDashboardView() {
     const g = calcWeeklyGlobalMetrics();
 
-    /* KPI: Engajamento (sobre os dias decorridos) */
-    document.getElementById('kpi-freq-mean').textContent = `${g.avgFreqPct.toFixed(1)}%`;
-    document.getElementById('kpi-freq-checks').textContent = `(${g.totalChecks}/${g.possibleChecks})`;
-    document.getElementById('kpi-today-progress').textContent = `Hoje: ${g.todayDone}/${habits.length}`;
-    document.getElementById('kpi-freq-base').textContent = `base: ${g.elapsedDays}/7 dias`;
-    renderSparkBars('kpi-freq-spark', g.dailyEngagementPct, v => `${Math.round(v)}%`);
-
-    /* KPI: Volume */
-    const hoursPct = g.sumTargetHours > 0 ? Math.min(100, (g.sumTotalHours / g.sumTargetHours) * 100) : 0;
-    document.getElementById('kpi-hours-total').textContent = `${g.sumTotalHours.toFixed(1)}h`;
-    document.getElementById('kpi-hours-target').textContent = `/ ${g.sumTargetHours.toFixed(1)}h`;
-    document.getElementById('kpi-hours-bar').style.width = `${hoursPct.toFixed(0)}%`;
-    document.getElementById('kpi-hours-mean-sd').textContent = `${g.dailyTotalMeanHours.toFixed(1)}h/d ± ${g.dailyTotalSdHours.toFixed(2)}h`;
-    renderSparkBars('kpi-hours-spark', g.dailyTotals, v => `${v.toFixed(1)}h`);
-
-    /* KPI: Sono (Diário do Sono, com fallback para a atividade "Sono") */
+    /* 1. KPI: Sono (Últimos 7 dias - Média, DP, Eficiência, Elasticidade) - sem barra, formato [Valor_Horas][hminutos com 2 casas] */
     const s = calcSleepWeekSeries();
-    if (s.activeDays > 0) {
-        document.getElementById('kpi-sleep-slept').textContent = `${s.meanSlept.toFixed(1)}h`;
-        document.getElementById('kpi-sleep-bed').textContent = `cama ${s.meanBed.toFixed(1)}h`;
-        document.getElementById('kpi-sleep-eff').textContent = `Efic.: ${s.efficiency.toFixed(0)}%`;
-        document.getElementById('kpi-sleep-sens').textContent = `ε ${s.elasticity.toFixed(2)}`;
-    } else {
-        document.getElementById('kpi-sleep-slept').textContent = '—';
-        document.getElementById('kpi-sleep-bed').textContent = 'cama —';
-        document.getElementById('kpi-sleep-eff').textContent = 'Efic.: —';
-        document.getElementById('kpi-sleep-sens').textContent = 'ε —';
+    const sleepMeanEl = document.getElementById('kpi-sleep-mean');
+    const sleepSdEl = document.getElementById('kpi-sleep-sd');
+    const sleepBedEl = document.getElementById('kpi-sleep-bed');
+    const sleepEffEl = document.getElementById('kpi-sleep-eff');
+    const sleepSensEl = document.getElementById('kpi-sleep-sens');
+
+    if (sleepMeanEl) {
+        if (s.activeDays > 0) {
+            sleepMeanEl.textContent = formatSleepDuration(s.meanSlept);
+            if (sleepSdEl) sleepSdEl.textContent = `± ${formatSleepDuration(s.sdSlept)}`;
+            if (sleepBedEl) sleepBedEl.textContent = `Tempo de cama: ${formatSleepDuration(s.meanBed)} (${s.activeDays}/7d)`;
+            if (sleepEffEl) sleepEffEl.textContent = `Efic.: ${s.efficiency.toFixed(0)}%`;
+            if (sleepSensEl) sleepSensEl.textContent = `ε ${s.elasticity.toFixed(2)}`;
+        } else {
+            sleepMeanEl.textContent = '—';
+            if (sleepSdEl) sleepSdEl.textContent = '± —';
+            if (sleepBedEl) sleepBedEl.textContent = 'Tempo de cama: —';
+            if (sleepEffEl) sleepEffEl.textContent = 'Efic.: —';
+            if (sleepSensEl) sleepSensEl.textContent = 'ε —';
+        }
     }
-    renderSparkBars('kpi-sleep-spark', s.slept, v => v > 0 ? `${v.toFixed(1)}h` : '—');
 
-    /* KPI: Streak (dias do líder) */
-    document.getElementById('kpi-streak').textContent = `🔥 ${g.bestStreak}d`;
-    document.getElementById('kpi-streak-leader').textContent = g.leaderName;
-    const leader = g.leaderIndex >= 0 ? habits[g.leaderIndex] : null;
-    document.getElementById('kpi-streak-dots').innerHTML = weekDays.map((d, i) => {
-        const done = leader && leader.checks[i];
-        const cls = isFutureDay(i) ? 'bg-black/5 text-transparent' : (done ? 'bg-zinc-900 text-white' : 'bg-white/60 text-zinc-500');
-        return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono ${cls}" title="${d.shortName}">${d.shortName.charAt(0)}</div>`;
-    }).join('');
+    /* 2. KPI: Média de Volume de Carga dos últimos 7d */
+    const loadM = calcWeeklyLoadMetrics();
+    const loadMeanEl = document.getElementById('kpi-load-mean');
+    const loadUnitEl = document.getElementById('kpi-load-unit');
+    const loadTotalEl = document.getElementById('kpi-load-total');
+    const loadSessionsEl = document.getElementById('kpi-load-sessions');
 
-renderHeatmap();
+    if (loadMeanEl) {
+        loadMeanEl.textContent = `${loadM.meanDailyLoad.toFixed(2)} kg`;
+        if (loadUnitEl) loadUnitEl.textContent = '/dia';
+        if (loadTotalEl) loadTotalEl.textContent = `Total: ${loadM.totalLoad.toFixed(2)} kg`;
+        if (loadSessionsEl) loadSessionsEl.textContent = `${loadM.activeDays} sessões (${loadM.meanSessionLoad.toFixed(2)} kg/treino)`;
+        renderSparkBars('kpi-load-spark', loadM.dailyLoads, v => `${v.toFixed(2)} kg`);
+    }
+
+    /* 3. KPI: Maior Streak (mantido) */
+    const streakEl = document.getElementById('kpi-streak');
+    if (streakEl) streakEl.textContent = `🔥 ${g.bestStreak}d`;
+    const streakLeaderEl = document.getElementById('kpi-streak-leader');
+    if (streakLeaderEl) streakLeaderEl.textContent = g.leaderName;
+    const streakDotsEl = document.getElementById('kpi-streak-dots');
+    if (streakDotsEl) {
+        const leader = g.leaderIndex >= 0 ? habits[g.leaderIndex] : null;
+        streakDotsEl.innerHTML = weekDays.map((d, i) => {
+            const done = leader && leader.checks[i];
+            const cls = isFutureDay(i) ? 'bg-black/5 text-transparent' : (done ? 'bg-zinc-900 text-white' : 'bg-white/60 text-zinc-500');
+            return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono ${cls}" title="${d.shortName}">${d.shortName.charAt(0)}</div>`;
+        }).join('');
+    }
+
+    renderHeatmap();
     renderProgressList();
     renderHighlights(g, s);
 }
