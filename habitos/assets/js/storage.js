@@ -38,21 +38,29 @@ const todayIndex = weekDays.findIndex(d => d.isToday);
 const STORAGE_KEY = 'habit_quant_pro_v10_sync';
 
 const defaultHabits = [
-    { id: 'h1', name: 'Treino Upper (Força & Hipertrofia)', category: 'atv_fisica', targetHours: 3.0, checks: [true, false, true, false, false, false, false], dailyHours: [1.2, 0.0, 1.3, 0.0, 0.0, 0.0, 0.0] },
-    { id: 'h2', name: 'Treino Lower + Cardio Z2', category: 'atv_fisica', targetHours: 3.0, checks: [false, true, false, true, false, false, false], dailyHours: [0.0, 1.5, 0.0, 1.5, 0.0, 0.0, 0.0] },
     { id: 'h3', name: 'Gestão da Noite de Sono', category: 'sono', targetHours: 56.0, checks: [true, true, true, true, true, true, true], dailyHours: [8.0, 7.5, 8.0, 7.8, 8.2, 8.5, 8.0], bedtimeHours: [8.5, 8.0, 8.5, 8.2, 8.8, 9.0, 8.5] }
 ];
 
-const defaultEvents = [
-    { id: 'ev1', habitId: 'h1', dayIndex: 0, startHour: 7, duration: 1.2 },
-    { id: 'ev2', habitId: 'h2', dayIndex: 1, startHour: 7, duration: 1.5 },
-    { id: 'ev3', habitId: 'h1', dayIndex: 2, startHour: 7, duration: 1.3 }
-];
+/* Sem eventos de exemplo: os treinos do WORKOUT_PLAN são agendados pelo usuário na Agenda. */
+const defaultEvents = [];
+
+/* Treinos de exemplo de versões anteriores — removidos pela migração abaixo. */
+const LEGACY_HABIT_IDS = ['h1', 'h2'];
+const LEGACY_HABIT_NAMES = ['Treino Upper (Força & Hipertrofia)', 'Treino Lower + Cardio Z2'];
+
+function applyDataMigrations() {
+    const before = habits.length;
+    habits = habits.filter(h => !LEGACY_HABIT_IDS.includes(h.id) && !LEGACY_HABIT_NAMES.includes(h.name));
+    if (habits.length !== before) {
+        const validIds = new Set(habits.map(h => h.id));
+        calendarEvents = calendarEvents.filter(ev => validIds.has(ev.habitId));
+    }
+}
 
 let habits = [];
 let calendarEvents = [];
 let timerConfig = { stopwatchStartMin: 0, countdownMin: 30, pomodoroMin: 25, deepworkMin: 50 };
-let sleepJournal = {}; 
+let sleepJournal = {};
 let syncTimeout = null;
 
 function loadData() {
@@ -74,6 +82,7 @@ function loadData() {
         calendarEvents = JSON.parse(JSON.stringify(defaultEvents));
         sleepJournal = {};
     }
+    applyDataMigrations();
 }
 
 function saveData(skipCloud = false) {
@@ -122,6 +131,7 @@ async function autoPullFromGist() {
             calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : calendarEvents;
             timerConfig = content.timerConfig || timerConfig;
             if (content.sleepJournal) sleepJournal = content.sleepJournal;
+            applyDataMigrations();
             saveData(true);
             updateCloudBadge('✅ Sync Ativo');
         }
