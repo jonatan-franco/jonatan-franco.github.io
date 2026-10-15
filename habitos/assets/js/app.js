@@ -601,7 +601,12 @@ window.resetAllData = function() {
         habits = [];
         calendarEvents = [];
         sleepJournal = {};
-        saveData();
+        SafeStorage.removeItem('hq_plan_seeded_v1');
+        if (typeof ensureWorkoutPlanHabits === 'function') {
+            ensureWorkoutPlanHabits(); // restaura o plano de treino pré-cadastrado e salva
+        } else {
+            saveData();
+        }
     }
 };
 
@@ -627,6 +632,7 @@ function renderAll(activeRoute) {
 
 window.addEventListener('DOMContentLoaded', () => {
     loadData();
+    if (typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
     if (typeof window.loadProfile === 'function') window.loadProfile();
 
     document.getElementById('manual-hours-form').addEventListener('submit', e => {
