@@ -53,8 +53,12 @@ function calcHabitMetrics(habit) {
         else { cur = 0; }
     });
 
+    const elapsed = todayIndex !== -1 ? todayIndex + 1 : 7;
+    const checksElapsed = habit.checks.slice(0, elapsed).filter(Boolean).length;
+    const freqPctElapsed = (checksElapsed / elapsed) * 100;
+
     return {
-        daysCompleted, freqRatio, freqPct,
+        daysCompleted, freqRatio, freqPct, freqPctElapsed,
         totalHours, meanHours, sdHours, targetH,
         hoursRatio, hoursPct, sensitivityDerivative, elasticity, streak: maxStreak
     };
@@ -76,20 +80,39 @@ function calcSleepAggregates(habit) {
     return { meanBed, meanSlept, efficiency, activeDays };
 }
 
+/* Dias da semana já decorridos (inclui hoje). Fora da semana atual considera 7. */
+function getElapsedDays() {
+    return todayIndex !== -1 ? todayIndex + 1 : 7;
+}
+
+function isFutureDay(dIdx) {
+    return todayIndex !== -1 && dIdx > todayIndex;
+}
+
 function calcWeeklyGlobalMetrics() {
+    const elapsedDays = getElapsedDays();
     if (habits.length === 0) {
         return {
-            avgFreqPct: 0, totalChecks: 0, possibleChecks: 0,
+            avgFreqPct: 0, totalChecks: 0, possibleChecks: 0, elapsedDays,
             globalElasticity: 0, avgSensitivity: 0,
             sumTotalHours: 0, sumTargetHours: 0,
             dailyTotalMeanHours: 0, dailyTotalSdHours: 0,
-            bestStreak: 0, leaderName: '-', todayDone: 0
+            dailyTotals: [0, 0, 0, 0, 0, 0, 0], dailyEngagementPct: [0, 0, 0, 0, 0, 0, 0],
+            bestStreak: 0, leaderName: '-', leaderIndex: -1, todayDone: 0
         };
     }
     const metrics = habits.map(h => calcHabitMetrics(h));
     const k = metrics.length;
-    const avgFreqPct = metrics.reduce((a, m) => a + m.freqPct, 0) / k;
-    const totalChecks = metrics.reduce((a, m) => a + m.daysCompleted, 0);
+
+    /* Engajamento sobre os dias decorridos: não penaliza a semana em andamento */
+    let totalChecks = 0;
+    const dailyChecks = [0, 0, 0, 0, 0, 0, 0];
+    habits.forEach(h => h.checks.forEach((c, i) => {
+        if (c) { dailyChecks[i]++; if (i < elapsedDays) totalChecks++; }
+    }));
+    const possibleChecks = k * elapsedDays;
+    const avgFreqPct = possibleChecks > 0 ? (totalChecks / possibleChecks) * 100 : 0;
+    const dailyEngagementPct = dailyChecks.map(c => (c / k) * 100);
 
     const dailyTotals = [0, 0, 0, 0, 0, 0, 0];
     habits.forEach(h => h.dailyHours.forEach((hr, i) => dailyTotals[i] += (parseFloat(hr) || 0)));
@@ -103,19 +126,75 @@ function calcWeeklyGlobalMetrics() {
     const globalElasticity = globalHoursRatio * Math.exp(-Math.abs((avgFreqPct / 100) - Math.min(1, globalHoursRatio)) * 0.35);
     const avgSensitivity = metrics.reduce((a, m) => a + m.sensitivityDerivative, 0) / k;
 
-    let bestStreak = 0, leaderName = 'Nenhum';
+    let bestStreak = 0, leaderName = 'Nenhum', leaderIndex = -1;
     metrics.forEach((m, i) => {
-        if (m.streak > bestStreak) { bestStreak = m.streak; leaderName = habits[i].name; }
+        if (m.streak > bestStreak) { bestStreak = m.streak; leaderName = habits[i].name; leaderIndex = i; }
     });
 
     const tIdx = todayIndex !== -1 ? todayIndex : 0;
     const todayDone = habits.filter(h => h.checks[tIdx]).length;
 
     return {
-        avgFreqPct, totalChecks, possibleChecks: k * 7,
+        avgFreqPct, totalChecks, possibleChecks, elapsedDays,
         globalElasticity, avgSensitivity,
         sumTotalHours, sumTargetHours,
         dailyTotalMeanHours, dailyTotalSdHours,
-        bestStreak, leaderName, todayDone
+        dailyTotals, dailyEngagementPct,
+        bestStreak, leaderName, leaderIndex, todayDone
     };
+}
+
+/* ===== Diário do Sono ===== */
+function hhmmToMinutes(str) {
+    if (!str || str === '—') return null;
+    const [h, m] = String(str).split(':').map(Number);
+    if (isNaN(h)) return null;
+    return h * 60 + (m || 0);
+}
+
+/* Converte um registro { bed, slept, wake, getup } em horas de cama, horas dormidas e eficiência */
+function calcSleepJournalEntry(entry) {
+    if (!entry) return { bedH: 0, sleptH: 0, eff: 0 };
+    const bed = hhmmToMinutes(entry.bed);
+    const slept = hhmmToMinutes(entry.slept);
+    const wake = hhmmToMinutes(entry.wake);
+    const span = (start, end) => {
+        if (start === null || end === null) return 0;
+        let e = end;
+        if (e < start) e += 24 * 60;
+        return (e - start) / 60;
+    };
+    const bedH = span(bed, wake);
+    const sleptH = span(slept, wake);
+    const eff = bedH > 0 ? (sleptH / bedH) * 100 : 0;
+    return { bedH, sleptH, eff };
+}
+
+/* Séries semanais de sono. Fonte principal: Diário do Sono; fallback: atividade da categoria "sono". */
+function calcSleepWeekSeries() {
+    const journal = weekDays.map(d => calcSleepJournalEntry(sleepJournal[d.iso]));
+    let bed = [0, 0, 0, 0, 0, 0, 0], slept = [0, 0, 0, 0, 0, 0, 0], source = 'none';
+
+    if (journal.some(e => e.bedH > 0)) {
+        bed = journal.map(e => e.bedH);
+        slept = journal.map(e => e.sleptH);
+        source = 'journal';
+    } else {
+        const sleepHabit = habits.find(h => h.category === 'sono' && Array.isArray(h.bedtimeHours));
+        if (sleepHabit && sleepHabit.bedtimeHours.some(v => (parseFloat(v) || 0) > 0)) {
+            bed = sleepHabit.bedtimeHours.map(v => parseFloat(v) || 0);
+            slept = sleepHabit.dailyHours.map(v => parseFloat(v) || 0);
+            source = 'habit';
+        }
+    }
+
+    const eff = bed.map((b, i) => b > 0 ? (slept[i] / b) * 100 : 0);
+    let sumBed = 0, sumSlept = 0, activeDays = 0;
+    bed.forEach((b, i) => { if (b > 0) { sumBed += b; sumSlept += slept[i]; activeDays++; } });
+    const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
+    const meanSlept = activeDays > 0 ? sumSlept / activeDays : 0;
+    const efficiency = meanBed > 0 ? (meanSlept / meanBed) * 100 : 0;
+    const elasticity = calcSleepElasticity(slept, bed);
+
+    return { bed, slept, eff, meanBed, meanSlept, efficiency, activeDays, elasticity, source };
 }

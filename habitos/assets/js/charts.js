@@ -195,3 +195,79 @@ function renderMetricsView() {
         }
     });
 }
+
+/* ===== Dashboard (somente leitura) ===== */
+let dashTotalChartInstance = null;
+let dashSleepChartInstance = null;
+
+function renderDashboardCharts() {
+    if (typeof Chart === 'undefined') return;
+    const xLabels = weekDays.map(d => d.shortName);
+    const g = calcWeeklyGlobalMetrics();
+    const maskFuture = arr => arr.map((v, i) => isFutureDay(i) ? null : parseFloat(v.toFixed(2)));
+
+    const totalCanvas = document.getElementById('dashTotalChart');
+    if (totalCanvas) {
+        if (dashTotalChartInstance) dashTotalChartInstance.destroy();
+        dashTotalChartInstance = new Chart(totalCanvas.getContext('2d'), {
+            data: {
+                labels: xLabels,
+                datasets: [
+                    { type: 'line', label: 'Engajamento (%)', data: maskFuture(g.dailyEngagementPct).map(v => v === null ? null : Math.round(v)), borderColor: '#10b981', backgroundColor: '#10b981', borderWidth: 2.5, pointRadius: 4, tension: 0.35, yAxisID: 'y1', order: 0 },
+                    { type: 'bar', label: 'Horas (h)', data: maskFuture(g.dailyTotals), backgroundColor: weekDays.map(d => d.isToday ? '#f59e0b' : '#fde68a'), borderRadius: 8, yAxisID: 'y', order: 1 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { position: 'left', min: 0, grid: { color: '#f4f4f5' }, title: { display: true, text: 'h' } },
+                    y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
+                }
+            }
+        });
+    }
+
+    const sleepCanvas = document.getElementById('dashSleepChart');
+    if (sleepCanvas) {
+        const s = calcSleepWeekSeries();
+        const empty = document.getElementById('dash-sleep-empty');
+        if (empty) {
+            empty.classList.toggle('hidden', s.activeDays > 0);
+            empty.classList.toggle('flex', s.activeDays === 0);
+        }
+        const src = document.getElementById('dash-sleep-source');
+        if (src) {
+            src.textContent = s.source === 'journal' ? 'Horas por noite e eficiência (%) — fonte: Diário do Sono.'
+                : s.source === 'habit' ? 'Horas por noite e eficiência (%) — fonte: atividade "Sono".'
+                : 'Horas por noite e eficiência (%).';
+        }
+        const toNull = arr => arr.map(v => v > 0 ? parseFloat(v.toFixed(2)) : null);
+
+        if (dashSleepChartInstance) dashSleepChartInstance.destroy();
+        dashSleepChartInstance = new Chart(sleepCanvas.getContext('2d'), {
+            data: {
+                labels: xLabels,
+                datasets: [
+                    { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
+                    { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: 6, yAxisID: 'y', order: 1 },
+                    { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y', order: 1 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { position: 'left', min: 0, suggestedMax: 10, grid: { color: '#f4f4f5' }, title: { display: true, text: 'h' } },
+                    y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
+                }
+            }
+        });
+    }
+}
