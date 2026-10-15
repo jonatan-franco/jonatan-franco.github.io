@@ -225,10 +225,14 @@ function calcSleepWeekSeries() {
     // Média e agregados dos últimos 7 dias registrados
     const recent = getRecentRegisteredSleepEntries(7);
     const activeDays = recent.length;
-    let sumBed = 0, sumSlept = 0;
+    let sumBed = 0, sumSlept = 0, sumDailyEff = 0, validEffDays = 0;
     recent.forEach(r => {
         sumBed += r.bedH;
         sumSlept += r.sleptH;
+        if (r.bedH > 0) {
+            sumDailyEff += (r.sleptH / r.bedH) * 100;
+            validEffDays++;
+        }
     });
 
     const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
@@ -243,12 +247,16 @@ function calcSleepWeekSeries() {
     }
     const sdSlept = Math.sqrt(varianceSlept);
 
+    // Razão agregada: sum(slept) / sum(bed) * 100
     const efficiency = meanBed > 0 ? (meanSlept / meanBed) * 100 : 0;
+    // Média aritmética das eficiências diárias
+    const meanDailyEfficiency = validEffDays > 0 ? sumDailyEff / validEffDays : 0;
+
     const elasticity = recent.length >= 2 
         ? calcSleepElasticity(recent.map(r => r.sleptH), recent.map(r => r.bedH))
         : calcSleepElasticity(slept, bed);
 
-    return { bed, slept, eff, meanBed, meanSlept, sdSlept, efficiency, activeDays, elasticity, source };
+    return { bed, slept, eff, meanBed, meanSlept, sdSlept, efficiency, meanDailyEfficiency, activeDays, elasticity, source };
 }
 
 /* Formata horas decimais para [Valor_Horas][hminutos] com duas casas de minutos (ex: 7h30, 8h05) */

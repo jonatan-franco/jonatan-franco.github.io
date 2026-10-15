@@ -216,7 +216,8 @@ function renderDashboardView() {
     const sleepMeanEl = document.getElementById('kpi-sleep-mean');
     const sleepSdEl = document.getElementById('kpi-sleep-sd');
     const sleepBedEl = document.getElementById('kpi-sleep-bed');
-    const sleepEffEl = document.getElementById('kpi-sleep-eff');
+    const sleepEffAggrEl = document.getElementById('kpi-sleep-eff-aggr');
+    const sleepEffMeanEl = document.getElementById('kpi-sleep-eff-mean');
     const sleepSensEl = document.getElementById('kpi-sleep-sens');
 
     if (sleepMeanEl) {
@@ -224,13 +225,15 @@ function renderDashboardView() {
             sleepMeanEl.textContent = formatSleepDuration(s.meanSlept);
             if (sleepSdEl) sleepSdEl.textContent = `± ${formatSleepDuration(s.sdSlept)}`;
             if (sleepBedEl) sleepBedEl.textContent = `Tempo de cama: ${formatSleepDuration(s.meanBed)} (${s.activeDays}d reg.)`;
-            if (sleepEffEl) sleepEffEl.textContent = `Efic.: ${s.efficiency.toFixed(0)}%`;
+            if (sleepEffAggrEl) sleepEffAggrEl.textContent = `Ef. Média: ${s.efficiency.toFixed(0)}%`;
+            if (sleepEffMeanEl) sleepEffMeanEl.textContent = `μ(E): ${s.meanDailyEfficiency.toFixed(0)}%`;
             if (sleepSensEl) sleepSensEl.textContent = `ε ${s.elasticity.toFixed(2)}`;
         } else {
             sleepMeanEl.textContent = '—';
             if (sleepSdEl) sleepSdEl.textContent = '± —';
             if (sleepBedEl) sleepBedEl.textContent = 'Tempo de cama: —';
-            if (sleepEffEl) sleepEffEl.textContent = 'Efic.: —';
+            if (sleepEffAggrEl) sleepEffAggrEl.textContent = 'Ef. Média: —';
+            if (sleepEffMeanEl) sleepEffMeanEl.textContent = 'μ(E): —';
             if (sleepSensEl) sleepSensEl.textContent = 'ε —';
         }
     }
