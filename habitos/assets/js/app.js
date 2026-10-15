@@ -223,7 +223,7 @@ function renderDashboardView() {
         if (s.activeDays > 0) {
             sleepMeanEl.textContent = formatSleepDuration(s.meanSlept);
             if (sleepSdEl) sleepSdEl.textContent = `± ${formatSleepDuration(s.sdSlept)}`;
-            if (sleepBedEl) sleepBedEl.textContent = `Tempo de cama: ${formatSleepDuration(s.meanBed)} (${s.activeDays}/7d)`;
+            if (sleepBedEl) sleepBedEl.textContent = `Tempo de cama: ${formatSleepDuration(s.meanBed)} (${s.activeDays}d reg.)`;
             if (sleepEffEl) sleepEffEl.textContent = `Efic.: ${s.efficiency.toFixed(0)}%`;
             if (sleepSensEl) sleepSensEl.textContent = `ε ${s.elasticity.toFixed(2)}`;
         } else {

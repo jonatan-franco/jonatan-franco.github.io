@@ -170,6 +170,38 @@ function calcSleepJournalEntry(entry) {
     return { bedH, sleptH, eff };
 }
 
+/* Obtém as últimas entradas registradas de sono (até maxCount dias, padrão 7) */
+function getRecentRegisteredSleepEntries(maxCount = 7) {
+    const validEntries = [];
+    if (typeof sleepJournal === 'object' && sleepJournal !== null) {
+        const sortedDates = Object.keys(sleepJournal).sort();
+        sortedDates.forEach(dateIso => {
+            const entry = calcSleepJournalEntry(sleepJournal[dateIso]);
+            if (entry.bedH > 0 && entry.sleptH > 0) {
+                validEntries.push({ date: dateIso, bedH: entry.bedH, sleptH: entry.sleptH });
+            }
+        });
+    }
+
+    if (validEntries.length > 0) {
+        return validEntries.slice(-maxCount);
+    }
+
+    const sleepHabit = habits.find(h => h.category === 'sono' && Array.isArray(h.bedtimeHours));
+    if (sleepHabit) {
+        weekDays.forEach((d, i) => {
+            const b = parseFloat(sleepHabit.bedtimeHours[i]) || 0;
+            const s = parseFloat(sleepHabit.dailyHours[i]) || 0;
+            if (b > 0 && s > 0) {
+                validEntries.push({ date: d.iso, bedH: b, sleptH: s });
+            }
+        });
+        return validEntries.slice(-maxCount);
+    }
+
+    return [];
+}
+
 /* Séries semanais de sono. Fonte principal: Diário do Sono; fallback: atividade da categoria "sono". */
 function calcSleepWeekSeries() {
     const journal = weekDays.map(d => calcSleepJournalEntry(sleepJournal[d.iso]));
@@ -189,24 +221,32 @@ function calcSleepWeekSeries() {
     }
 
     const eff = bed.map((b, i) => b > 0 ? (slept[i] / b) * 100 : 0);
-    let sumBed = 0, sumSlept = 0, activeDays = 0;
-    bed.forEach((b, i) => { if (b > 0) { sumBed += b; sumSlept += slept[i]; activeDays++; } });
+
+    // Média e agregados dos últimos 7 dias registrados
+    const recent = getRecentRegisteredSleepEntries(7);
+    const activeDays = recent.length;
+    let sumBed = 0, sumSlept = 0;
+    recent.forEach(r => {
+        sumBed += r.bedH;
+        sumSlept += r.sleptH;
+    });
+
     const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
     const meanSlept = activeDays > 0 ? sumSlept / activeDays : 0;
 
     let varianceSlept = 0;
     if (activeDays > 0) {
-        bed.forEach((b, i) => {
-            if (b > 0) {
-                varianceSlept += Math.pow(slept[i] - meanSlept, 2);
-            }
+        recent.forEach(r => {
+            varianceSlept += Math.pow(r.sleptH - meanSlept, 2);
         });
         varianceSlept = varianceSlept / activeDays;
     }
     const sdSlept = Math.sqrt(varianceSlept);
 
     const efficiency = meanBed > 0 ? (meanSlept / meanBed) * 100 : 0;
-    const elasticity = calcSleepElasticity(slept, bed);
+    const elasticity = recent.length >= 2 
+        ? calcSleepElasticity(recent.map(r => r.sleptH), recent.map(r => r.bedH))
+        : calcSleepElasticity(slept, bed);
 
     return { bed, slept, eff, meanBed, meanSlept, sdSlept, efficiency, activeDays, elasticity, source };
 }
