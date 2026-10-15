@@ -1,4 +1,4 @@
-let activeCategoryFilter = 'all';
+let activeCategoryFilter = 'atv_fisica';
 let isSidebarCollapsed = false;
 
 function refreshIcons() {
@@ -89,9 +89,9 @@ window.addEventListener('hashchange', () => applyRoute());
 
 window.setCategoryFilter = function(cat) {
     activeCategoryFilter = cat;
-    ['all', 'atv_fisica', 'sono'].forEach(c => {
+    ['atv_fisica', 'sono'].forEach(c => {
         const btn = document.getElementById('cat-btn-' + c);
-        if (btn) btn.className = c === cat ? "px-3.5 py-1.5 rounded-full bg-black text-white font-semibold" : "px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black";
+        if (btn) btn.className = c === cat ? "px-3.5 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs" : "px-3.5 py-1.5 rounded-full text-zinc-600 hover:text-black";
     });
     renderDashboardView();
 };
@@ -238,33 +238,35 @@ function renderDashboardView() {
         }
     }
 
-    /* 2. KPI: Média de Volume de Carga dos últimos 7d */
+    /* 2. KPI: Média de Volume de Carga dos últimos 7d registrados */
     const loadM = calcWeeklyLoadMetrics();
     const loadMeanEl = document.getElementById('kpi-load-mean');
     const loadUnitEl = document.getElementById('kpi-load-unit');
-    const loadTotalEl = document.getElementById('kpi-load-total');
-    const loadSessionsEl = document.getElementById('kpi-load-sessions');
+    const loadRegDaysEl = document.getElementById('kpi-load-reg-days');
 
     if (loadMeanEl) {
         loadMeanEl.textContent = `${loadM.meanDailyLoad.toFixed(2)} kg`;
         if (loadUnitEl) loadUnitEl.textContent = '/dia';
-        if (loadTotalEl) loadTotalEl.textContent = `Total: ${loadM.totalLoad.toFixed(2)} kg`;
-        if (loadSessionsEl) loadSessionsEl.textContent = `${loadM.activeDays} sessões (${loadM.meanSessionLoad.toFixed(2)} kg/treino)`;
-        renderSparkBars('kpi-load-spark', loadM.dailyLoads, v => `${v.toFixed(2)} kg`);
+        if (loadRegDaysEl) loadRegDaysEl.textContent = loadM.activeDays > 0 ? `(${loadM.activeDays}d reg.)` : '—';
     }
 
-    /* 3. KPI: Maior Streak (mantido) */
+    /* 3. KPI: Maior Streak (100% das atividades) */
+    const streakData = calcConsecutiveFullDaysStreak();
     const streakEl = document.getElementById('kpi-streak');
-    if (streakEl) streakEl.textContent = `🔥 ${g.bestStreak}d`;
+    if (streakEl) streakEl.textContent = `🔥 ${streakData.maxStreak}d`;
     const streakLeaderEl = document.getElementById('kpi-streak-leader');
-    if (streakLeaderEl) streakLeaderEl.textContent = g.leaderName;
+    if (streakLeaderEl) streakLeaderEl.textContent = `${streakData.fullDaysThisWeek}/7d na semana`;
+    const streakLabelEl = document.getElementById('kpi-streak-label');
+    if (streakLabelEl) streakLabelEl.textContent = '100% de atividades:';
     const streakDotsEl = document.getElementById('kpi-streak-dots');
     if (streakDotsEl) {
-        const leader = g.leaderIndex >= 0 ? habits[g.leaderIndex] : null;
         streakDotsEl.innerHTML = weekDays.map((d, i) => {
-            const done = leader && leader.checks[i];
-            const cls = isFutureDay(i) ? 'bg-black/5 text-transparent' : (done ? 'bg-zinc-900 text-white' : 'bg-white/60 text-zinc-500');
-            return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono ${cls}" title="${d.shortName}">${d.shortName.charAt(0)}</div>`;
+            if (isFutureDay(i)) {
+                return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono bg-black/5 text-transparent" title="${d.shortName}: —">${d.shortName.charAt(0)}</div>`;
+            }
+            const done = streakData.weekStatus[i] === true;
+            const cls = done ? 'bg-zinc-900 text-white font-bold' : 'bg-white/60 text-zinc-500';
+            return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono ${cls}" title="${d.shortName}: ${done ? '100% de atividades concluídas ✓' : 'Incompleto'}">${d.shortName.charAt(0)}</div>`;
         }).join('');
     }
 
@@ -273,121 +275,199 @@ function renderDashboardView() {
     renderHighlights(g, s);
 }
 
-/* A) Mapa de calor: atividades × dias (sem interação) */
+/* A) Mapa de calor da semana por atividade */
 function renderHeatmap() {
     const head = document.getElementById('heatmap-head');
     const body = document.getElementById('heatmap-body');
     if (!head || !body) return;
 
     head.innerHTML = `<th class="py-2 px-2 font-semibold min-w-[160px]">Atividade</th>` +
-        weekDays.map(d => `<th class="py-1 text-center min-w-[52px] ${d.isToday ? 'text-zinc-900 font-bold' : ''}"><div>${d.shortName}</div><div class="text-[9px]">${d.dateNum}</div></th>`).join('') +
-        `<th class="py-2 px-2 text-center">Total</th><th class="py-2 px-2 text-center">% meta</th><th class="py-2 px-2 text-center">Eng.</th>`;
+        weekDays.map(d => `<th class="py-1 text-center min-w-[52px] ${d.isToday ? 'text-zinc-900 font-bold' : ''}"><div>${d.shortName}</div><div class="text-[9px] font-mono">${d.dateNum}</div></th>`).join('') +
+        `<th class="py-2 px-2 text-center">Total</th>`;
 
-    const filtered = habits.filter(h => activeCategoryFilter === 'all' || h.category === activeCategoryFilter);
-    if (filtered.length === 0) {
-        body.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-zinc-400 text-xs">Nenhuma atividade para exibir. <button type="button" onclick="navigateTo('registro')" class="underline font-semibold text-zinc-700">Cadastrar no Registro →</button></td></tr>`;
-        return;
-    }
+    let logs = {};
+    try {
+        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch (e) { logs = {}; }
 
-    body.innerHTML = filtered.map(habit => {
-        const cat = CATEGORIES[habit.category] || CATEGORIES.atv_fisica;
-        const m = calcHabitMetrics(habit);
-        const hours = habit.dailyHours.map(v => parseFloat(v) || 0);
-        const maxH = Math.max(...hours, 0);
+    if (activeCategoryFilter === 'atv_fisica') {
+        let completedDays = 0;
         const cells = weekDays.map((d, i) => {
             if (isFutureDay(i)) {
                 return `<td class="text-center rounded-lg bg-zinc-50 text-zinc-300 font-mono h-10">··</td>`;
             }
-            const hrs = hours[i];
-            const done = !!habit.checks[i];
-            const alpha = hrs > 0 && maxH > 0 ? 0.18 + 0.72 * (hrs / maxH) : 0;
-            const bg = hrs > 0 ? hexToRgba(cat.hex, alpha) : '#f4f4f5';
-            const txt = alpha > 0.55 ? 'text-white' : 'text-zinc-700';
-            const ring = done ? 'box-shadow: inset 0 0 0 2px #18181b;' : '';
-            return `<td class="text-center rounded-lg font-mono text-[11px] h-10 ${txt}" style="background:${bg};${ring}" title="${d.shortName}: ${hrs.toFixed(1)}h${done ? ' ✓' : ''}">${hrs > 0 ? hrs.toFixed(1) : (done ? '✓' : '·')}</td>`;
+            const dayLogs = Array.isArray(logs[d.iso]) ? logs[d.iso] : [];
+            const done = dayLogs.length > 0;
+            if (done) completedDays++;
+
+            const bg = done ? 'rgba(236, 72, 153, 0.22)' : '#f4f4f5';
+            const ring = done ? 'box-shadow: inset 0 0 0 2px #ec4899;' : '';
+            const txt = done ? 'text-pink-700 font-bold' : 'text-zinc-400 font-mono';
+            const label = done ? '✓' : '·';
+            const title = done ? `${d.shortName}: Treino concluído (${dayLogs.length} reg.)` : `${d.shortName}: Sem treino registrado`;
+            return `<td class="text-center rounded-lg text-xs h-10 ${txt}" style="background:${bg};${ring}" title="${title}">${label}</td>`;
         }).join('');
-        const totalLabel = habit.category === 'sono' ? `${(m.totalHours / Math.max(1, hours.filter(v => v > 0).length)).toFixed(1)}h/d` : `${m.totalHours.toFixed(1)}h`;
-        return `<tr>
-            <td class="py-2 px-2 font-medium text-zinc-900 whitespace-nowrap">${cat.emoji} ${habit.name}</td>
+
+        body.innerHTML = `<tr>
+            <td class="py-2 px-2 font-medium text-zinc-900 whitespace-nowrap">🏋️ Atividade Física</td>
             ${cells}
-            <td class="text-center font-mono font-bold text-zinc-900">${totalLabel}</td>
-            <td class="text-center font-mono text-zinc-700">${Math.round(m.hoursPct)}%</td>
-            <td class="text-center font-mono font-bold text-emerald-600">${Math.round(m.freqPctElapsed)}%</td>
+            <td class="text-center font-mono font-bold text-zinc-900">${completedDays} treinos</td>
         </tr>`;
-    }).join('');
+    } else {
+        // Sono: horas dormidas por dia e total de horas dormidas
+        const sleepHabit = habits.find(h => h.category === 'sono');
+        let totalSleptH = 0;
+        const dailyHours = weekDays.map((d, i) => {
+            const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
+            if (entry.sleptH > 0) return entry.sleptH;
+            if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) {
+                return parseFloat(sleepHabit.dailyHours[i]) || 0;
+            }
+            return 0;
+        });
+
+        const maxSlept = Math.max(...dailyHours, 0.1);
+
+        const cells = weekDays.map((d, i) => {
+            if (isFutureDay(i)) {
+                return `<td class="text-center rounded-lg bg-zinc-50 text-zinc-300 font-mono h-10">··</td>`;
+            }
+            const hrs = dailyHours[i];
+            if (hrs > 0) totalSleptH += hrs;
+
+            const alpha = hrs > 0 ? Math.min(1, 0.2 + 0.75 * (hrs / maxSlept)) : 0;
+            const bg = hrs > 0 ? hexToRgba('#6366f1', alpha) : '#f4f4f5';
+            const txt = alpha > 0.55 ? 'text-white' : (hrs > 0 ? 'text-indigo-900' : 'text-zinc-400 font-mono');
+            const ring = hrs >= 8 ? 'box-shadow: inset 0 0 0 2px #6366f1;' : '';
+            const title = hrs > 0 ? `${d.shortName}: ${formatSleepDuration(hrs)} dormidas` : `${d.shortName}: Sem registro`;
+
+            return `<td class="text-center rounded-lg font-mono text-[11px] h-10 ${txt}" style="background:${bg};${ring}" title="${title}">${hrs > 0 ? hrs.toFixed(1) + 'h' : '·'}</td>`;
+        }).join('');
+
+        body.innerHTML = `<tr>
+            <td class="py-2 px-2 font-medium text-zinc-900 whitespace-nowrap">🌙 Sono</td>
+            ${cells}
+            <td class="text-center font-mono font-bold text-indigo-700">${totalSleptH.toFixed(1)}h</td>
+        </tr>`;
+    }
 }
 
 /* D) Progresso por atividade */
 function renderProgressList() {
     const list = document.getElementById('dash-progress-list');
     if (!list) return;
-    const filtered = habits.filter(h => activeCategoryFilter === 'all' || h.category === activeCategoryFilter);
-    if (filtered.length === 0) {
-        list.innerHTML = `<p class="text-xs text-zinc-400">Sem atividades nesta semana.</p>`;
-        return;
-    }
-    list.innerHTML = filtered.map(habit => {
-        const cat = CATEGORIES[habit.category] || CATEGORIES.atv_fisica;
-        const m = calcHabitMetrics(habit);
-        const pct = Math.min(100, Math.round(m.hoursPct));
-        return `<div class="space-y-1.5">
+
+    let logs = {};
+    try {
+        const raw = SafeStorage.getItem('hq_atv_logs_v1');
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch (e) { logs = {}; }
+
+    if (activeCategoryFilter === 'atv_fisica') {
+        const completedDays = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
+        const targetDays = 4;
+        const pct = Math.min(100, Math.round((completedDays / targetDays) * 100));
+        list.innerHTML = `<div class="space-y-1.5">
             <div class="flex justify-between items-baseline gap-2 text-sm">
-                <span class="font-semibold text-zinc-900 truncate">${cat.emoji} ${habit.name}</span>
-                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${m.totalHours.toFixed(1)}h</strong> / ${habit.targetHours}h · ${Math.round(m.hoursPct)}%</span>
+                <span class="font-semibold text-zinc-900 truncate">🏋️ Atividade Física</span>
+                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${completedDays}d</strong> / ${targetDays}d · ${pct}%</span>
             </div>
-            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%; background:${cat.hex}"></div></div>
+            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-pink-500" style="width:${pct}%"></div></div>
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
-                <span>eng. <strong class="text-emerald-600">${Math.round(m.freqPctElapsed)}%</strong></span>
-                <span>μ ${m.meanHours.toFixed(1)}h ± ${m.sdHours.toFixed(2)}</span>
-                <span>🔥 ${m.streak}d</span>
-                <span>ε ${m.elasticity.toFixed(2)}</span>
+                <span>Meta semanal: <strong>4 dias</strong></span>
+                <span>Cumpridos: <strong class="text-pink-600">${completedDays} dias</strong></span>
             </div>
         </div>`;
-    }).join('');
+    } else {
+        const sleepHabit = habits.find(h => h.category === 'sono');
+        const targetHours = (sleepHabit && sleepHabit.targetHours > 0) ? sleepHabit.targetHours : 56;
+        let totalSleptH = 0;
+        weekDays.forEach((d, i) => {
+            const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
+            if (entry.sleptH > 0) totalSleptH += entry.sleptH;
+            else if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) totalSleptH += parseFloat(sleepHabit.dailyHours[i]) || 0;
+        });
+        const pct = Math.min(100, Math.round((totalSleptH / targetHours) * 100));
+        list.innerHTML = `<div class="space-y-1.5">
+            <div class="flex justify-between items-baseline gap-2 text-sm">
+                <span class="font-semibold text-zinc-900 truncate">🌙 Sono</span>
+                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${totalSleptH.toFixed(1)}h</strong> / ${targetHours}h · ${pct}%</span>
+            </div>
+            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-indigo-500" style="width:${pct}%"></div></div>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
+                <span>Meta semanal: <strong>${targetHours}h</strong></span>
+                <span>Dormido: <strong class="text-indigo-600">${totalSleptH.toFixed(1)}h</strong></span>
+            </div>
+        </div>`;
+    }
 }
 
 /* E) Destaques calculados da semana */
 function renderHighlights(g, s) {
     const ul = document.getElementById('dash-highlights');
     if (!ul) return;
-    if (habits.length === 0) {
-        ul.innerHTML = `<li class="text-zinc-400 text-xs">Cadastre atividades no Registro para ver os destaques da semana.</li>`;
-        return;
-    }
     const items = [];
-    const elapsedIdx = weekDays.map((_, i) => i).filter(i => !isFutureDay(i));
 
-    let best = elapsedIdx[0], worst = elapsedIdx[0];
-    elapsedIdx.forEach(i => {
-        if (g.dailyTotals[i] > g.dailyTotals[best]) best = i;
-        if (g.dailyTotals[i] < g.dailyTotals[worst]) worst = i;
-    });
-    if (g.sumTotalHours > 0) {
-        items.push(['📈', 'Melhor dia', `${weekDays[best].shortName} (${g.dailyTotals[best].toFixed(1)}h)`]);
-        if (elapsedIdx.length > 1 && worst !== best) items.push(['📉', 'Dia mais fraco', `${weekDays[worst].shortName} (${g.dailyTotals[worst].toFixed(1)}h)`]);
-    }
-
-    const remaining = Math.max(0, g.sumTargetHours - g.sumTotalHours);
-    const daysLeft = 7 - g.elapsedDays;
-    if (remaining <= 0) {
-        items.push(['🎯', 'Meta semanal', 'batida! 🎉']);
-    } else if (daysLeft > 0) {
-        items.push(['🎯', 'Faltam', `${remaining.toFixed(1)}h → ${(remaining / daysLeft).toFixed(1)}h/dia nos próximos ${daysLeft}d`]);
+    // 1. Melhor noite: dia em que o sono for >= 8h registrado nos últimos 7d (baseado no registro de sono)
+    const recentSleep = getRecentRegisteredSleepEntries(7);
+    const nights8h = recentSleep.filter(r => r.sleptH >= 8.0);
+    if (nights8h.length > 0) {
+        const bestNight = [...nights8h].sort((a, b) => b.sleptH - a.sleptH)[0];
+        const [y, m, d] = bestNight.date.split('-');
+        const dateFormatted = `${d}/${m}`;
+        items.push(['🌙', 'Melhor noite', `${dateFormatted} (${formatSleepDuration(bestNight.sleptH)})`]);
     } else {
-        items.push(['🎯', 'Faltaram', `${remaining.toFixed(1)}h para a meta`]);
+        items.push(['🌙', 'Melhor noite', 'Nenhum dia ≥ 8h nos últimos 7d']);
     }
 
-    items.push(['⚖️', 'Consistência', `σ ${g.dailyTotalSdHours.toFixed(2)}h/dia`]);
-
-    const ranked = habits.map(h => ({ h, m: calcHabitMetrics(h) })).sort((a, b) => b.m.hoursPct - a.m.hoursPct);
-    if (ranked.length > 0 && ranked[0].m.totalHours > 0) {
-        items.push(['🏆', 'Mais perto da meta', `${ranked[0].h.name} (${Math.round(ranked[0].m.hoursPct)}%)`]);
+    // 2. Melhor semana para atividade física: baseada na semana que cumprir 4d de treino consecutivos ou não
+    let logs = {};
+    try {
+        const raw = SafeStorage.getItem('hq_atv_logs_v1');
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch(e) { logs = {}; }
+    const weekWorkoutDays = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
+    if (weekWorkoutDays >= 4) {
+        items.push(['🏋️', 'Semana de Atividade Física', `Meta cumprida! 🎉 (${weekWorkoutDays}/4 dias)`]);
+    } else {
+        items.push(['🏋️', 'Atividade Física na semana', `${weekWorkoutDays}/4 dias cumpridos`]);
     }
 
-    if (s.activeDays > 0) {
-        let bestNight = -1;
-        s.eff.forEach((e, i) => { if (e > 0 && (bestNight === -1 || e > s.eff[bestNight])) bestNight = i; });
-        if (bestNight >= 0) items.push(['🌙', 'Melhor noite', `${weekDays[bestNight].shortName} (${s.eff[bestNight].toFixed(0)}% efic.)`]);
+    // 5. Mais perto da meta: baseado na proporção de >= 30% de tarefa cumprida para a meta definida
+    // 5.1 Para o sono: horas totais de sono na semana
+    // 5.2 Para a atividade física: 4d/semana
+    const sleepHabit = habits.find(h => h.category === 'sono');
+    const sleepTarget = (sleepHabit && sleepHabit.targetHours > 0) ? sleepHabit.targetHours : 56;
+
+    let weekSleepTotal = 0;
+    weekDays.forEach(d => {
+        const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
+        if (entry.sleptH > 0) weekSleepTotal += entry.sleptH;
+        else if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) {
+            weekSleepTotal += parseFloat(sleepHabit.dailyHours[d.index]) || 0;
+        }
+    });
+
+    const sleepRatioPct = (weekSleepTotal / sleepTarget) * 100;
+    const workoutRatioPct = (weekWorkoutDays / 4) * 100;
+
+    const candidates = [];
+    if (sleepRatioPct >= 30) {
+        candidates.push({ name: 'Sono', pct: sleepRatioPct, detail: `${weekSleepTotal.toFixed(1)}h / ${sleepTarget}h` });
+    }
+    if (workoutRatioPct >= 30) {
+        candidates.push({ name: 'Atividade Física', pct: workoutRatioPct, detail: `${weekWorkoutDays}/4 dias` });
+    }
+
+    candidates.sort((a, b) => b.pct - a.pct);
+
+    if (candidates.length > 0) {
+        const lead = candidates[0];
+        items.push(['🏆', 'Mais perto da meta', `${lead.name} (${Math.round(lead.pct)}%)`]);
     }
 
     ul.innerHTML = items.map(([icon, label, value]) =>

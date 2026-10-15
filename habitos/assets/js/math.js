@@ -268,8 +268,8 @@ function formatSleepDuration(hours) {
     return `${h}h${String(m).padStart(2, '0')}`;
 }
 
-/* Volume de Carga dos últimos 7 dias (baseado em atvLogs / hq_atv_logs_v1) */
-function calcWeeklyLoadMetrics() {
+/* Retorna os últimos N registros diários de carga em atvLogs */
+function getRecentRegisteredLoadEntries(limit = 7) {
     let logs = {};
     try {
         const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
@@ -279,35 +279,127 @@ function calcWeeklyLoadMetrics() {
         logs = {};
     }
 
-    const dailyLoads = weekDays.map(d => {
-        const list = Array.isArray(logs[d.iso]) ? logs[d.iso] : [];
-        return list.reduce((acc, item) => acc + (parseFloat(item.weight) || 0), 0);
-    });
+    const validDates = Object.keys(logs).filter(dateKey => {
+        const list = logs[dateKey];
+        return Array.isArray(list) && list.length > 0;
+    }).sort(); // cronológico crescente
 
-    const totalLoad = dailyLoads.reduce((a, b) => a + b, 0);
-    const meanDailyLoad = totalLoad / 7;
-    const activeDays = dailyLoads.filter(v => v > 0).length;
-    const meanSessionLoad = activeDays > 0 ? totalLoad / activeDays : 0;
-    const variance = dailyLoads.reduce((acc, v) => acc + Math.pow(v - meanDailyLoad, 2), 0) / 7;
-    const sdDailyLoad = Math.sqrt(variance);
-
-    let maxSingleLoad = 0;
-    weekDays.forEach(d => {
-        const list = Array.isArray(logs[d.iso]) ? logs[d.iso] : [];
-        list.forEach(item => {
-            const w = parseFloat(item.weight) || 0;
-            if (w > maxSingleLoad) maxSingleLoad = w;
-        });
+    const recentDates = validDates.slice(-limit);
+    return recentDates.map(dateKey => {
+        const list = logs[dateKey];
+        const dayLoad = list.reduce((acc, item) => acc + (parseFloat(item.weight) || 0), 0);
+        return { date: dateKey, load: dayLoad, count: list.length };
     });
+}
+
+/* Volume de Carga dos últimos 7 dias registrados (baseado em atvLogs / hq_atv_logs_v1) */
+function calcWeeklyLoadMetrics() {
+    const recent = getRecentRegisteredLoadEntries(7);
+    const activeDays = recent.length;
+    const totalLoad = recent.reduce((acc, r) => acc + r.load, 0);
+    const meanDailyLoad = activeDays > 0 ? totalLoad / activeDays : 0;
 
     return {
-        dailyLoads,
         totalLoad,
         meanDailyLoad,
-        meanSessionLoad,
-        sdDailyLoad,
         activeDays,
-        maxSingleLoad
+        recent
+    };
+}
+
+/* Verifica se em uma data ISO o usuário cumpriu 100% das atividades registradas */
+function isDay100Percent(dateIso, dayOfWeekIdx) {
+    // 1. Sono: deve ter registro com sono > 0
+    let hasSleep = false;
+    const entry = calcSleepJournalEntry(sleepJournal[dateIso]);
+    if (entry.sleptH > 0) {
+        hasSleep = true;
+    } else {
+        const sleepHabit = habits.find(h => h.category === 'sono');
+        if (sleepHabit && Array.isArray(sleepHabit.dailyHours) && dayOfWeekIdx !== undefined) {
+            hasSleep = (parseFloat(sleepHabit.dailyHours[dayOfWeekIdx]) || 0) > 0;
+        }
+    }
+
+    // 2. Atividade Física:
+    let logs = {};
+    try {
+        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch (e) { logs = {}; }
+
+    const hasWorkout = Array.isArray(logs[dateIso]) && logs[dateIso].length > 0;
+
+    // Se houver treinos na agenda para este dia da semana:
+    let dowIdx = dayOfWeekIdx;
+    if (dowIdx === undefined) {
+        const d = new Date(dateIso + 'T12:00:00');
+        dowIdx = (d.getDay() + 6) % 7;
+    }
+    const hasEventsInCalendar = Array.isArray(calendarEvents) && calendarEvents.length > 0;
+    const isWorkoutScheduled = hasEventsInCalendar ? calendarEvents.some(ev => ev.dayIndex === dowIdx) : true;
+
+    if (isWorkoutScheduled) {
+        return hasSleep && hasWorkout;
+    } else {
+        // Dia de descanso na agenda: sono completo garante 100%
+        return hasSleep;
+    }
+}
+
+/* Calcula o streak de dias consecutivos com 100% das atividades */
+function calcConsecutiveFullDaysStreak() {
+    // 1. Status dos 7 dias da semana corrente (para os dots)
+    const weekStatus = weekDays.map((d, i) => {
+        if (isFutureDay(i)) return null;
+        return isDay100Percent(d.iso, i);
+    });
+
+    const fullDaysThisWeek = weekStatus.filter(v => v === true).length;
+
+    // 2. Histórico completo para o Maior Streak
+    const allDatesSet = new Set();
+    if (typeof sleepJournal === 'object' && sleepJournal !== null) {
+        Object.keys(sleepJournal).forEach(k => allDatesSet.add(k));
+    }
+    let logs = {};
+    try {
+        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+        if (raw) logs = JSON.parse(raw) || {};
+    } catch(e) {}
+    Object.keys(logs).forEach(k => allDatesSet.add(k));
+    weekDays.forEach(d => { if (!isFutureDay(d.index)) allDatesSet.add(d.iso); });
+
+    const sortedDates = Array.from(allDatesSet).sort();
+    let maxStreak = 0;
+    let runningStreak = 0;
+
+    sortedDates.forEach(dateStr => {
+        if (isDay100Percent(dateStr)) {
+            runningStreak++;
+            if (runningStreak > maxStreak) maxStreak = runningStreak;
+        } else {
+            runningStreak = 0;
+        }
+    });
+
+    // Streak atual terminando no dia de hoje
+    const todayIso = weekDays[todayIndex !== -1 ? todayIndex : 0].iso;
+    let curCheck = 0;
+    for (let i = sortedDates.length - 1; i >= 0; i--) {
+        const dStr = sortedDates[i];
+        if (dStr > todayIso) continue;
+        if (isDay100Percent(dStr)) curCheck++;
+        else break;
+    }
+    const currentStreak = curCheck;
+
+    return {
+        maxStreak: Math.max(maxStreak, currentStreak),
+        currentStreak,
+        fullDaysThisWeek,
+        weekStatus
     };
 }
 
