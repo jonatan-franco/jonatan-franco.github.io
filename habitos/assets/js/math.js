@@ -238,14 +238,23 @@ function calcSleepWeekSeries() {
     const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
     const meanSlept = activeDays > 0 ? sumSlept / activeDays : 0;
 
-    let varianceSlept = 0;
+    let varianceSlept = 0, varianceBed = 0, varianceDailyEff = 0;
     if (activeDays > 0) {
         recent.forEach(r => {
             varianceSlept += Math.pow(r.sleptH - meanSlept, 2);
+            varianceBed += Math.pow(r.bedH - meanBed, 2);
+            if (r.bedH > 0 && validEffDays > 0) {
+                const effVal = (r.sleptH / r.bedH) * 100;
+                varianceDailyEff += Math.pow(effVal - meanDailyEfficiency, 2);
+            }
         });
         varianceSlept = varianceSlept / activeDays;
+        varianceBed = varianceBed / activeDays;
+        varianceDailyEff = validEffDays > 0 ? varianceDailyEff / validEffDays : 0;
     }
     const sdSlept = Math.sqrt(varianceSlept);
+    const sdBed = Math.sqrt(varianceBed);
+    const sdDailyEff = Math.sqrt(varianceDailyEff);
 
     // Razão agregada: sum(slept) / sum(bed) * 100
     const efficiency = meanBed > 0 ? (meanSlept / meanBed) * 100 : 0;
@@ -256,7 +265,7 @@ function calcSleepWeekSeries() {
         ? calcSleepElasticity(recent.map(r => r.sleptH), recent.map(r => r.bedH))
         : calcSleepElasticity(slept, bed);
 
-    return { bed, slept, eff, meanBed, meanSlept, sdSlept, efficiency, meanDailyEfficiency, activeDays, elasticity, source };
+    return { bed, slept, eff, meanBed, meanSlept, sdSlept, sdBed, efficiency, meanDailyEfficiency, sdDailyEff, activeDays, elasticity, source };
 }
 
 /* Formata horas decimais para [Valor_Horas][hminutos] com duas casas de minutos (ex: 7h30, 8h05) */
@@ -266,6 +275,74 @@ function formatSleepDuration(hours) {
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return `${h}h${String(m).padStart(2, '0')}`;
+}
+
+/* Localiza os metadados de um exercício em WORKOUT_PLAN ou nos hábitos */
+function findExerciseMeta(exerciseName, habitId) {
+    if (!exerciseName) return null;
+    const target = String(exerciseName).trim().toLowerCase();
+
+    if (typeof WORKOUT_PLAN !== 'undefined' && Array.isArray(WORKOUT_PLAN)) {
+        for (const workout of WORKOUT_PLAN) {
+            if (habitId && workout.planId !== habitId && ('h_' + workout.planId) !== habitId) continue;
+            for (const ex of workout.exercises) {
+                if (ex.name.toLowerCase() === target) return ex;
+                if (Array.isArray(ex.variations) && ex.variations.some(v => v.toLowerCase() === target)) return ex;
+            }
+        }
+        for (const workout of WORKOUT_PLAN) {
+            for (const ex of workout.exercises) {
+                if (ex.name.toLowerCase() === target) return ex;
+                if (Array.isArray(ex.variations) && ex.variations.some(v => v.toLowerCase() === target)) return ex;
+            }
+        }
+    }
+
+    if (typeof habits !== 'undefined' && Array.isArray(habits)) {
+        for (const h of habits) {
+            if (Array.isArray(h.exercises)) {
+                for (const ex of h.exercises) {
+                    if (ex.name && ex.name.toLowerCase() === target) return ex;
+                    if (Array.isArray(ex.variations) && ex.variations.some(v => v.toLowerCase() === target)) return ex;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+/* Calcula o volume total de um item de log: (séries * repetições) * carga */
+function calcLogEntryVolume(item) {
+    if (!item) return 0;
+    const weight = parseFloat(item.weight) || 0;
+    if (weight <= 0) return 0;
+
+    let sets = parseInt(item.sets, 10);
+    const exMeta = findExerciseMeta(item.exerciseName, item.habitId);
+    if (isNaN(sets) || sets <= 0) {
+        sets = exMeta && exMeta.sets ? parseInt(exMeta.sets, 10) : 3;
+    }
+    if (isNaN(sets) || sets <= 0) sets = 3;
+
+    let reps = parseFloat(item.reps);
+    if (isNaN(reps) || reps <= 0) {
+        if (exMeta && exMeta.reps) {
+            const str = String(exMeta.reps);
+            const matchRange = str.match(/(\d+)\s*[-–]\s*(\d+)/);
+            if (matchRange) {
+                reps = (parseFloat(matchRange[1]) + parseFloat(matchRange[2])) / 2;
+            } else {
+                const matchSingle = str.match(/(\d+)/);
+                reps = matchSingle ? parseFloat(matchSingle[1]) : 10;
+            }
+        } else {
+            reps = 10;
+        }
+    }
+    if (isNaN(reps) || reps <= 0) reps = 10;
+
+    return sets * reps * weight;
 }
 
 /* Retorna os últimos N registros diários de carga em atvLogs */
@@ -287,8 +364,8 @@ function getRecentRegisteredLoadEntries(limit = 7) {
     const recentDates = validDates.slice(-limit);
     return recentDates.map(dateKey => {
         const list = logs[dateKey];
-        const dayLoad = list.reduce((acc, item) => acc + (parseFloat(item.weight) || 0), 0);
-        return { date: dateKey, load: dayLoad, count: list.length };
+        const dayVolume = list.reduce((acc, item) => acc + calcLogEntryVolume(item), 0);
+        return { date: dateKey, load: dayVolume, count: list.length };
     });
 }
 

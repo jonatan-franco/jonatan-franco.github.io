@@ -54,7 +54,7 @@ function populateActivityChartTargetSelect() {
 
     if (activityChartScope === 'molecular') {
         habits.forEach((h, idx) => {
-            const cat = CATEGORIES[h.category] || CATEGORIES.estudos;
+            const cat = CATEGORIES[h.category] || CATEGORIES.atv_fisica;
             sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name} (c/ ±DP)</option>`;
         });
         sel.innerHTML += `<option value="all">📊 Todas as Moleculares</option>`;
@@ -162,7 +162,7 @@ function renderMetricsView() {
             });
         } else {
             const h = habits[parseInt(targetVal, 10) || 0] || habits[0];
-            if (h) datasets.push(...buildLineWithSdDatasets(h.name, h.dailyHours.map(v => parseFloat(v) || 0), (CATEGORIES[h.category] || CATEGORIES.estudos).hex, true));
+            if (h) datasets.push(...buildLineWithSdDatasets(h.name, h.dailyHours.map(v => parseFloat(v) || 0), (CATEGORIES[h.category] || CATEGORIES.atv_fisica).hex, true));
         }
     } else {
         if (targetVal === 'all' || groupViewMode === 'total') {
@@ -173,7 +173,7 @@ function renderMetricsView() {
                 datasets.push(...buildLineWithSdDatasets(cat.label, series, cat.hex, false));
             });
         } else {
-            const cat = CATEGORIES[targetVal] || CATEGORIES.estudos;
+            const cat = CATEGORIES[targetVal] || CATEGORIES.atv_fisica;
             const series = [0, 0, 0, 0, 0, 0, 0];
             habits.filter(h => h.category === targetVal).forEach(h => h.dailyHours.forEach((hr, d) => series[d] += (parseFloat(hr) || 0)));
             datasets.push(...buildLineWithSdDatasets(`Grupo ${cat.label}`, series, cat.hex, true));
@@ -197,77 +197,183 @@ function renderMetricsView() {
 }
 
 /* ===== Dashboard (somente leitura) ===== */
-let dashTotalChartInstance = null;
 let dashSleepChartInstance = null;
+let dashSleepChartMode = 'all'; // 'all' | 'slept' | 'bed' | 'eff'
+
+window.setDashSleepChartMode = function(mode) {
+    dashSleepChartMode = mode;
+    ['all', 'slept', 'bed', 'eff'].forEach(m => {
+        const btn = document.getElementById('sleep-mode-btn-' + m);
+        if (btn) {
+            btn.className = m === mode
+                ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
+                : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
+        }
+    });
+    renderDashboardCharts();
+};
+
+const sleepErrorWhiskerPlugin = {
+    id: 'sleepErrorWhiskerPlugin',
+    afterDatasetsDraw(chart) {
+        const sd = chart.config._sdValue;
+        if (!sd || sd <= 0) return;
+        const ctx = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data) return;
+        const yScale = chart.scales.y;
+        if (!yScale) return;
+
+        ctx.save();
+        ctx.strokeStyle = '#1e1b4b';
+        ctx.lineWidth = 1.5;
+
+        meta.data.forEach((bar, index) => {
+            const val = chart.data.datasets[0].data[index];
+            if (val === null || val === undefined || isNaN(val) || val <= 0) return;
+
+            const x = bar.x;
+            const yTop = yScale.getPixelForValue(val + sd);
+            const yBottom = yScale.getPixelForValue(Math.max(0, val - sd));
+            const capWidth = 5;
+
+            // Linha vertical de desvio padrão
+            ctx.beginPath();
+            ctx.moveTo(x, yTop);
+            ctx.lineTo(x, yBottom);
+            ctx.stroke();
+
+            // Cap superior
+            ctx.beginPath();
+            ctx.moveTo(x - capWidth, yTop);
+            ctx.lineTo(x + capWidth, yTop);
+            ctx.stroke();
+
+            // Cap inferior
+            ctx.beginPath();
+            ctx.moveTo(x - capWidth, yBottom);
+            ctx.lineTo(x + capWidth, yBottom);
+            ctx.stroke();
+        });
+
+        ctx.restore();
+    }
+};
 
 function renderDashboardCharts() {
     if (typeof Chart === 'undefined') return;
     const xLabels = weekDays.map(d => d.shortName);
-    const g = calcWeeklyGlobalMetrics();
-    const maskFuture = arr => arr.map((v, i) => isFutureDay(i) ? null : parseFloat(v.toFixed(2)));
-
-    const totalCanvas = document.getElementById('dashTotalChart');
-    if (totalCanvas) {
-        if (dashTotalChartInstance) dashTotalChartInstance.destroy();
-        dashTotalChartInstance = new Chart(totalCanvas.getContext('2d'), {
-            data: {
-                labels: xLabels,
-                datasets: [
-                    { type: 'line', label: 'Engajamento (%)', data: maskFuture(g.dailyEngagementPct).map(v => v === null ? null : Math.round(v)), borderColor: '#10b981', backgroundColor: '#10b981', borderWidth: 2.5, pointRadius: 4, tension: 0.35, yAxisID: 'y1', order: 0 },
-                    { type: 'bar', label: 'Horas (h)', data: maskFuture(g.dailyTotals), backgroundColor: weekDays.map(d => d.isToday ? '#f59e0b' : '#fde68a'), borderRadius: 8, yAxisID: 'y', order: 1 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { position: 'left', min: 0, grid: { color: '#f4f4f5' }, title: { display: true, text: 'h' } },
-                    y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
-                }
-            }
-        });
-    }
 
     const sleepCanvas = document.getElementById('dashSleepChart');
-    if (sleepCanvas) {
-        const s = calcSleepWeekSeries();
-        const empty = document.getElementById('dash-sleep-empty');
-        if (empty) {
-            empty.classList.toggle('hidden', s.activeDays > 0);
-            empty.classList.toggle('flex', s.activeDays === 0);
-        }
-        const src = document.getElementById('dash-sleep-source');
-        if (src) {
-            src.textContent = s.source === 'journal' ? 'Horas por noite e eficiência (%) — fonte: Diário do Sono.'
-                : s.source === 'habit' ? 'Horas por noite e eficiência (%) — fonte: atividade "Sono".'
-                : 'Horas por noite e eficiência (%).';
-        }
-        const toNull = arr => arr.map(v => v > 0 ? parseFloat(v.toFixed(2)) : null);
+    if (!sleepCanvas) return;
 
-        if (dashSleepChartInstance) dashSleepChartInstance.destroy();
-        dashSleepChartInstance = new Chart(sleepCanvas.getContext('2d'), {
-            data: {
-                labels: xLabels,
-                datasets: [
-                    { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
-                    { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: 6, yAxisID: 'y', order: 1 },
-                    { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y', order: 1 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { position: 'left', min: 0, suggestedMax: 10, grid: { color: '#f4f4f5' }, title: { display: true, text: 'h' } },
-                    y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
-                }
-            }
-        });
+    const s = calcSleepWeekSeries();
+    const empty = document.getElementById('dash-sleep-empty');
+    if (empty) {
+        empty.classList.toggle('hidden', s.activeDays > 0);
+        empty.classList.toggle('flex', s.activeDays === 0);
     }
+
+    const src = document.getElementById('dash-sleep-source');
+    if (src) {
+        src.textContent = s.source === 'journal' ? 'Horas por noite e eficiência (%) — fonte: Diário do Sono.'
+            : s.source === 'habit' ? 'Horas por noite e eficiência (%) — fonte: atividade "Sono".'
+            : 'Horas por noite e eficiência (%).';
+    }
+
+    const toNull = arr => arr.map(v => v > 0 ? parseFloat(v.toFixed(2)) : null);
+
+    if (dashSleepChartInstance) dashSleepChartInstance.destroy();
+
+    let datasets = [];
+    let scales = {};
+    let sdValue = 0;
+
+    if (dashSleepChartMode === 'slept') {
+        // Apenas Sono: barra com ±DP
+        sdValue = s.sdSlept;
+        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
+        const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat((s.meanSlept + s.sdSlept).toFixed(2)) : null);
+        const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)) : null);
+
+        datasets = [
+            { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 8, order: 2 },
+            { type: 'line', label: `Média (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
+            { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+            { type: 'line', label: `Banda ±DP`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.08)', order: 1 }
+        ];
+
+        scales = {
+            x: { grid: { display: false } },
+            y: { min: 0, suggestedMax: Math.max(10, s.meanSlept + s.sdSlept + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Horas dormidas (h)' } }
+        };
+    } else if (dashSleepChartMode === 'bed') {
+        // Apenas Cama: barra com ±DP
+        sdValue = s.sdBed;
+        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanBed.toFixed(2)) : null);
+        const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat((s.meanBed + s.sdBed).toFixed(2)) : null);
+        const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanBed - s.sdBed).toFixed(2)) : null);
+
+        datasets = [
+            { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: 8, order: 2 },
+            { type: 'line', label: `Média Cama (μ=${s.meanBed.toFixed(1)}h, σ=±${s.sdBed.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
+            { type: 'line', label: `+1 DP (+${s.sdBed.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+            { type: 'line', label: `Banda ±DP`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.08)', order: 1 }
+        ];
+
+        scales = {
+            x: { grid: { display: false } },
+            y: { min: 0, suggestedMax: Math.max(10, s.meanBed + s.sdBed + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Tempo de cama (h)' } }
+        };
+    } else if (dashSleepChartMode === 'eff') {
+        // Eficiência: barra com ±DP
+        sdValue = s.sdDailyEff;
+        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanDailyEfficiency.toFixed(1)) : null);
+        const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.min(100, s.meanDailyEfficiency + s.sdDailyEff).toFixed(1)) : null);
+        const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanDailyEfficiency - s.sdDailyEff).toFixed(1)) : null);
+
+        datasets = [
+            { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: 8, order: 2 },
+            { type: 'line', label: `μ(E) = ${s.meanDailyEfficiency.toFixed(1)}% (σ=±${s.sdDailyEff.toFixed(1)}%)`, data: meanLine, borderColor: '#6b21a8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
+            { type: 'line', label: `+1 DP`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+            { type: 'line', label: `Banda ±DP`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.08)', order: 1 }
+        ];
+
+        scales = {
+            x: { grid: { display: false } },
+            y: { min: 0, max: 100, grid: { color: '#f4f4f5' }, title: { display: true, text: 'Eficiência (%)' }, ticks: { callback: v => v + '%' } }
+        };
+    } else {
+        // Modo 'all': Cama vs Dormido com Eficiência e ±DP
+        sdValue = s.sdSlept;
+        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
+
+        datasets = [
+            { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
+            { type: 'line', label: `Média Sono (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
+            { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: 6, yAxisID: 'y', order: 2 },
+            { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y', order: 2 }
+        ];
+
+        scales = {
+            x: { grid: { display: false } },
+            y: { position: 'left', min: 0, suggestedMax: Math.max(10, s.meanBed + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Horas (h)' } },
+            y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Eficiência (%)' }, ticks: { callback: v => v + '%' } }
+        };
+    }
+
+    const config = {
+        data: { labels: xLabels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+            scales
+        },
+        plugins: [sleepErrorWhiskerPlugin]
+    };
+    config._sdValue = sdValue;
+
+    dashSleepChartInstance = new Chart(sleepCanvas.getContext('2d'), config);
 }

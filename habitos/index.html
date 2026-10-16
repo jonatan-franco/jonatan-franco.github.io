@@ -52,7 +52,6 @@
             </div>
             <nav class="space-y-1.5">
                 <button type="button" onclick="navigateTo('dashboard')" data-route="dashboard" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition w-full"><i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Dashboard</span></button>
-<button type="button" onclick="navigateTo('registro')" data-route="registro" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="clipboard-list" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Registro</span></button>
                 <button type="button" onclick="navigateTo('atv_fisica')" data-route="atv_fisica" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="dumbbell" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Atividade Física</span></button>
                 <button type="button" onclick="navigateTo('sono')" data-route="sono" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="moon" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Sono</span></button>
                 <button type="button" onclick="navigateTo('timer')" data-route="timer" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full"><i data-lucide="timer" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Timer</span></button>
@@ -71,7 +70,6 @@
     <!-- BOTTOM NAV (MOBILE) -->
     <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-black text-white px-3 py-1.5 flex justify-around items-center z-40 border-t border-zinc-800">
         <button type="button" onclick="navigateTo('dashboard')" data-mobile-route="dashboard" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-semibold"><i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i><span>Dashboard</span></button>
-<button type="button" onclick="navigateTo('registro')" data-mobile-route="registro" class="mobile-nav-item flex flex-col items-center py-1.5 px-2.5 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="clipboard-list" class="w-4 h-4 mb-0.5"></i><span>Registro</span></button>
         <button type="button" onclick="navigateTo('atv_fisica')" data-mobile-route="atv_fisica" class="mobile-nav-item flex flex-col items-center py-1.5 px-2.5 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="dumbbell" class="w-4 h-4 mb-0.5"></i><span>Atividade</span></button>
         <button type="button" onclick="navigateTo('sono')" data-mobile-route="sono" class="mobile-nav-item flex flex-col items-center py-1.5 px-2.5 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="moon" class="w-4 h-4 mb-0.5"></i><span>Sono</span></button>
         <button type="button" onclick="navigateTo('timer')" data-mobile-route="timer" class="mobile-nav-item flex flex-col items-center py-1.5 px-2.5 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="timer" class="w-4 h-4 mb-0.5"></i><span>Timer</span></button>
@@ -180,21 +178,25 @@
                 <p class="text-[11px] text-zinc-400">Atividade Física baseada no registro de treinos • Sono baseado nas horas dormidas registradas • <span class="font-mono">··</span> = dia ainda não chegou</p>
             </div>
 
-            <!-- B) e C) GRÁFICOS -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
-                    <span class="text-[11px] font-mono uppercase font-bold text-emerald-600">HORAS/DIA VS. ENGAJAMENTO</span>
-                    <p class="text-xs text-zinc-500 mt-1 mb-4">Volume diário somado e % de atividades concluídas.</p>
-                    <div class="relative h-64 w-full"><canvas id="dashTotalChart"></canvas></div>
+            <!-- B) GRÁFICO DE SONO (LARGURA TOTAL COM SELETOR DE MODO E ±DP) -->
+            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <span class="text-[11px] font-mono uppercase font-bold text-indigo-600">SONO: CAMA VS. DORMIDO</span>
+                        <h3 class="text-base font-bold text-zinc-900 mt-0.5">Análise de Sono &amp; Eficiência com ±DP</h3>
+                        <p class="text-xs text-zinc-500" id="dash-sleep-source">Horas por noite, tempo de cama e eficiência diária.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1 bg-zinc-100 p-1 rounded-full text-xs">
+                        <button type="button" onclick="setDashSleepChartMode('all')" id="sleep-mode-btn-all" class="px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition">Cama vs Dormido</button>
+                        <button type="button" onclick="setDashSleepChartMode('slept')" id="sleep-mode-btn-slept" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Apenas Sono</button>
+                        <button type="button" onclick="setDashSleepChartMode('bed')" id="sleep-mode-btn-bed" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Apenas Cama</button>
+                        <button type="button" onclick="setDashSleepChartMode('eff')" id="sleep-mode-btn-eff" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Eficiência</button>
+                    </div>
                 </div>
-                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
-                    <span class="text-[11px] font-mono uppercase font-bold text-indigo-600">SONO: CAMA VS. DORMIDO</span>
-                    <p class="text-xs text-zinc-500 mt-1 mb-4" id="dash-sleep-source">Horas por noite e eficiência (%).</p>
-                    <div class="relative h-64 w-full">
-                        <canvas id="dashSleepChart"></canvas>
-                        <div id="dash-sleep-empty" class="hidden absolute inset-0 items-center justify-center text-center text-xs text-zinc-400 bg-white/80">
-                            Sem registros de sono nesta semana.<br>Use o Diário do Sono na aba Métricas.
-                        </div>
+                <div class="relative h-80 w-full">
+                    <canvas id="dashSleepChart"></canvas>
+                    <div id="dash-sleep-empty" class="hidden absolute inset-0 items-center justify-center text-center text-xs text-zinc-400 bg-white/80">
+                        Sem registros de sono nesta semana.<br>Adicione registros no Diário do Sono na aba Sono.
                     </div>
                 </div>
             </div>
@@ -218,35 +220,6 @@
             </div>
         </section>
 
-        <!-- REGISTRO (EDIÇÃO DAS ATIVIDADES DA SEMANA) -->
-        <section id="view-registro" class="hidden space-y-8">
-            <div class="space-y-4">
-                <div>
-                    <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">PAINÉIS DE ATIVIDADES</span>
-                    <h2 class="text-base font-semibold text-zinc-800">Marque os dias e ajuste suas atividades</h2>
-                </div>
-                <div id="activity-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-            </div>
-
-            <div class="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">AVALIAÇÃO COMPARATIVA</span>
-                        <h2 class="text-lg font-bold text-zinc-900">Métrica Semanal</h2>
-                    </div>
-                    <button type="button" onclick="navigateTo('metrics')" class="text-xs font-semibold text-zinc-700 hover:text-black flex items-center gap-1">
-                        <span>Ver Gráficos de Métricas →</span>
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-zinc-200 text-zinc-400 text-[11px] font-mono uppercase" id="table-header-days"></tr></thead>
-                        <tbody id="habits-tbody" class="divide-y divide-zinc-100 text-xs md:text-sm"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
         <!-- VIEW: ATIVIDADE FÍSICA (Tabela Interativa Nativa com Carga Decimal) -->
         <section id="view-atv_fisica" class="hidden space-y-6">
             <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
@@ -257,7 +230,7 @@
                         <p class="text-xs text-zinc-500">Registro diário de exercícios, cargas com 2 casas decimais e observações.</p>
                     </div>
                 </div>
-                <div id="atv-fisica-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4"></div>
+                <div id="atv-fisica-cards-grid" class="mt-4 space-y-6"></div>
             </div>
         </section>
 
@@ -671,6 +644,49 @@
                 <button type="button" onclick="pullFromGist()" class="py-2.5 bg-zinc-100 text-zinc-800 rounded-full text-xs font-semibold">⬇️ Baixar</button>
                 <button type="button" onclick="pushToGist()" class="py-2.5 bg-black text-white rounded-full text-xs font-semibold">⬆️ Enviar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE EDIÇÃO DE EXERCÍCIO -->
+    <div id="atv-edit-log-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <div>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-rose-600 font-bold">EDIÇÃO DE REGISTRO</span>
+                    <h3 class="text-base font-bold text-zinc-900" id="atv-edit-modal-title">Editar Exercício</h3>
+                </div>
+                <button type="button" onclick="closeAtvEditModal()" class="text-zinc-400 hover:text-black">✕</button>
+            </div>
+            <form id="atv-edit-form" onsubmit="saveEditedAtvLog(event)" class="space-y-3">
+                <input type="hidden" id="atv-edit-date">
+                <input type="hidden" id="atv-edit-log-id">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Exercício / Variação</label>
+                    <div id="atv-edit-exercise-container"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Carga (kg)</label>
+                        <input type="text" id="atv-edit-weight" inputmode="numeric" oninput="handleWeightInputMask(this)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center" placeholder="0,00">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Séries × Reps</label>
+                        <div class="flex gap-1 items-center">
+                            <input type="number" id="atv-edit-sets" min="1" max="20" class="w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs font-mono text-center" placeholder="Séries">
+                            <span class="text-xs text-zinc-400">×</span>
+                            <input type="text" id="atv-edit-reps" class="w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs font-mono text-center" placeholder="Reps">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Observações</label>
+                    <input type="text" id="atv-edit-notes" placeholder="Ex: RPE 8, cadência" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-900">
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
+                    <button type="button" onclick="closeAtvEditModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold">Salvar Alterações</button>
+                </div>
+            </form>
         </div>
     </div>
 

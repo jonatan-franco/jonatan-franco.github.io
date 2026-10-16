@@ -24,7 +24,6 @@ window.toggleMobileDrawer = function() {
 
 const ROUTE_CONFIG = {
     dashboard:  { eyebrow: 'DASHBOARD' },
-    registro:   { eyebrow: 'REGISTRO',  title: 'Registro da Semana' },
     atv_fisica: { eyebrow: 'GRUPO',     title: 'Atividade Física' },
     sono:       { eyebrow: 'GRUPO',     title: 'Sono & Descanso' },
     timer:      { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
@@ -245,7 +244,7 @@ function renderDashboardView() {
     const loadRegDaysEl = document.getElementById('kpi-load-reg-days');
 
     if (loadMeanEl) {
-        loadMeanEl.textContent = `${loadM.meanDailyLoad.toFixed(2)} kg`;
+        loadMeanEl.textContent = `${loadM.meanDailyLoad.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
         if (loadUnitEl) loadUnitEl.textContent = '/dia';
         if (loadRegDaysEl) loadRegDaysEl.textContent = loadM.activeDays > 0 ? `(${loadM.activeDays}d reg.)` : '—';
     }
@@ -354,7 +353,7 @@ function renderHeatmap() {
     }
 }
 
-/* D) Progresso por atividade */
+/* D) Progresso por atividade (Meta semanal: Atividade Física 4d + Sono 48h Seg-Sáb) */
 function renderProgressList() {
     const list = document.getElementById('dash-progress-list');
     if (!list) return;
@@ -366,43 +365,50 @@ function renderProgressList() {
         else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
     } catch (e) { logs = {}; }
 
-    if (activeCategoryFilter === 'atv_fisica') {
-        const completedDays = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
-        const targetDays = 4;
-        const pct = Math.min(100, Math.round((completedDays / targetDays) * 100));
-        list.innerHTML = `<div class="space-y-1.5">
+    // 1. Atividade Física (meta 4d)
+    const completedDays = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
+    const targetDays = 4;
+    const atvPct = Math.min(100, Math.round((completedDays / targetDays) * 100));
+
+    // 2. Sono: meta de 8h/dia, restrito a seg a sab (6 dias * 8h = 48.0h)
+    const sleepHabit = habits.find(h => h.category === 'sono');
+    const sleepTargetHours = 48.0;
+    let totalSleptMonSat = 0;
+    // Seg a Sáb: weekDays slice 0 a 6 (índices 0..5)
+    weekDays.slice(0, 6).forEach((d, i) => {
+        const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
+        if (entry.sleptH > 0) {
+            totalSleptMonSat += entry.sleptH;
+        } else if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) {
+            totalSleptMonSat += parseFloat(sleepHabit.dailyHours[i]) || 0;
+        }
+    });
+    const sleepPct = Math.min(100, Math.round((totalSleptMonSat / sleepTargetHours) * 100));
+
+    list.innerHTML = `
+        <div class="space-y-1.5">
             <div class="flex justify-between items-baseline gap-2 text-sm">
                 <span class="font-semibold text-zinc-900 truncate">🏋️ Atividade Física</span>
-                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${completedDays}d</strong> / ${targetDays}d · ${pct}%</span>
+                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${completedDays}d</strong> / ${targetDays}d · ${atvPct}%</span>
             </div>
-            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-pink-500" style="width:${pct}%"></div></div>
+            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-pink-500 transition-all" style="width:${atvPct}%"></div></div>
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
                 <span>Meta semanal: <strong>4 dias</strong></span>
                 <span>Cumpridos: <strong class="text-pink-600">${completedDays} dias</strong></span>
             </div>
-        </div>`;
-    } else {
-        const sleepHabit = habits.find(h => h.category === 'sono');
-        const targetHours = (sleepHabit && sleepHabit.targetHours > 0) ? sleepHabit.targetHours : 56;
-        let totalSleptH = 0;
-        weekDays.forEach((d, i) => {
-            const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
-            if (entry.sleptH > 0) totalSleptH += entry.sleptH;
-            else if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) totalSleptH += parseFloat(sleepHabit.dailyHours[i]) || 0;
-        });
-        const pct = Math.min(100, Math.round((totalSleptH / targetHours) * 100));
-        list.innerHTML = `<div class="space-y-1.5">
+        </div>
+        <div class="space-y-1.5 pt-3 border-t border-zinc-100">
             <div class="flex justify-between items-baseline gap-2 text-sm">
                 <span class="font-semibold text-zinc-900 truncate">🌙 Sono</span>
-                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${totalSleptH.toFixed(1)}h</strong> / ${targetHours}h · ${pct}%</span>
+                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${totalSleptMonSat.toFixed(1)}h</strong> / ${sleepTargetHours.toFixed(1)}h · ${sleepPct}%</span>
             </div>
-            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-indigo-500" style="width:${pct}%"></div></div>
+            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-indigo-500 transition-all" style="width:${sleepPct}%"></div></div>
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
-                <span>Meta semanal: <strong>${targetHours}h</strong></span>
-                <span>Dormido: <strong class="text-indigo-600">${totalSleptH.toFixed(1)}h</strong></span>
+                <span>Meta semanal (Seg–Sáb): <strong>48.0h (8h/d)</strong></span>
+                <span>Dormido: <strong class="text-indigo-600">${totalSleptMonSat.toFixed(1)}h</strong></span>
             </div>
-        </div>`;
-    }
+        </div>
+    `;
 }
 
 /* E) Destaques calculados da semana */
@@ -475,100 +481,7 @@ function renderHighlights(g, s) {
     ).join('');
 }
 
-/* Registro: cards e tabela editáveis de todas as atividades */
-function renderRegistroView() {
-    const cardsGrid = document.getElementById('activity-cards-grid');
-    if (!cardsGrid) return;
-    cardsGrid.innerHTML = '';
 
-    const filtered = habits.map((h, i) => ({ habit: h, index: i }));
-
-    const trHead = document.getElementById('table-header-days');
-    let headHTML = `<th class="py-3 px-2 font-semibold min-w-[200px]">ATIVIDADE</th>`;
-    weekDays.forEach(day => {
-        headHTML += `<th class="py-2 px-1 text-center ${day.isToday ? 'text-black font-bold underline' : ''}"><div class="text-[11px]">${day.shortName}</div><div class="text-[9px] font-mono">${day.dateNum}</div></th>`;
-    });
-    headHTML += `<th class="py-2 px-2 text-center">HORAS (H/H*)</th><th class="py-2 px-2 text-center">ENGAJAMENTO</th><th class="py-2 px-2 text-center">SENSIB. (ε)</th><th class="py-2 px-2 text-right">AÇÕES</th>`;
-    trHead.innerHTML = headHTML;
-
-    const tbody = document.getElementById('habits-tbody');
-    tbody.innerHTML = '';
-
-    if (filtered.length === 0) {
-        cardsGrid.innerHTML = `
-            <div class="col-span-full bg-white border border-dashed border-zinc-300 rounded-3xl p-10 text-center space-y-3">
-                <div class="text-2xl">🌱</div>
-                <div class="text-sm font-semibold text-zinc-800">Nenhuma atividade cadastrada</div>
-                <p class="text-xs text-zinc-500 max-w-sm mx-auto">Clique em <strong>+ Nova Atividade</strong> para começar.</p>
-            </div>`;
-        tbody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-zinc-400 text-xs">Sem dados registrados na semana.</td></tr>`;
-        return;
-    }
-
-    filtered.forEach(({ habit, index: hIndex }) => {
-        const m = calcHabitMetrics(habit);
-        const cat = CATEGORIES[habit.category] || CATEGORIES.atv_fisica;
-        const pctBar = Math.min(100, Math.round(m.hoursPct));
-        const isSleep = habit.category === 'sono';
-
-        let daysPillsHTML = '';
-        weekDays.forEach((day, dIdx) => {
-            const done = habit.checks[dIdx];
-            const hrs = habit.dailyHours[dIdx] || 0;
-            const todayBorder = day.isToday ? 'ring-2 ring-black/20 bg-white' : 'bg-white/50';
-            const bedH = (habit.bedtimeHours && habit.bedtimeHours[dIdx]) || 0;
-            const bedLine = (isSleep && bedH > 0) ? `<span class="text-[8px] font-mono text-indigo-600 mt-0.5">🛏 ${bedH.toFixed(1)}h</span>` : '';
-            daysPillsHTML += `
-                <div onclick="toggleHabitDay(${hIndex}, ${dIdx})" class="cursor-pointer flex flex-col items-center py-2 px-1 rounded-2xl ${todayBorder} transition hover:scale-105">
-                    <span class="text-[10px] text-zinc-600 font-medium mb-1">${day.shortName}</span>
-                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs ${done ? 'bg-black text-white' : 'border border-zinc-300 text-transparent'}">✓</div>
-                    <span class="text-[9px] font-mono text-zinc-600 mt-1">${hrs.toFixed(1)}h</span>
-                    ${bedLine}
-                </div>`;
-        });
-
-        cardsGrid.innerHTML += `
-            <div class="${cat.cardBg} p-5 rounded-3xl flex flex-col justify-between space-y-4 shadow-xs">
-                <div class="flex justify-between items-start gap-2">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-white/70 flex items-center justify-center text-lg shrink-0">${cat.emoji}</div>
-                        <div>
-                            <h3 class="font-bold text-zinc-900 text-sm leading-snug">${habit.name}</h3>
-                            <span class="text-[11px] font-mono text-zinc-600">${cat.label} • Meta: ${habit.targetHours}h/sem</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1 text-zinc-600">
-                        <button type="button" onclick="openHabitModal(${hIndex})" class="p-1 hover:text-black">✏️</button>
-                        <button type="button" onclick="deleteHabitByIdx(${hIndex})" class="p-1 hover:text-rose-600">🗑️</button>
-                    </div>
-                </div>
-                <div>
-                    <div class="flex justify-between items-baseline mb-1.5">
-                        <div class="font-mono"><span class="text-2xl font-bold text-zinc-950">${m.totalHours.toFixed(1)}h</span> <span class="text-xs text-zinc-600">/ ${habit.targetHours}h</span></div>
-                        <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-[#fef3c7] text-amber-900">ε ${m.elasticity.toFixed(2)}</span>
-                    </div>
-                    <div class="w-full bg-white/60 h-2 rounded-full overflow-hidden">
-                        <div class="bg-zinc-800 h-full rounded-full transition-all" style="width: ${pctBar}%"></div>
-                    </div>
-                </div>
-                <div class="grid grid-cols-7 gap-1">${daysPillsHTML}</div>
-                <div class="pt-2 border-t border-black/5 flex justify-between text-[11px] text-zinc-700 font-medium">
-                    <span>Streak: 🔥 <strong>${m.streak}d</strong></span>
-                    <span>Média: <strong>${m.meanHours.toFixed(1)}h/d</strong></span>
-                    <span>Sensib.: <strong>ε ${m.elasticity.toFixed(2)}</strong></span>
-                </div>
-            </div>`;
-
-        let row = `<tr class="hover:bg-zinc-50 transition"><td class="py-3 px-2 font-medium text-zinc-900">${cat.emoji} ${habit.name}</td>`;
-        weekDays.forEach((day, dIndex) => {
-            const checked = habit.checks[dIndex] ? 'checked' : '';
-            const dayHrs = habit.dailyHours[dIndex] || 0;
-            row += `<td class="py-2 px-1 text-center"><div class="flex flex-col items-center gap-0.5"><label class="inline-flex items-center justify-center cursor-pointer"><input type="checkbox" class="sr-only habit-check" onchange="toggleHabitDay(${hIndex}, ${dIndex})" ${checked}><div class="w-5 h-5 rounded-full border border-zinc-300 bg-white flex items-center justify-center"><svg class="w-3 h-3 text-white opacity-0 transform scale-50 transition-all pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div></label><span class="text-[9px] font-mono text-zinc-500">${dayHrs.toFixed(1)}h</span></div></td>`;
-        });
-        row += `<td class="py-2.5 px-2 text-center font-mono text-xs"><strong>${m.totalHours.toFixed(1)}h</strong> / ${m.targetH}h <div class="text-[10px] text-purple-600">${m.meanHours.toFixed(1)}h ± ${m.sdHours.toFixed(2)}h</div></td><td class="py-2.5 px-2 text-center font-mono text-xs font-bold text-emerald-600">${m.freqPct.toFixed(1)}%</td><td class="py-2.5 px-2 text-center font-mono text-xs font-bold">${m.elasticity.toFixed(2)}</td><td class="py-2.5 px-2 text-right"><button type="button" onclick="openHabitModal(${hIndex})" class="p-1">✏️</button><button type="button" onclick="deleteHabitByIdx(${hIndex})" class="p-1">🗑️</button></td></tr>`;
-        tbody.innerHTML += row;
-    });
-}
 
 function populateSelects() {
     ['timer-habit-select', 'manual-habit-select', 'event-habit-select'].forEach(id => {
@@ -754,6 +667,30 @@ function saveEventFromModal() {
     return { habit };
 }
 
+window.saveAndOpenGoogleCal = function() {
+    const saved = saveEventFromModal();
+    if (!saved || !saved.habit) return;
+    const dIdx = parseInt(document.getElementById('event-day-select').value, 10) || 0;
+    const startHour = parseInt(document.getElementById('event-start-hour').value, 10) || 9;
+    const duration = parseFloat(document.getElementById('event-duration').value) || 1.0;
+
+    const day = weekDays[dIdx];
+    if (day && day.rawDate) {
+        const startDate = new Date(day.rawDate);
+        startDate.setHours(startHour, 0, 0, 0);
+        const endDate = new Date(startDate.getTime() + duration * 3600000);
+
+        const pad = n => String(n).padStart(2, '0');
+        const formatGCalDate = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+        const datesParam = `${formatGCalDate(startDate)}/${formatGCalDate(endDate)}`;
+        const title = encodeURIComponent(saved.habit.name);
+        const details = encodeURIComponent(`Treino/Hábito agendado no HaQt (${saved.habit.name})`);
+        const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${datesParam}&details=${details}`;
+        window.open(gcalUrl, '_blank');
+    }
+    closeEventModal();
+};
+
 window.deleteCurrentEditingEvent = function() {
     const evId = document.getElementById('event-modal-id').value;
     if (!evId) return;
@@ -862,7 +799,6 @@ function renderAll(activeRoute) {
     populateSelects();
     populateActivityChartTargetSelect();
     renderDashboardView();
-    renderRegistroView();
     const current = activeRoute || (window.location.hash || '#dashboard').replace('#', '').trim();
     if (current === 'dashboard' || current === '') renderDashboardCharts();
     if (current === 'metrics') {
