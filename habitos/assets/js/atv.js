@@ -153,7 +153,35 @@ function ensureWorkoutPlanHabits() {
 function loadAtvLogs() {
     const raw = SafeStorage.getItem('hq_atv_logs_v1');
     if (raw) {
-        try { atvLogs = JSON.parse(raw); } catch (e) { atvLogs = {}; }
+        try { atvLogs = JSON.parse(raw) || {}; } catch (e) { atvLogs = {}; }
+    }
+    // Corrige registros antigos sem planId ou vinculados por engano ao hábito de sono (h3)
+    let migrated = false;
+    const validPlans = ['upper_a', 'lower_a', 'upper_b', 'lower_b'];
+    Object.keys(atvLogs).forEach(dateKey => {
+        const list = atvLogs[dateKey];
+        if (!Array.isArray(list)) return;
+        list.forEach(item => {
+            if (!item) return;
+            const hasValidPlan = item.planId && validPlans.includes(item.planId);
+            const isWrongHabit = !item.habitId || item.habitId === 'h3';
+            if (!hasValidPlan || isWrongHabit) {
+                const resolvedPlan = (typeof resolveLogGroupPlanId === 'function')
+                    ? resolveLogGroupPlanId(item)
+                    : 'upper_a';
+                if (item.planId !== resolvedPlan) {
+                    item.planId = resolvedPlan;
+                    migrated = true;
+                }
+                if (isWrongHabit) {
+                    item.habitId = 'h_' + resolvedPlan;
+                    migrated = true;
+                }
+            }
+        });
+    });
+    if (migrated) {
+        saveAtvLogs();
     }
 }
 
@@ -552,11 +580,13 @@ function renderAtvFisicaInteractiveView() {
     let totalDayVolume = 0;
 
     if (currentLogs.length === 0) {
-        logsTableHTML = `<tr><td colspan="7" class="py-8 text-center text-zinc-400 text-xs">Nenhum exercício registrado nesta data.<br>Utilize os cards acima para registrar suas cargas.</td></tr>`;
+        logsTableHTML = `<tr><td colspan="8" class="py-8 text-center text-zinc-400 text-xs">Nenhum exercício registrado nesta data.<br>Utilize os cards acima para registrar suas cargas.</td></tr>`;
     } else {
         currentLogs.forEach(log => {
-            const hObj = habits.find(h => h.id === log.habitId || h.planId === log.planId);
-            const wName = hObj ? hObj.name : (log.planId ? log.planId.replace('_', ' ').toUpperCase() : 'Treino');
+            const resolvedPlanId = (typeof resolveLogGroupPlanId === 'function') ? resolveLogGroupPlanId(log) : (log.planId || 'upper_a');
+            const planObj = WORKOUT_PLAN.find(w => w.planId === resolvedPlanId);
+            const hObj = habits.find(h => h.category === 'atv_fisica' && ((log.habitId && h.id === log.habitId) || (resolvedPlanId && h.planId === resolvedPlanId)));
+            const wName = planObj ? planObj.name : (hObj ? hObj.name : (resolvedPlanId ? resolvedPlanId.replace('_', ' ').toUpperCase() : 'Treino'));
             const volumeItem = calcLogEntryVolume(log);
             totalDayVolume += volumeItem;
 

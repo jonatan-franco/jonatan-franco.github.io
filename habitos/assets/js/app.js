@@ -901,6 +901,7 @@ function renderAll(activeRoute) {
 window.addEventListener('DOMContentLoaded', () => {
     loadData();
     if (typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
+    if (typeof loadAtvLogs === 'function') loadAtvLogs();
     if (typeof window.loadProfile === 'function') window.loadProfile();
 
     document.getElementById('manual-hours-form').addEventListener('submit', e => {
