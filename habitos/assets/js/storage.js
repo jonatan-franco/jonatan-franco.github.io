@@ -38,7 +38,7 @@ const todayIndex = weekDays.findIndex(d => d.isToday);
 const STORAGE_KEY = 'habit_quant_pro_v10_sync';
 
 const defaultHabits = [
-    { id: 'h3', name: 'Sono', category: 'sono', targetHours: 56.0, checks: [true, true, true, true, true, true, true], dailyHours: [8.0, 7.5, 8.0, 7.8, 8.2, 8.5, 8.0], bedtimeHours: [8.5, 8.0, 8.5, 8.2, 8.8, 9.0, 8.5] }
+    { id: 'h3', name: 'Sono', category: 'sono', targetHours: 48.0, checks: [false, false, false, false, false, false, false], dailyHours: [0, 0, 0, 0, 0, 0, 0], bedtimeHours: [0, 0, 0, 0, 0, 0, 0] }
 ];
 
 /* Sem eventos de exemplo: os treinos do WORKOUT_PLAN são agendados pelo usuário na Agenda. */
@@ -48,12 +48,49 @@ const defaultEvents = [];
 const LEGACY_HABIT_IDS = ['h1', 'h2'];
 const LEGACY_HABIT_NAMES = ['Treino Upper (Força & Hipertrofia)', 'Treino Lower + Cardio Z2'];
 
+window.hasCloudSyncConfigured = function() {
+    const token = (SafeStorage.getItem('hq_gist_token') || '').trim();
+    const gistId = (SafeStorage.getItem('hq_gist_id') || '').trim();
+    return !!(token && gistId);
+};
+
+window.isRegisteredSyncUser = function() {
+    if (!window.hasCloudSyncConfigured()) return false;
+    if (typeof window.hasProfile === 'function' && window.hasProfile()) return true;
+    try {
+        const rawProf = SafeStorage.getItem('hq_profile_v1');
+        if (rawProf) {
+            const p = JSON.parse(rawProf);
+            if (p && p.name && p.name !== 'HaQt') return true;
+        }
+    } catch (e) {}
+    return false;
+};
+
 function applyDataMigrations() {
     const before = habits.length;
     habits = habits.filter(h => !LEGACY_HABIT_IDS.includes(h.id) && !LEGACY_HABIT_NAMES.includes(h.name));
     habits.forEach(h => {
-        if (h.category === 'sono') h.name = 'Sono';
+        if (h.category === 'sono') {
+            h.name = 'Sono';
+            // Limpa valores de exemplo antigos caso não haja diário do sono correspondente
+            const isOldDemoArray = Array.isArray(h.dailyHours) &&
+                h.dailyHours.length === 7 &&
+                h.dailyHours[0] === 8.0 && h.dailyHours[1] === 7.5 && h.dailyHours[3] === 7.8 && h.dailyHours[4] === 8.2;
+            if (isOldDemoArray) {
+                h.dailyHours = [0, 0, 0, 0, 0, 0, 0];
+                h.bedtimeHours = [0, 0, 0, 0, 0, 0, 0];
+                h.checks = [false, false, false, false, false, false, false];
+            }
+        }
     });
+    if (!window.isRegisteredSyncUser()) {
+        // Sem identificação + Git Sync ativos: remove planos pré-cadastrados
+        habits = habits.filter(h => h.category === 'sono');
+        if (habits.length === 0) {
+            habits = JSON.parse(JSON.stringify(defaultHabits));
+        }
+    }
     if (habits.length !== before) {
         const validIds = new Set(habits.map(h => h.id));
         calendarEvents = calendarEvents.filter(ev => validIds.has(ev.habitId));
@@ -67,6 +104,15 @@ let sleepJournal = {};
 let syncTimeout = null;
 
 function loadData() {
+    if (!window.isRegisteredSyncUser() && !window.hasCloudSyncConfigured()) {
+        habits = JSON.parse(JSON.stringify(defaultHabits));
+        calendarEvents = [];
+        sleepJournal = {};
+        SafeStorage.removeItem('hq_atv_logs_v1');
+        SafeStorage.removeItem('hq_plan_seeded_v1');
+        SafeStorage.setItem(STORAGE_KEY, JSON.stringify({ habits, calendarEvents, timerConfig, sleepJournal }));
+        return;
+    }
     const raw = SafeStorage.getItem(STORAGE_KEY);
     if (raw) {
         try {

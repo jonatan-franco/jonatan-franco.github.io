@@ -290,7 +290,15 @@ function renderDashboardCharts() {
 
     const toNull = arr => arr.map(v => v > 0 ? parseFloat(v.toFixed(2)) : null);
 
-    if (dashSleepChartInstance) dashSleepChartInstance.destroy();
+    if (dashSleepChartInstance) {
+        dashSleepChartInstance.destroy();
+        dashSleepChartInstance = null;
+    }
+
+    if (s.activeDays === 0) {
+        if (typeof renderDashLoadEvolutionChart === 'function') renderDashLoadEvolutionChart();
+        return;
+    }
 
     let datasets = [];
     let scales = {};
@@ -452,7 +460,12 @@ window.renderDashLoadEvolutionChart = function(evoData) {
         empty.classList.toggle('flex', !evo.hasAnyLog);
     }
 
-    if (dashLoadChartInstance) dashLoadChartInstance.destroy();
+    if (dashLoadChartInstance) {
+        dashLoadChartInstance.destroy();
+        dashLoadChartInstance = null;
+    }
+
+    if (!evo.hasAnyLog) return;
 
     const xLabels = evo.days.map(d => d.label);
     const targetVal = sel ? sel.value : 'all';

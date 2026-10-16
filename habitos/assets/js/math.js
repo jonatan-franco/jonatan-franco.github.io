@@ -184,27 +184,10 @@ function getRecentRegisteredSleepEntries(maxCount = 7) {
             }
         });
     }
-
-    if (validEntries.length > 0) {
-        return validEntries.slice(-maxCount);
-    }
-
-    const sleepHabit = habits.find(h => h.category === 'sono' && Array.isArray(h.bedtimeHours));
-    if (sleepHabit) {
-        weekDays.forEach((d, i) => {
-            const b = parseFloat(sleepHabit.bedtimeHours[i]) || 0;
-            const s = parseFloat(sleepHabit.dailyHours[i]) || 0;
-            if (b > 0 && s > 0) {
-                validEntries.push({ date: d.iso, bedH: b, sleptH: s });
-            }
-        });
-        return validEntries.slice(-maxCount);
-    }
-
-    return [];
+    return validEntries.slice(-maxCount);
 }
 
-/* Séries semanais de sono. Fonte principal: Diário do Sono; fallback: atividade da categoria "sono". */
+/* Séries semanais de sono baseadas no Diário do Sono. */
 function calcSleepWeekSeries() {
     const journal = weekDays.map(d => calcSleepJournalEntry(sleepJournal[d.iso]));
     let bed = [0, 0, 0, 0, 0, 0, 0], slept = [0, 0, 0, 0, 0, 0, 0], source = 'none';
@@ -213,13 +196,6 @@ function calcSleepWeekSeries() {
         bed = journal.map(e => e.bedH);
         slept = journal.map(e => e.sleptH);
         source = 'journal';
-    } else {
-        const sleepHabit = habits.find(h => h.category === 'sono' && Array.isArray(h.bedtimeHours));
-        if (sleepHabit && sleepHabit.bedtimeHours.some(v => (parseFloat(v) || 0) > 0)) {
-            bed = sleepHabit.bedtimeHours.map(v => parseFloat(v) || 0);
-            slept = sleepHabit.dailyHours.map(v => parseFloat(v) || 0);
-            source = 'habit';
-        }
     }
 
     const eff = bed.map((b, i) => b > 0 ? (slept[i] / b) * 100 : 0);
@@ -387,17 +363,9 @@ function calcWeeklyLoadMetrics() {
 
 /* Verifica se em uma data ISO o usuário cumpriu 100% das atividades registradas */
 function isDay100Percent(dateIso, dayOfWeekIdx) {
-    // 1. Sono: deve ter registro com sono > 0
-    let hasSleep = false;
+    // 1. Sono: deve ter registro no Diário do Sono com sono > 0
     const entry = calcSleepJournalEntry(sleepJournal[dateIso]);
-    if (entry.sleptH > 0) {
-        hasSleep = true;
-    } else {
-        const sleepHabit = habits.find(h => h.category === 'sono');
-        if (sleepHabit && Array.isArray(sleepHabit.dailyHours) && dayOfWeekIdx !== undefined) {
-            hasSleep = (parseFloat(sleepHabit.dailyHours[dayOfWeekIdx]) || 0) > 0;
-        }
-    }
+    const hasSleep = entry.sleptH > 0;
 
     // 2. Atividade Física:
     let logs = {};

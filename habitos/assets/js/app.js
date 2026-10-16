@@ -320,41 +320,63 @@ function renderDashboardView() {
     const loadRegDaysEl = document.getElementById('kpi-load-reg-days');
 
     if (loadMeanEl) {
-        loadMeanEl.textContent = `${loadM.meanDailyLoad.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
-        if (loadUnitEl) loadUnitEl.textContent = '/dia';
-        if (loadRegDaysEl) loadRegDaysEl.textContent = loadM.activeDays > 0 ? `(${loadM.activeDays}d reg.)` : '—';
+        if (loadM.activeDays > 0) {
+            loadMeanEl.textContent = `${loadM.meanDailyLoad.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
+            if (loadUnitEl) loadUnitEl.textContent = '/dia';
+            if (loadRegDaysEl) loadRegDaysEl.textContent = `(${loadM.activeDays}d reg.)`;
+        } else {
+            loadMeanEl.textContent = '—';
+            if (loadUnitEl) loadUnitEl.textContent = '';
+            if (loadRegDaysEl) loadRegDaysEl.textContent = '—';
+        }
     }
 
     /* 3. KPI: Maior Streak (100% das atividades) */
+    const hasAnyData = s.activeDays > 0 || loadM.activeDays > 0;
     const streakData = calcConsecutiveFullDaysStreak();
     const streakEl = document.getElementById('kpi-streak');
-    if (streakEl) streakEl.textContent = `🔥 ${streakData.maxStreak}d`;
     const streakLeaderEl = document.getElementById('kpi-streak-leader');
-    if (streakLeaderEl) streakLeaderEl.textContent = `${streakData.fullDaysThisWeek}/7d na semana`;
     const streakLabelEl = document.getElementById('kpi-streak-label');
-    if (streakLabelEl) streakLabelEl.textContent = '100% de atividades:';
     const streakDotsEl = document.getElementById('kpi-streak-dots');
-    if (streakDotsEl) {
-        streakDotsEl.innerHTML = weekDays.map((d, i) => {
-            if (isFutureDay(i)) {
-                return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono bg-black/5 text-transparent" title="${d.shortName}: —">${d.shortName.charAt(0)}</div>`;
-            }
-            const done = streakData.weekStatus[i] === true;
-            const cls = done ? 'bg-zinc-900 text-white font-bold' : 'bg-white/60 text-zinc-500';
-            return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono ${cls}" title="${d.shortName}: ${done ? '100% de atividades concluídas ✓' : 'Incompleto'}">${d.shortName.charAt(0)}</div>`;
-        }).join('');
+
+    if (!hasAnyData) {
+        if (streakEl) streakEl.textContent = '—';
+        if (streakLeaderEl) streakLeaderEl.textContent = '—';
+        if (streakLabelEl) streakLabelEl.textContent = '100% de atividades:';
+        if (streakDotsEl) {
+            streakDotsEl.innerHTML = weekDays.map(d =>
+                `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono bg-white/40 text-zinc-400" title="${d.shortName}: —">${d.shortName.charAt(0)}</div>`
+            ).join('');
+        }
+    } else {
+        if (streakEl) streakEl.textContent = `🔥 ${streakData.maxStreak}d`;
+        if (streakLeaderEl) streakLeaderEl.textContent = `${streakData.fullDaysThisWeek}/7d na semana`;
+        if (streakLabelEl) streakLabelEl.textContent = '100% de atividades:';
+        if (streakDotsEl) {
+            streakDotsEl.innerHTML = weekDays.map((d, i) => {
+                if (isFutureDay(i)) {
+                    return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono bg-black/5 text-transparent" title="${d.shortName}: —">${d.shortName.charAt(0)}</div>`;
+                }
+                const done = streakData.weekStatus[i] === true;
+                const cls = done ? 'bg-zinc-900 text-white font-bold' : 'bg-white/60 text-zinc-500';
+                return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono ${cls}" title="${d.shortName}: ${done ? '100% de atividades concluídas ✓' : 'Incompleto'}">${d.shortName.charAt(0)}</div>`;
+            }).join('');
+        }
     }
 
-    renderHeatmap();
-    renderProgressList();
-    renderHighlights(g, s);
+    renderHeatmap(s, loadM);
+    renderProgressList(s, loadM);
+    renderHighlights(g, s, loadM);
 }
 
 /* A) Mapa de calor da semana por atividade */
-function renderHeatmap() {
+function renderHeatmap(sData, loadData) {
     const head = document.getElementById('heatmap-head');
     const body = document.getElementById('heatmap-body');
     if (!head || !body) return;
+
+    const s = sData || calcSleepWeekSeries();
+    const loadM = loadData || calcWeeklyLoadMetrics();
 
     head.innerHTML = `<th class="py-2 px-2 font-semibold min-w-[160px]">Atividade</th>` +
         weekDays.map(d => `<th class="py-1 text-center min-w-[52px] ${d.isToday ? 'text-zinc-900 font-bold' : ''}"><div>${d.shortName}</div><div class="text-[9px] font-mono">${d.dateNum}</div></th>`).join('') +
@@ -368,6 +390,12 @@ function renderHeatmap() {
     } catch (e) { logs = {}; }
 
     if (activeCategoryFilter === 'atv_fisica') {
+        const completedDaysCount = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
+        if (loadM.activeDays === 0 && completedDaysCount === 0) {
+            body.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-zinc-400 text-xs">Sem registros de atividade física.</td></tr>`;
+            return;
+        }
+
         let completedDays = 0;
         const cells = weekDays.map((d, i) => {
             if (isFutureDay(i)) {
@@ -391,18 +419,19 @@ function renderHeatmap() {
             <td class="text-center font-mono font-bold text-zinc-900">${completedDays} treinos</td>
         </tr>`;
     } else {
-        // Sono: horas dormidas por dia e total de horas dormidas
-        const sleepHabit = habits.find(h => h.category === 'sono');
-        let totalSleptH = 0;
-        const dailyHours = weekDays.map((d, i) => {
+        // Sono: horas dormidas por dia e total de horas dormidas (somente registros reais do Diário do Sono)
+        const dailyHours = weekDays.map(d => {
             const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
-            if (entry.sleptH > 0) return entry.sleptH;
-            if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) {
-                return parseFloat(sleepHabit.dailyHours[i]) || 0;
-            }
-            return 0;
+            return entry.sleptH > 0 ? entry.sleptH : 0;
         });
+        const hasWeekSleep = dailyHours.some(h => h > 0);
 
+        if (s.activeDays === 0 && !hasWeekSleep) {
+            body.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-zinc-400 text-xs">Sem registros de sono.</td></tr>`;
+            return;
+        }
+
+        let totalSleptH = 0;
         const maxSlept = Math.max(...dailyHours, 0.1);
 
         const cells = weekDays.map((d, i) => {
@@ -430,9 +459,12 @@ function renderHeatmap() {
 }
 
 /* D) Progresso por atividade (Meta semanal: Atividade Física 4d + Sono 48h Seg-Sáb) */
-function renderProgressList() {
+function renderProgressList(sData, loadData) {
     const list = document.getElementById('dash-progress-list');
     if (!list) return;
+
+    const s = sData || calcSleepWeekSeries();
+    const loadM = loadData || calcWeeklyLoadMetrics();
 
     let logs = {};
     try {
@@ -445,103 +477,120 @@ function renderProgressList() {
     const completedDays = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
     const targetDays = 4;
     const atvPct = Math.min(100, Math.round((completedDays / targetDays) * 100));
+    const hasAtv = loadM.activeDays > 0 || completedDays > 0;
 
     // 2. Sono: meta de 8h/dia, restrito a seg a sab (6 dias * 8h = 48.0h)
-    const sleepHabit = habits.find(h => h.category === 'sono');
     const sleepTargetHours = 48.0;
     let totalSleptMonSat = 0;
-    // Seg a Sáb: weekDays slice 0 a 6 (índices 0..5)
-    weekDays.slice(0, 6).forEach((d, i) => {
+    weekDays.slice(0, 6).forEach(d => {
         const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
-        if (entry.sleptH > 0) {
-            totalSleptMonSat += entry.sleptH;
-        } else if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) {
-            totalSleptMonSat += parseFloat(sleepHabit.dailyHours[i]) || 0;
-        }
+        if (entry.sleptH > 0) totalSleptMonSat += entry.sleptH;
     });
     const sleepPct = Math.min(100, Math.round((totalSleptMonSat / sleepTargetHours) * 100));
+    const hasSleep = s.activeDays > 0 || totalSleptMonSat > 0;
 
-    list.innerHTML = `
-        <div class="space-y-1.5">
-            <div class="flex justify-between items-baseline gap-2 text-sm">
-                <span class="font-semibold text-zinc-900 truncate">🏋️ Atividade Física</span>
-                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${completedDays}d</strong> / ${targetDays}d · ${atvPct}%</span>
-            </div>
-            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-pink-500 transition-all" style="width:${atvPct}%"></div></div>
-            <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
-                <span>Meta semanal: <strong>4 dias</strong></span>
-                <span>Cumpridos: <strong class="text-pink-600">${completedDays} dias</strong></span>
-            </div>
-        </div>
-        <div class="space-y-1.5 pt-3 border-t border-zinc-100">
-            <div class="flex justify-between items-baseline gap-2 text-sm">
-                <span class="font-semibold text-zinc-900 truncate">🌙 Sono</span>
-                <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${totalSleptMonSat.toFixed(1)}h</strong> / ${sleepTargetHours.toFixed(1)}h · ${sleepPct}%</span>
-            </div>
-            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-indigo-500 transition-all" style="width:${sleepPct}%"></div></div>
-            <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
-                <span>Meta semanal (Seg–Sáb): <strong>48.0h (8h/d)</strong></span>
-                <span>Dormido: <strong class="text-indigo-600">${totalSleptMonSat.toFixed(1)}h</strong></span>
-            </div>
-        </div>
-    `;
+    if (!hasAtv && !hasSleep) {
+        list.innerHTML = `<div class="py-6 text-center text-zinc-400 text-xs">Sem registros de atividade física ou sono.</div>`;
+        return;
+    }
+
+    let html = '';
+    if (hasAtv) {
+        html += `
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-baseline gap-2 text-sm">
+                    <span class="font-semibold text-zinc-900 truncate">🏋️ Atividade Física</span>
+                    <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${completedDays}d</strong> / ${targetDays}d · ${atvPct}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-pink-500 transition-all" style="width:${atvPct}%"></div></div>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
+                    <span>Meta semanal: <strong>4 dias</strong></span>
+                    <span>Cumpridos: <strong class="text-pink-600">${completedDays} dias</strong></span>
+                </div>
+            </div>`;
+    }
+    if (hasSleep) {
+        html += `
+            <div class="space-y-1.5 ${hasAtv ? 'pt-3 border-t border-zinc-100' : ''}">
+                <div class="flex justify-between items-baseline gap-2 text-sm">
+                    <span class="font-semibold text-zinc-900 truncate">🌙 Sono</span>
+                    <span class="font-mono text-xs text-zinc-600 shrink-0"><strong class="text-zinc-900">${totalSleptMonSat.toFixed(1)}h</strong> / ${sleepTargetHours.toFixed(1)}h · ${sleepPct}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-indigo-500 transition-all" style="width:${sleepPct}%"></div></div>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
+                    <span>Meta semanal (Seg–Sáb): <strong>48.0h (8h/d)</strong></span>
+                    <span>Dormido: <strong class="text-indigo-600">${totalSleptMonSat.toFixed(1)}h</strong></span>
+                </div>
+            </div>`;
+    }
+
+    list.innerHTML = html;
 }
 
 /* E) Destaques calculados da semana */
-function renderHighlights(g, s) {
+function renderHighlights(g, sData, loadData) {
     const ul = document.getElementById('dash-highlights');
     if (!ul) return;
-    const items = [];
 
-    // 1. Melhor noite: dia em que o sono for >= 8h registrado nos últimos 7d (baseado no registro de sono)
-    const recentSleep = getRecentRegisteredSleepEntries(7);
-    const nights8h = recentSleep.filter(r => r.sleptH >= 8.0);
-    if (nights8h.length > 0) {
-        const bestNight = [...nights8h].sort((a, b) => b.sleptH - a.sleptH)[0];
-        const [y, m, d] = bestNight.date.split('-');
-        const dateFormatted = `${d}/${m}`;
-        items.push(['🌙', 'Melhor noite', `${dateFormatted} (${formatSleepDuration(bestNight.sleptH)})`]);
-    } else {
-        items.push(['🌙', 'Melhor noite', 'Nenhum dia ≥ 8h nos últimos 7d']);
-    }
+    const s = sData || calcSleepWeekSeries();
+    const loadM = loadData || calcWeeklyLoadMetrics();
 
-    // 2. Melhor semana para atividade física: baseada na semana que cumprir 4d de treino consecutivos ou não
     let logs = {};
     try {
         const raw = SafeStorage.getItem('hq_atv_logs_v1');
         if (raw) logs = JSON.parse(raw) || {};
         else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
-    } catch(e) { logs = {}; }
+    } catch (e) { logs = {}; }
+
     const weekWorkoutDays = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
-    if (weekWorkoutDays >= 4) {
-        items.push(['🏋️', 'Semana de Atividade Física', `Meta cumprida! 🎉 (${weekWorkoutDays}/4 dias)`]);
-    } else {
-        items.push(['🏋️', 'Atividade Física na semana', `${weekWorkoutDays}/4 dias cumpridos`]);
-    }
+    const hasAtv = loadM.activeDays > 0 || weekWorkoutDays > 0;
 
-    // 5. Mais perto da meta: baseado na proporção de >= 30% de tarefa cumprida para a meta definida
-    // 5.1 Para o sono: horas totais de sono na semana
-    // 5.2 Para a atividade física: 4d/semana
-    const sleepHabit = habits.find(h => h.category === 'sono');
-    const sleepTarget = (sleepHabit && sleepHabit.targetHours > 0) ? sleepHabit.targetHours : 56;
-
+    const recentSleep = getRecentRegisteredSleepEntries(7);
     let weekSleepTotal = 0;
     weekDays.forEach(d => {
         const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
         if (entry.sleptH > 0) weekSleepTotal += entry.sleptH;
-        else if (sleepHabit && Array.isArray(sleepHabit.dailyHours)) {
-            weekSleepTotal += parseFloat(sleepHabit.dailyHours[d.index]) || 0;
-        }
     });
+    const hasSleep = recentSleep.length > 0 || weekSleepTotal > 0;
 
-    const sleepRatioPct = (weekSleepTotal / sleepTarget) * 100;
-    const workoutRatioPct = (weekWorkoutDays / 4) * 100;
+    if (!hasAtv && !hasSleep) {
+        ul.innerHTML = `<li class="py-6 text-center text-zinc-400 text-xs">Sem registros de atividade física ou sono.</li>`;
+        return;
+    }
+
+    const items = [];
+
+    if (hasSleep) {
+        const nights8h = recentSleep.filter(r => r.sleptH >= 8.0);
+        if (nights8h.length > 0) {
+            const bestNight = [...nights8h].sort((a, b) => b.sleptH - a.sleptH)[0];
+            const [y, m, d] = bestNight.date.split('-');
+            const dateFormatted = `${d}/${m}`;
+            items.push(['🌙', 'Melhor noite', `${dateFormatted} (${formatSleepDuration(bestNight.sleptH)})`]);
+        } else {
+            items.push(['🌙', 'Melhor noite', 'Nenhum dia ≥ 8h nos últimos 7d']);
+        }
+    }
+
+    if (hasAtv) {
+        if (weekWorkoutDays >= 4) {
+            items.push(['🏋️', 'Semana de Atividade Física', `Meta cumprida! 🎉 (${weekWorkoutDays}/4 dias)`]);
+        } else {
+            items.push(['🏋️', 'Atividade Física na semana', `${weekWorkoutDays}/4 dias cumpridos`]);
+        }
+    }
+
+    const sleepHabit = habits.find(h => h.category === 'sono');
+    const sleepTarget = (sleepHabit && sleepHabit.targetHours > 0) ? sleepHabit.targetHours : 48;
+
+    const sleepRatioPct = hasSleep ? (weekSleepTotal / sleepTarget) * 100 : 0;
+    const workoutRatioPct = hasAtv ? (weekWorkoutDays / 4) * 100 : 0;
 
     const candidates = [];
-    if (sleepRatioPct >= 30) {
+    if (hasSleep && sleepRatioPct >= 30) {
         candidates.push({ name: 'Sono', pct: sleepRatioPct, detail: `${weekSleepTotal.toFixed(1)}h / ${sleepTarget}h` });
     }
-    if (workoutRatioPct >= 30) {
+    if (hasAtv && workoutRatioPct >= 30) {
         candidates.push({ name: 'Atividade Física', pct: workoutRatioPct, detail: `${weekWorkoutDays}/4 dias` });
     }
 
@@ -812,6 +861,8 @@ window.pushToGist = async function() {
             document.getElementById('gist-id-input').value = data.id;
             status.textContent = `✅ Sincronizado! ID: ${data.id}`;
             updateCloudBadge('✅ Sync Ativo');
+            if (typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
+            renderAll();
         } else {
             status.textContent = "❌ Falha ao enviar. Verifique o Token/ID.";
         }
@@ -827,6 +878,8 @@ window.pullFromGist = async function() {
     SafeStorage.setItem('hq_gist_id', gistId);
     status.textContent = "Baixando...";
     const ok = await autoPullFromGist();
+    if (ok && typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
+    if (ok) renderAll();
     status.textContent = ok ? "✅ Sincronizado!" : "❌ Falha ao baixar. Verifique o Token e o ID.";
 };
 
@@ -867,12 +920,13 @@ window.resetAllData = function() {
         habits = [];
         calendarEvents = [];
         sleepJournal = {};
+        atvLogs = {};
+        SafeStorage.removeItem('hq_atv_logs_v1');
         SafeStorage.removeItem('hq_plan_seeded_v1');
         if (typeof ensureWorkoutPlanHabits === 'function') {
-            ensureWorkoutPlanHabits(); // restaura o plano de treino pré-cadastrado e salva
-        } else {
-            saveData();
+            ensureWorkoutPlanHabits();
         }
+        saveData();
     }
 };
 
@@ -899,10 +953,10 @@ function renderAll(activeRoute) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.loadProfile === 'function') window.loadProfile();
     loadData();
     if (typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
     if (typeof loadAtvLogs === 'function') loadAtvLogs();
-    if (typeof window.loadProfile === 'function') window.loadProfile();
 
     document.getElementById('manual-hours-form').addEventListener('submit', e => {
         e.preventDefault();
@@ -968,6 +1022,8 @@ window.addEventListener('DOMContentLoaded', () => {
             window.saveProfile({ name, gender, role: draft.role, skinTone: draft.skinTone });
             if (typeof window.markFirstRunDone === 'function') window.markFirstRunDone();
             window.closeProfileModal();
+            if (typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
+            renderAll();
         });
     }
 
