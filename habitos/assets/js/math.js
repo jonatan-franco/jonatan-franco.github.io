@@ -237,6 +237,10 @@ function calcSleepWeekSeries() {
 
     const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
     const meanSlept = activeDays > 0 ? sumSlept / activeDays : 0;
+    // Razão agregada: sum(slept) / sum(bed) * 100
+    const efficiency = meanBed > 0 ? (meanSlept / meanBed) * 100 : 0;
+    // Média aritmética das eficiências diárias
+    const meanDailyEfficiency = validEffDays > 0 ? sumDailyEff / validEffDays : 0;
 
     let varianceSlept = 0, varianceBed = 0, varianceDailyEff = 0;
     if (activeDays > 0) {
@@ -255,11 +259,6 @@ function calcSleepWeekSeries() {
     const sdSlept = Math.sqrt(varianceSlept);
     const sdBed = Math.sqrt(varianceBed);
     const sdDailyEff = Math.sqrt(varianceDailyEff);
-
-    // Razão agregada: sum(slept) / sum(bed) * 100
-    const efficiency = meanBed > 0 ? (meanSlept / meanBed) * 100 : 0;
-    // Média aritmética das eficiências diárias
-    const meanDailyEfficiency = validEffDays > 0 ? sumDailyEff / validEffDays : 0;
 
     const elasticity = recent.length >= 2 
         ? calcSleepElasticity(recent.map(r => r.sleptH), recent.map(r => r.bedH))

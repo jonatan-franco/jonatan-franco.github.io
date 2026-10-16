@@ -216,44 +216,51 @@ window.setDashSleepChartMode = function(mode) {
 const sleepErrorWhiskerPlugin = {
     id: 'sleepErrorWhiskerPlugin',
     afterDatasetsDraw(chart) {
-        const sd = chart.config._sdValue;
-        if (!sd || sd <= 0) return;
         const ctx = chart.ctx;
-        const meta = chart.getDatasetMeta(0);
-        if (!meta || !meta.data) return;
-        const yScale = chart.scales.y;
-        if (!yScale) return;
+        if (!ctx || !chart.data || !Array.isArray(chart.data.datasets)) return;
 
         ctx.save();
         ctx.strokeStyle = '#1e1b4b';
         ctx.lineWidth = 1.5;
 
-        meta.data.forEach((bar, index) => {
-            const val = chart.data.datasets[0].data[index];
-            if (val === null || val === undefined || isNaN(val) || val <= 0) return;
+        chart.data.datasets.forEach((ds, dsIdx) => {
+            const sd = ds._sd;
+            if (!sd || sd <= 0) return;
 
-            const x = bar.x;
-            const yTop = yScale.getPixelForValue(val + sd);
-            const yBottom = yScale.getPixelForValue(Math.max(0, val - sd));
-            const capWidth = 5;
+            const meta = chart.getDatasetMeta(dsIdx);
+            if (!meta || meta.hidden || !meta.data) return;
 
-            // Linha vertical de desvio padrão
-            ctx.beginPath();
-            ctx.moveTo(x, yTop);
-            ctx.lineTo(x, yBottom);
-            ctx.stroke();
+            const axisId = ds.yAxisID || 'y';
+            const yScale = chart.scales[axisId] || chart.scales.y;
+            if (!yScale) return;
 
-            // Cap superior
-            ctx.beginPath();
-            ctx.moveTo(x - capWidth, yTop);
-            ctx.lineTo(x + capWidth, yTop);
-            ctx.stroke();
+            meta.data.forEach((bar, index) => {
+                const val = ds.data[index];
+                if (val === null || val === undefined || isNaN(val) || val <= 0) return;
 
-            // Cap inferior
-            ctx.beginPath();
-            ctx.moveTo(x - capWidth, yBottom);
-            ctx.lineTo(x + capWidth, yBottom);
-            ctx.stroke();
+                const x = bar.x;
+                const yTop = yScale.getPixelForValue(val + sd);
+                const yBottom = yScale.getPixelForValue(Math.max(0, val - sd));
+                const capWidth = 5;
+
+                // Linha vertical de desvio padrão
+                ctx.beginPath();
+                ctx.moveTo(x, yTop);
+                ctx.lineTo(x, yBottom);
+                ctx.stroke();
+
+                // Cap superior
+                ctx.beginPath();
+                ctx.moveTo(x - capWidth, yTop);
+                ctx.lineTo(x + capWidth, yTop);
+                ctx.stroke();
+
+                // Cap inferior
+                ctx.beginPath();
+                ctx.moveTo(x - capWidth, yBottom);
+                ctx.lineTo(x + capWidth, yBottom);
+                ctx.stroke();
+            });
         });
 
         ctx.restore();
@@ -287,17 +294,15 @@ function renderDashboardCharts() {
 
     let datasets = [];
     let scales = {};
-    let sdValue = 0;
 
     if (dashSleepChartMode === 'slept') {
         // Apenas Sono: barra com ±DP
-        sdValue = s.sdSlept;
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
         const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat((s.meanSlept + s.sdSlept).toFixed(2)) : null);
         const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)) : null);
 
         datasets = [
-            { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 8, order: 2 },
+            { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 8, order: 2, _sd: s.sdSlept },
             { type: 'line', label: `Média (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
             { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
             { type: 'line', label: `Banda ±DP`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.08)', order: 1 }
@@ -309,13 +314,12 @@ function renderDashboardCharts() {
         };
     } else if (dashSleepChartMode === 'bed') {
         // Apenas Cama: barra com ±DP
-        sdValue = s.sdBed;
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanBed.toFixed(2)) : null);
         const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat((s.meanBed + s.sdBed).toFixed(2)) : null);
         const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanBed - s.sdBed).toFixed(2)) : null);
 
         datasets = [
-            { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: 8, order: 2 },
+            { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: 8, order: 2, _sd: s.sdBed },
             { type: 'line', label: `Média Cama (μ=${s.meanBed.toFixed(1)}h, σ=±${s.sdBed.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
             { type: 'line', label: `+1 DP (+${s.sdBed.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
             { type: 'line', label: `Banda ±DP`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.08)', order: 1 }
@@ -327,13 +331,12 @@ function renderDashboardCharts() {
         };
     } else if (dashSleepChartMode === 'eff') {
         // Eficiência: barra com ±DP
-        sdValue = s.sdDailyEff;
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanDailyEfficiency.toFixed(1)) : null);
         const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.min(100, s.meanDailyEfficiency + s.sdDailyEff).toFixed(1)) : null);
         const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanDailyEfficiency - s.sdDailyEff).toFixed(1)) : null);
 
         datasets = [
-            { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: 8, order: 2 },
+            { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: 8, order: 2, _sd: s.sdDailyEff },
             { type: 'line', label: `μ(E) = ${s.meanDailyEfficiency.toFixed(1)}% (σ=±${s.sdDailyEff.toFixed(1)}%)`, data: meanLine, borderColor: '#6b21a8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
             { type: 'line', label: `+1 DP`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
             { type: 'line', label: `Banda ±DP`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.08)', order: 1 }
@@ -345,14 +348,13 @@ function renderDashboardCharts() {
         };
     } else {
         // Modo 'all': Cama vs Dormido com Eficiência e ±DP
-        sdValue = s.sdSlept;
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
 
         datasets = [
             { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
             { type: 'line', label: `Média Sono (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
-            { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: 6, yAxisID: 'y', order: 2 },
-            { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y', order: 2 }
+            { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: 6, yAxisID: 'y', order: 2, _sd: s.sdBed },
+            { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y', order: 2, _sd: s.sdSlept }
         ];
 
         scales = {
@@ -363,6 +365,7 @@ function renderDashboardCharts() {
     }
 
     const config = {
+        type: 'bar',
         data: { labels: xLabels, datasets },
         options: {
             responsive: true,
@@ -373,7 +376,6 @@ function renderDashboardCharts() {
         },
         plugins: [sleepErrorWhiskerPlugin]
     };
-    config._sdValue = sdValue;
 
     dashSleepChartInstance = new Chart(sleepCanvas.getContext('2d'), config);
 }
