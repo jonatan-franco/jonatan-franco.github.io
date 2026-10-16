@@ -798,10 +798,13 @@ window.pushToGist = async function() {
     if (gistId) SafeStorage.setItem('hq_gist_id', gistId);
     status.textContent = "Enviando...";
     try {
+        const payload = typeof buildGistPayload === 'function'
+            ? buildGistPayload()
+            : { updatedAt: Date.now(), habits, calendarEvents, timerConfig, sleepJournal };
         const res = await fetch(gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`, {
             method: gistId ? 'PATCH' : 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
-            body: JSON.stringify({ description: "HabitQuant Pro Cloud Sync", public: false, files: { "habitquant_data.json": { content: JSON.stringify({ updatedAt: Date.now(), habits, calendarEvents, timerConfig }) } } })
+            body: JSON.stringify({ description: "HabitQuant Pro Cloud Sync", public: false, files: { "habitquant_data.json": { content: JSON.stringify(payload) } } })
         });
         const data = await res.json();
         if (res.ok && data.id) {
@@ -809,6 +812,8 @@ window.pushToGist = async function() {
             document.getElementById('gist-id-input').value = data.id;
             status.textContent = `✅ Sincronizado! ID: ${data.id}`;
             updateCloudBadge('✅ Sync Ativo');
+        } else {
+            status.textContent = "❌ Falha ao enviar. Verifique o Token/ID.";
         }
     } catch (e) { status.textContent = "❌ Erro de rede."; }
 };
@@ -820,8 +825,9 @@ window.pullFromGist = async function() {
     if (!token || !gistId) { status.textContent = "Informe Token e ID."; return; }
     SafeStorage.setItem('hq_gist_token', token);
     SafeStorage.setItem('hq_gist_id', gistId);
-    await autoPullFromGist();
-    status.textContent = "✅ Sincronizado!";
+    status.textContent = "Baixando...";
+    const ok = await autoPullFromGist();
+    status.textContent = ok ? "✅ Sincronizado!" : "❌ Falha ao baixar. Verifique o Token e o ID.";
 };
 
 window.exportToCSV = function() {

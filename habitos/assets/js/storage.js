@@ -104,24 +104,52 @@ function updateCloudBadge(text) {
     if (pill) pill.textContent = text;
 }
 
+function buildGistPayload() {
+    let atvLogsData = {};
+    try {
+        const rawAtv = SafeStorage.getItem('hq_atv_logs_v1');
+        if (rawAtv) atvLogsData = JSON.parse(rawAtv);
+    } catch (e) { atvLogsData = {}; }
+
+    let profileData = null;
+    try {
+        const rawProf = SafeStorage.getItem('hq_profile_v1');
+        if (rawProf) profileData = JSON.parse(rawProf);
+    } catch (e) { profileData = null; }
+
+    return {
+        updatedAt: Date.now(),
+        habits,
+        calendarEvents,
+        timerConfig,
+        sleepJournal,
+        atvLogs: atvLogsData,
+        profile: profileData
+    };
+}
+
 async function autoPushToGist() {
     const token = SafeStorage.getItem('hq_gist_token');
     const gistId = SafeStorage.getItem('hq_gist_id');
-    if (!token || !gistId) return;
+    if (!token || !gistId) return false;
     try {
         const res = await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
-            body: JSON.stringify({ files: { "habitquant_data.json": { content: JSON.stringify({ updatedAt: Date.now(), habits, calendarEvents, timerConfig, sleepJournal }) } } })
+            body: JSON.stringify({ files: { "habitquant_data.json": { content: JSON.stringify(buildGistPayload()) } } })
         });
-        if (res.ok) updateCloudBadge('✅ Sync Ativo');
+        if (res.ok) {
+            updateCloudBadge('✅ Sync Ativo');
+            return true;
+        }
     } catch (e) { updateCloudBadge('⚠️ Offline'); }
+    return false;
 }
 
 async function autoPullFromGist() {
     const token = SafeStorage.getItem('hq_gist_token');
     const gistId = SafeStorage.getItem('hq_gist_id');
-    if (!token || !gistId) return;
+    if (!token || !gistId) return false;
     try {
         const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
@@ -129,14 +157,33 @@ async function autoPullFromGist() {
         });
         const data = await res.json();
         if (res.ok && data.files && data.files["habitquant_data.json"]) {
-            const content = JSON.parse(data.files["habitquant_data.json"].content);
+            const fileObj = data.files["habitquant_data.json"];
+            let rawContent = fileObj.content;
+            if (fileObj.truncated && fileObj.raw_url) {
+                const rawRes = await fetch(fileObj.raw_url, { cache: 'no-store' });
+                if (rawRes.ok) rawContent = await rawRes.text();
+            }
+            const content = JSON.parse(rawContent);
             habits = Array.isArray(content.habits) ? content.habits : habits;
             calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : calendarEvents;
             timerConfig = content.timerConfig || timerConfig;
-            if (content.sleepJournal) sleepJournal = content.sleepJournal;
+            if (content.sleepJournal && typeof content.sleepJournal === 'object') {
+                sleepJournal = content.sleepJournal;
+            }
+            if (content.atvLogs && typeof content.atvLogs === 'object') {
+                SafeStorage.setItem('hq_atv_logs_v1', JSON.stringify(content.atvLogs));
+                if (typeof loadAtvLogs === 'function') loadAtvLogs();
+            }
+            if (content.profile && typeof content.profile === 'object') {
+                SafeStorage.setItem('hq_profile_v1', JSON.stringify(content.profile));
+                if (typeof window.loadProfile === 'function') window.loadProfile();
+            }
             applyDataMigrations();
             saveData(true);
             updateCloudBadge('✅ Sync Ativo');
+            return true;
         }
     } catch (e) {}
+    return false;
 }
+
