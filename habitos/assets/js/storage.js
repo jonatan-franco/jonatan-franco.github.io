@@ -167,11 +167,17 @@ async function autoPullFromGist() {
             habits = Array.isArray(content.habits) ? content.habits : habits;
             calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : calendarEvents;
             timerConfig = content.timerConfig || timerConfig;
-            if (content.sleepJournal && typeof content.sleepJournal === 'object') {
-                sleepJournal = content.sleepJournal;
+            if (content.sleepJournal && typeof content.sleepJournal === 'object' && Object.keys(content.sleepJournal).length > 0) {
+                sleepJournal = { ...sleepJournal, ...content.sleepJournal };
             }
-            if (content.atvLogs && typeof content.atvLogs === 'object') {
-                SafeStorage.setItem('hq_atv_logs_v1', JSON.stringify(content.atvLogs));
+            if (content.atvLogs && typeof content.atvLogs === 'object' && Object.keys(content.atvLogs).length > 0) {
+                let localAtv = {};
+                try {
+                    const rawLocal = SafeStorage.getItem('hq_atv_logs_v1');
+                    if (rawLocal) localAtv = JSON.parse(rawLocal) || {};
+                } catch (e) { localAtv = {}; }
+                const mergedAtv = { ...localAtv, ...content.atvLogs };
+                SafeStorage.setItem('hq_atv_logs_v1', JSON.stringify(mergedAtv));
                 if (typeof loadAtvLogs === 'function') loadAtvLogs();
             }
             if (content.profile && typeof content.profile === 'object') {
