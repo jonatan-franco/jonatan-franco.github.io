@@ -149,7 +149,9 @@ function hhmmToMinutes(str) {
     if (!str || str === '—') return null;
     const [h, m] = String(str).split(':').map(Number);
     if (isNaN(h)) return null;
-    return h * 60 + (m || 0);
+    const normH = Math.min(24, Math.max(0, h)) % 24;
+    const normM = Math.min(59, Math.max(0, m || 0));
+    return normH * 60 + normM;
 }
 
 /* Converte um registro { bed, slept, wake, getup } em horas de cama, horas dormidas e eficiência */
@@ -478,4 +480,118 @@ function calcConsecutiveFullDaysStreak() {
         weekStatus
     };
 }
+
+/* Identifica o grupo (upper_a, lower_a, upper_b, lower_b) de um item de log de atividade física */
+function resolveLogGroupPlanId(item) {
+    if (!item) return 'upper_a';
+    const validPlans = ['upper_a', 'lower_a', 'upper_b', 'lower_b'];
+    if (item.planId && validPlans.includes(item.planId)) return item.planId;
+    if (item.habitId) {
+        const stripped = String(item.habitId).replace(/^h_/, '');
+        if (validPlans.includes(stripped)) return stripped;
+        if (typeof habits !== 'undefined' && Array.isArray(habits)) {
+            const h = habits.find(hb => hb.id === item.habitId);
+            if (h && h.planId && validPlans.includes(h.planId)) return h.planId;
+        }
+    }
+    if (item.exerciseName && typeof WORKOUT_PLAN !== 'undefined' && Array.isArray(WORKOUT_PLAN)) {
+        const target = String(item.exerciseName).trim().toLowerCase();
+        for (const workout of WORKOUT_PLAN) {
+            for (const ex of workout.exercises) {
+                if (ex.name.toLowerCase() === target) return workout.planId;
+                if (Array.isArray(ex.variations) && ex.variations.some(v => v.toLowerCase() === target)) return workout.planId;
+            }
+        }
+    }
+    return 'upper_a';
+}
+
+/* Calcula as séries de evolução de volume de carga dos últimos 30 dias (por grupo e por exercício) */
+function calcLoadEvolution30d() {
+    const days = [];
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        days.push({ iso, label });
+    }
+
+    let logs = {};
+    try {
+        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch (e) { logs = {}; }
+
+    const groups = {
+        upper_a: { id: 'upper_a', label: 'Upper A', color: '#ec4899', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
+        lower_a: { id: 'lower_a', label: 'Lower A', color: '#8b5cf6', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
+        upper_b: { id: 'upper_b', label: 'Upper B', color: '#f59e0b', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
+        lower_b: { id: 'lower_b', label: 'Lower B', color: '#10b981', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) }
+    };
+
+    const exercisesMap = new Map();
+    // Descobre todos os exercícios já registrados pelo usuário
+    Object.keys(logs).forEach(dateKey => {
+        const list = logs[dateKey];
+        if (!Array.isArray(list)) return;
+        list.forEach(item => {
+            if (!item || !item.exerciseName) return;
+            const exName = String(item.exerciseName).trim();
+            if (!exercisesMap.has(exName)) {
+                exercisesMap.set(exName, {
+                    name: exName,
+                    planId: resolveLogGroupPlanId(item),
+                    volumeSeries: Array(30).fill(null),
+                    weightSeries: Array(30).fill(null)
+                });
+            }
+        });
+    });
+
+    let hasAnyLog = false;
+
+    days.forEach((dayObj, dayIdx) => {
+        const list = logs[dayObj.iso];
+        if (!Array.isArray(list) || list.length === 0) return;
+
+        list.forEach(item => {
+            if (!item) return;
+            const vol = calcLogEntryVolume(item);
+            const w = parseFloat(item.weight) || 0;
+            if (vol <= 0 && w <= 0) return;
+
+            hasAnyLog = true;
+            const planId = resolveLogGroupPlanId(item);
+            const grp = groups[planId] || groups.upper_a;
+            grp.volumeSeries[dayIdx] = (grp.volumeSeries[dayIdx] || 0) + vol;
+            grp.weightSeries[dayIdx] = Math.max(grp.weightSeries[dayIdx] || 0, w);
+
+            const exName = item.exerciseName ? String(item.exerciseName).trim() : '';
+            if (exName) {
+                if (!exercisesMap.has(exName)) {
+                    exercisesMap.set(exName, {
+                        name: exName,
+                        planId,
+                        volumeSeries: Array(30).fill(null),
+                        weightSeries: Array(30).fill(null)
+                    });
+                }
+                const exObj = exercisesMap.get(exName);
+                exObj.volumeSeries[dayIdx] = (exObj.volumeSeries[dayIdx] || 0) + vol;
+                exObj.weightSeries[dayIdx] = Math.max(exObj.weightSeries[dayIdx] || 0, w);
+            }
+        });
+    });
+
+    return {
+        days,
+        groups,
+        exercises: Array.from(exercisesMap.values()),
+        hasAnyLog
+    };
+}
+
 

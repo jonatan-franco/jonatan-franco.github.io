@@ -25,7 +25,7 @@ window.toggleMobileDrawer = function() {
 const ROUTE_CONFIG = {
     dashboard:  { eyebrow: 'DASHBOARD' },
     atv_fisica: { eyebrow: 'GRUPO',     title: 'Atividade Física' },
-    sono:       { eyebrow: 'GRUPO',     title: 'Sono & Descanso' },
+    sono:       { eyebrow: 'GRUPO',     title: 'Gestão do Sono' },
     timer:      { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
     metrics:    { eyebrow: 'ANÁLISE',   title: 'Métricas' },
     calendar:   { eyebrow: 'AGENDA',    title: 'Calendário Semanal' }
@@ -58,10 +58,6 @@ function applyRoute(routeParam) {
                 : "mobile-nav-item flex flex-col items-center py-1.5 px-3 rounded-full text-[11px] font-medium text-zinc-400";
         }
     });
-
-    /* Dashboard é somente leitura: criação de atividades fica nas outras abas */
-    const newBtn = document.getElementById('btn-new-activity');
-    if (newBtn) newBtn.classList.toggle('hidden', activeRoute === 'dashboard');
 
     const cfg = ROUTE_CONFIG[activeRoute];
     document.getElementById('header-eyebrow').innerText = cfg.eyebrow;
@@ -111,79 +107,159 @@ window.deleteHabitByIdx = function(hIdx) {
     if (confirm(`Remover "${habits[hIdx].name}"?`)) { habits.splice(hIdx, 1); saveData(); }
 };
 
-function renderSleepJournalView() {
-    const tbody = document.getElementById('sleep-journal-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+/* Máscara progressiva de horário (HH:MM) — Horas 00..24, Minutos 00..59.
+ * Deleta 1 dígito por vez até as horas sem travar no separador ':'. */
+window.handleSleepTimeMask = function(el) {
+    if (!el) return;
+    const digits = el.value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length === 0) {
+        el.value = '';
+        return;
+    }
+    if (digits.length === 1) {
+        el.value = digits;
+        return;
+    }
+    let hh = parseInt(digits.slice(0, 2), 10);
+    if (hh > 24) hh = 24;
+    const hhStr = String(hh).padStart(2, '0');
 
+    if (digits.length === 2) {
+        el.value = hhStr;
+        return;
+    }
+    if (digits.length === 3) {
+        let m1 = parseInt(digits.slice(2, 3), 10);
+        if (m1 > 5) m1 = 5;
+        el.value = `${hhStr}:${m1}`;
+        return;
+    }
+    let mm = parseInt(digits.slice(2, 4), 10);
+    if (mm > 59) mm = 59;
+    const mmStr = String(mm).padStart(2, '0');
+    el.value = `${hhStr}:${mmStr}`;
+};
+
+function normalizeSleepTimeValue(val) {
+    const digits = String(val || '').replace(/\D/g, '').slice(0, 4);
+    if (!digits) return '';
+    let hh = 0, mm = 0;
+    if (digits.length === 1 || digits.length === 2) {
+        hh = parseInt(digits, 10);
+    } else if (digits.length === 3) {
+        hh = parseInt(digits.slice(0, 2), 10);
+        mm = parseInt(digits.slice(2, 3), 10) * 10;
+    } else {
+        hh = parseInt(digits.slice(0, 2), 10);
+        mm = parseInt(digits.slice(2, 4), 10);
+    }
+    if (isNaN(hh)) hh = 0;
+    if (isNaN(mm)) mm = 0;
+    if (hh > 24) hh = 24;
+    if (mm > 59) mm = 59;
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+window.handleSleepTimeBlur = function(el) {
+    if (!el) return;
+    const norm = normalizeSleepTimeValue(el.value);
+    if (norm) el.value = norm;
+};
+
+function buildSleepTableRowsHTML(rowPaddingClass) {
+    let html = '';
     weekDays.forEach(d => {
+        const hasRecord = Boolean(sleepJournal[d.iso] && sleepJournal[d.iso].bed && sleepJournal[d.iso].bed !== '—');
         const entry = sleepJournal[d.iso] || { bed: '—', slept: '—', wake: '—', getup: '—' };
         const { bedH, sleptH, eff } = calcSleepJournalEntry(sleepJournal[d.iso]);
 
-        tbody.innerHTML += `
+        const delBtnHTML = hasRecord
+            ? `<button type="button" onclick="deleteSleepJournalEntry('${d.iso}')" title="Excluir registro" class="p-1.5 text-rose-500 hover:text-rose-700 transition">🗑️</button>`
+            : `<button type="button" disabled title="Sem registro para excluir" class="p-1.5 text-zinc-300 cursor-not-allowed">🗑️</button>`;
+
+        html += `
             <tr class="hover:bg-zinc-50 transition">
-                <td class="py-2.5 px-3 font-medium text-zinc-900">${d.shortName} (${d.dateNum})</td>
-                <td class="py-2.5 px-3 text-center font-mono">${entry.bed}</td>
-                <td class="py-2.5 px-3 text-center font-mono">${entry.slept}</td>
-                <td class="py-2.5 px-3 text-center font-mono">${entry.wake}</td>
-                <td class="py-2.5 px-3 text-center font-mono">${entry.getup}</td>
-                <td class="py-2.5 px-3 text-center font-mono font-bold text-indigo-600">${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</td>
-                <td class="py-2.5 px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
-                <td class="py-2.5 px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
+                <td class="${rowPaddingClass} px-3 font-medium text-zinc-900 whitespace-nowrap">${d.shortName} (${d.dateNum})</td>
+                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.bed}</td>
+                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.slept}</td>
+                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.wake}</td>
+                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.getup}</td>
+                <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-indigo-600">${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</td>
+                <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
+                <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
+                <td class="${rowPaddingClass} px-3 text-right whitespace-nowrap">
+                    <button type="button" onclick="openSleepJournalModal('${d.iso}')" title="Editar / Registrar horário" class="p-1.5 text-zinc-600 hover:text-black transition">✏️</button>
+                    ${delBtnHTML}
+                </td>
             </tr>`;
     });
+    return html;
+}
+
+function renderSleepJournalView() {
+    const tbody = document.getElementById('sleep-journal-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = buildSleepTableRowsHTML('py-2.5');
 }
 
 function renderDedicatedSleepView() {
     const tbody = document.getElementById('dedicated-sleep-tbody');
     if (!tbody) return;
-    tbody.innerHTML = '';
-
-    weekDays.forEach(d => {
-        const entry = sleepJournal[d.iso] || { bed: '—', slept: '—', wake: '—', getup: '—' };
-        let bedH = 0, sleptH = 0, eff = 0;
-        if (entry.bed !== '—' && entry.wake !== '—') {
-            const [bh, bm] = entry.bed.split(':').map(Number);
-            const [wh, wm] = entry.wake.split(':').map(Number);
-            let bMin = bh * 60 + bm;
-            let wMin = wh * 60 + wm;
-            if (wMin < bMin) wMin += 24 * 60;
-            bedH = (wMin - bMin) / 60;
-        }
-        if (entry.slept !== '—' && entry.wake !== '—') {
-            const [sh, sm] = entry.slept.split(':').map(Number);
-            const [wh, wm] = entry.wake.split(':').map(Number);
-            let sMin = sh * 60 + sm;
-            let wMin = wh * 60 + wm;
-            if (wMin < sMin) wMin += 24 * 60;
-            sleptH = (wMin - sMin) / 60;
-        }
-        if (bedH > 0) eff = (sleptH / bedH) * 100;
-
-        tbody.innerHTML += `
-            <tr class="hover:bg-zinc-50 transition">
-                <td class="py-3 px-3 font-medium text-zinc-900">${d.shortName} (${d.dateNum})</td>
-                <td class="py-3 px-3 text-center font-mono">${entry.bed}</td>
-                <td class="py-3 px-3 text-center font-mono">${entry.slept}</td>
-                <td class="py-3 px-3 text-center font-mono">${entry.wake}</td>
-                <td class="py-3 px-3 text-center font-mono">${entry.getup}</td>
-                <td class="py-3 px-3 text-center font-mono font-bold text-indigo-600">${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</td>
-                <td class="py-3 px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
-                <td class="py-3 px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
-            </tr>`;
-    });
+    tbody.innerHTML = buildSleepTableRowsHTML('py-3');
 }
 
-window.openSleepJournalModal = function() {
+window.onSleepJournalDayChange = function(iso) {
+    const existing = sleepJournal[iso];
+    const bedEl = document.getElementById('sleep-journal-bed');
+    const sleptEl = document.getElementById('sleep-journal-slept');
+    const wakeEl = document.getElementById('sleep-journal-wake');
+    const getupEl = document.getElementById('sleep-journal-getup');
+    const titleEl = document.getElementById('sleep-journal-modal-title');
+
+    if (existing && existing.bed && existing.bed !== '—') {
+        if (bedEl) bedEl.value = existing.bed;
+        if (sleptEl) sleptEl.value = existing.slept || '23:30';
+        if (wakeEl) wakeEl.value = existing.wake || '07:00';
+        if (getupEl) getupEl.value = existing.getup || '07:30';
+        if (titleEl) titleEl.textContent = 'Editar Registro do Sono';
+    } else {
+        if (bedEl) bedEl.value = '23:00';
+        if (sleptEl) sleptEl.value = '23:30';
+        if (wakeEl) wakeEl.value = '07:00';
+        if (getupEl) getupEl.value = '07:30';
+        if (titleEl) titleEl.textContent = 'Registrar Diário do Sono';
+    }
+};
+
+window.openSleepJournalModal = function(targetIso) {
     const sel = document.getElementById('sleep-journal-day');
+    const defaultIso = targetIso || (weekDays[todayIndex !== -1 ? todayIndex : 0] || weekDays[0]).iso;
     if (sel) {
         sel.innerHTML = '';
         weekDays.forEach((d) => {
-            sel.innerHTML += `<option value="${d.iso}">${d.shortName} (${d.dateNum})</option>`;
+            const isSel = d.iso === defaultIso ? 'selected' : '';
+            sel.innerHTML += `<option value="${d.iso}" ${isSel}>${d.shortName} (${d.dateNum})</option>`;
         });
+        sel.value = defaultIso;
     }
+    window.onSleepJournalDayChange(defaultIso);
     const m = document.getElementById('sleep-journal-modal');
     if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+};
+
+window.deleteSleepJournalEntry = function(iso) {
+    if (!iso || !sleepJournal[iso]) return;
+    if (confirm('Deseja excluir o registro de sono deste dia?')) {
+        delete sleepJournal[iso];
+        const dayIdx = weekDays.findIndex(d => d.iso === iso);
+        const sleepHabit = habits.find(h => h.category === 'sono');
+        if (sleepHabit && dayIdx !== -1) {
+            if (Array.isArray(sleepHabit.dailyHours)) sleepHabit.dailyHours[dayIdx] = 0;
+            if (Array.isArray(sleepHabit.checks)) sleepHabit.checks[dayIdx] = false;
+            if (Array.isArray(sleepHabit.bedtimeHours)) sleepHabit.bedtimeHours[dayIdx] = 0;
+        }
+        saveData();
+    }
 };
 
 window.closeSleepJournalModal = function() {
@@ -798,6 +874,7 @@ function renderAll(activeRoute) {
     document.getElementById('week-range-badge').textContent = `${weekDays[0].dateNum} a ${weekDays[6].dateNum}`;
     populateSelects();
     populateActivityChartTargetSelect();
+    if (typeof populateDashLoadChartSelect === 'function') populateDashLoadChartSelect();
     renderDashboardView();
     const current = activeRoute || (window.location.hash || '#dashboard').replace('#', '').trim();
     if (current === 'dashboard' || current === '') renderDashboardCharts();
@@ -892,10 +969,12 @@ window.addEventListener('DOMContentLoaded', () => {
         sleepForm.addEventListener('submit', e => {
             e.preventDefault();
             const iso = document.getElementById('sleep-journal-day').value;
-            const bed = document.getElementById('sleep-journal-bed').value;
-            const slept = document.getElementById('sleep-journal-slept').value;
-            const wake = document.getElementById('sleep-journal-wake').value;
-            const getup = document.getElementById('sleep-journal-getup').value;
+            const bed = normalizeSleepTimeValue(document.getElementById('sleep-journal-bed').value);
+            const slept = normalizeSleepTimeValue(document.getElementById('sleep-journal-slept').value);
+            const wake = normalizeSleepTimeValue(document.getElementById('sleep-journal-wake').value);
+            const getup = normalizeSleepTimeValue(document.getElementById('sleep-journal-getup').value);
+
+            if (!bed || !slept || !wake || !getup) return;
 
             sleepJournal[iso] = { bed, slept, wake, getup };
             saveData();

@@ -38,7 +38,7 @@ const todayIndex = weekDays.findIndex(d => d.isToday);
 const STORAGE_KEY = 'habit_quant_pro_v10_sync';
 
 const defaultHabits = [
-    { id: 'h3', name: 'Gestão da Noite de Sono', category: 'sono', targetHours: 56.0, checks: [true, true, true, true, true, true, true], dailyHours: [8.0, 7.5, 8.0, 7.8, 8.2, 8.5, 8.0], bedtimeHours: [8.5, 8.0, 8.5, 8.2, 8.8, 9.0, 8.5] }
+    { id: 'h3', name: 'Sono', category: 'sono', targetHours: 56.0, checks: [true, true, true, true, true, true, true], dailyHours: [8.0, 7.5, 8.0, 7.8, 8.2, 8.5, 8.0], bedtimeHours: [8.5, 8.0, 8.5, 8.2, 8.8, 9.0, 8.5] }
 ];
 
 /* Sem eventos de exemplo: os treinos do WORKOUT_PLAN são agendados pelo usuário na Agenda. */
@@ -51,6 +51,9 @@ const LEGACY_HABIT_NAMES = ['Treino Upper (Força & Hipertrofia)', 'Treino Lower
 function applyDataMigrations() {
     const before = habits.length;
     habits = habits.filter(h => !LEGACY_HABIT_IDS.includes(h.id) && !LEGACY_HABIT_NAMES.includes(h.name));
+    habits.forEach(h => {
+        if (h.category === 'sono') h.name = 'Sono';
+    });
     if (habits.length !== before) {
         const validIds = new Set(habits.map(h => h.id));
         calendarEvents = calendarEvents.filter(ev => validIds.has(ev.habitId));

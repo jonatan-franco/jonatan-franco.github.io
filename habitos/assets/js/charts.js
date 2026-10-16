@@ -378,4 +378,203 @@ function renderDashboardCharts() {
     };
 
     dashSleepChartInstance = new Chart(sleepCanvas.getContext('2d'), config);
+
+    renderDashLoadEvolutionChart();
 }
+
+/* ===== Gráfico de Evolução de Volume de Carga (Últimos 30 dias) ===== */
+let dashLoadChartInstance = null;
+let dashLoadChartScope = 'group'; // 'group' | 'exercise'
+
+window.setDashLoadChartScope = function(scope) {
+    dashLoadChartScope = scope;
+    const btnG = document.getElementById('btn-load-scope-group');
+    const btnE = document.getElementById('btn-load-scope-exercise');
+    if (btnG) {
+        btnG.className = scope === 'group'
+            ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
+            : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
+    }
+    if (btnE) {
+        btnE.className = scope === 'exercise'
+            ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
+            : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
+    }
+    const evo = calcLoadEvolution30d();
+    populateDashLoadChartSelect(evo, true);
+    renderDashLoadEvolutionChart(evo);
+};
+
+function populateDashLoadChartSelect(evoData, forceReset) {
+    const sel = document.getElementById('dash-load-chart-target');
+    if (!sel) return;
+    const prev = forceReset ? '' : sel.value;
+    sel.innerHTML = '';
+
+    const evo = evoData || calcLoadEvolution30d();
+
+    if (dashLoadChartScope === 'group') {
+        sel.innerHTML += `<option value="all">📊 Todos os Grupos (Upper / Lower)</option>`;
+        sel.innerHTML += `<option value="upper_a">🏋️ Upper A</option>`;
+        sel.innerHTML += `<option value="lower_a">🦵 Lower A</option>`;
+        sel.innerHTML += `<option value="upper_b">🏋️ Upper B</option>`;
+        sel.innerHTML += `<option value="lower_b">🦵 Lower B</option>`;
+    } else {
+        if (evo.exercises.length === 0) {
+            sel.innerHTML += `<option value="none">Sem exercícios registrados</option>`;
+        } else {
+            sel.innerHTML += `<option value="all">📊 Todos os Exercícios Registrados (${evo.exercises.length})</option>`;
+            evo.exercises.forEach(ex => {
+                sel.innerHTML += `<option value="${ex.name}">💪 ${ex.name}</option>`;
+            });
+        }
+    }
+
+    if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+        sel.value = prev;
+    }
+}
+
+window.renderDashLoadEvolutionChart = function(evoData) {
+    if (typeof Chart === 'undefined') return;
+    const canvas = document.getElementById('dashLoadEvolutionChart');
+    if (!canvas) return;
+
+    const evo = evoData || calcLoadEvolution30d();
+    const sel = document.getElementById('dash-load-chart-target');
+    if (sel && sel.options.length === 0) {
+        populateDashLoadChartSelect(evo, false);
+    }
+
+    const empty = document.getElementById('dash-load-empty');
+    if (empty) {
+        empty.classList.toggle('hidden', evo.hasAnyLog);
+        empty.classList.toggle('flex', !evo.hasAnyLog);
+    }
+
+    if (dashLoadChartInstance) dashLoadChartInstance.destroy();
+
+    const xLabels = evo.days.map(d => d.label);
+    const targetVal = sel ? sel.value : 'all';
+    const datasets = [];
+
+    if (dashLoadChartScope === 'group') {
+        const groupKeys = ['upper_a', 'lower_a', 'upper_b', 'lower_b'];
+        if (targetVal === 'all' || !evo.groups[targetVal]) {
+            groupKeys.forEach(gk => {
+                const g = evo.groups[gk];
+                datasets.push({
+                    type: 'line',
+                    label: g.label,
+                    data: g.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
+                    borderColor: g.color,
+                    backgroundColor: hexToRgba(g.color, 0.12),
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.3,
+                    spanGaps: true,
+                    fill: false,
+                    _weightSeries: g.weightSeries
+                });
+            });
+        } else {
+            const g = evo.groups[targetVal];
+            datasets.push({
+                type: 'line',
+                label: `${g.label} — Volume (kg)`,
+                data: g.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
+                borderColor: g.color,
+                backgroundColor: hexToRgba(g.color, 0.16),
+                borderWidth: 3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                tension: 0.3,
+                spanGaps: true,
+                fill: true,
+                _weightSeries: g.weightSeries
+            });
+        }
+    } else {
+        if (targetVal === 'all') {
+            evo.exercises.forEach((ex, idx) => {
+                const color = PALETTE[idx % PALETTE.length];
+                datasets.push({
+                    type: 'line',
+                    label: ex.name,
+                    data: ex.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
+                    borderColor: color,
+                    backgroundColor: hexToRgba(color, 0.12),
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.3,
+                    spanGaps: true,
+                    fill: false,
+                    _weightSeries: ex.weightSeries
+                });
+            });
+        } else {
+            const ex = evo.exercises.find(e => e.name === targetVal) || evo.exercises[0];
+            if (ex) {
+                const color = '#ec4899';
+                datasets.push({
+                    type: 'line',
+                    label: `${ex.name} — Volume (kg)`,
+                    data: ex.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
+                    borderColor: color,
+                    backgroundColor: hexToRgba(color, 0.16),
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.3,
+                    spanGaps: true,
+                    fill: true,
+                    _weightSeries: ex.weightSeries
+                });
+            }
+        }
+    }
+
+    dashLoadChartInstance = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: { labels: xLabels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'nearest', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            const vol = context.parsed.y;
+                            if (vol === null || vol === undefined) return '';
+                            const ws = context.dataset._weightSeries;
+                            const w = ws ? ws[context.dataIndex] : null;
+                            const volFmt = vol.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            if (w !== null && w !== undefined && w > 0) {
+                                const wFmt = w.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                return `${context.dataset.label}: ${volFmt} kg (Carga: ${wFmt} kg)`;
+                            }
+                            return `${context.dataset.label}: ${volFmt} kg`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } },
+                    title: { display: true, text: 'Últimos 30 dias' }
+                },
+                y: {
+                    min: 0,
+                    grid: { color: '#f4f4f5' },
+                    title: { display: true, text: 'Volume de Carga (kg)' },
+                    ticks: { callback: v => v.toLocaleString('pt-BR') + ' kg' }
+                }
+            }
+        }
+    });
+};
