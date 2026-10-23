@@ -447,6 +447,96 @@ function renderMetricsView() {
 let dashSleepChartInstance = null;
 let dashSleepChartMode = 'all'; // 'all' | 'slept' | 'bed' | 'eff'
 
+// Modo de interação customizado para o gráfico de sono:
+// Dispara o tooltip de Média e Faixa ±DP sempre que o cursor passar em cima da faixa (mesmo entre barras),
+// e mostra as barras/pontos apenas quando o cursor estiver sobre eles.
+if (typeof Chart !== 'undefined' && Chart.Interaction && Chart.Interaction.modes) {
+    Chart.Interaction.modes.sleepBandMode = function(chart, e, options, useFinalPosition) {
+        const area = chart.chartArea;
+        if (!area || e.x < area.left || e.x > area.right || e.y < area.top || e.y > area.bottom) {
+            return [];
+        }
+
+        // 1. Verifica barras ou pontos de eficiência diretamente sob o cursor
+        const directHits = Chart.Interaction.modes.nearest(
+            chart,
+            e,
+            { intersect: true, axis: 'xy' },
+            useFinalPosition
+        ).filter(item => {
+            const ds = chart.data.datasets[item.datasetIndex];
+            return ds && !ds._isMeanLine && !ds._isBandLine && !ds._hideFromLegend;
+        });
+
+        // 2. Verifica se o cursor está passando em cima da faixa ±DP ou da linha tracejada de média
+        const bandMeta = chart.$sleepBandMeta;
+        const yScale = chart.scales && chart.scales.y;
+        const xScale = chart.scales && chart.scales.x;
+        const bandHits = [];
+
+        if (bandMeta && yScale && xScale && bandMeta.mean > 0) {
+            const yMeanPx = yScale.getPixelForValue(bandMeta.mean);
+            let isOverBand = false;
+            if (bandMeta.hasBand && bandMeta.sd > 0) {
+                const yUpperPx = yScale.getPixelForValue(bandMeta.upper);
+                const yLowerPx = yScale.getPixelForValue(bandMeta.lower);
+                const topPx = Math.min(yUpperPx, yLowerPx) - 6;
+                const botPx = Math.max(yUpperPx, yLowerPx) + 6;
+                isOverBand = (e.y >= topPx && e.y <= botPx);
+            } else {
+                isOverBand = Math.abs(e.y - yMeanPx) <= 10;
+            }
+
+            if (isOverBand) {
+                let xIdx = xScale.getValueForPixel(e.x);
+                if (typeof xIdx !== 'number' || isNaN(xIdx)) xIdx = 0;
+                xIdx = Math.max(0, Math.min((chart.data.labels?.length || 7) - 1, Math.round(xIdx)));
+
+                chart.data.datasets.forEach((ds, dIdx) => {
+                    if (ds._isMeanLine || ds._isBandLine) {
+                        const meta = chart.getDatasetMeta(dIdx);
+                        const el = meta && meta.data ? meta.data[xIdx] : null;
+                        if (el) {
+                            bandHits.push({ element: el, datasetIndex: dIdx, index: xIdx });
+                        }
+                    }
+                });
+            }
+        }
+
+        return [...directHits, ...bandHits];
+    };
+}
+
+// Plugin para desenhar apenas a linha tracejada na legenda da Média (sem retângulo ao redor)
+const sleepLegendDashPlugin = {
+    id: 'sleepLegendDashPlugin',
+    afterDraw(chart) {
+        const legend = chart.legend;
+        if (!legend || !Array.isArray(legend.legendItems) || !Array.isArray(legend.legendHitBoxes)) return;
+        const ctx = chart.ctx;
+        const boxWidth = (chart.options?.plugins?.legend?.labels?.boxWidth) || 36;
+
+        legend.legendItems.forEach((item, idx) => {
+            if (!item || !item._isMeanDashLegend) return;
+            const hitBox = legend.legendHitBoxes[idx];
+            if (!hitBox) return;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = item._dashColor || '#312e81';
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([6, 4]);
+            if (item.hidden) ctx.globalAlpha = 0.4;
+            const yCenter = hitBox.top + hitBox.height / 2;
+            ctx.moveTo(hitBox.left + 2, yCenter);
+            ctx.lineTo(hitBox.left + boxWidth - 2, yCenter);
+            ctx.stroke();
+            ctx.restore();
+        });
+    }
+};
+
 window.setDashSleepChartMode = function(mode) {
     dashSleepChartMode = mode;
     ['all', 'slept', 'bed', 'eff'].forEach(m => {
@@ -503,26 +593,28 @@ function renderDashboardCharts() {
 
     let datasets = [];
     let scales = {};
+    let bandMeta = null;
     // O desvio-padrão do gráfico de análise de sono é calculado com base na semana analisada (weekDays)
     const hasSleepSdBand = weekActive >= 2 && wSdSlept > 0;
 
     if (dashSleepChartMode === 'slept') {
         const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
-        const meanLabel = hasSleepSdBand
-            ? `Média (μ=${wMeanSlept.toFixed(1)}h, σ=±${wSdSlept.toFixed(2)}h)`
-            : `Média (μ=${wMeanSlept.toFixed(1)}h)`;
+        const meanLabel = `Média (μ=${wMeanSlept.toFixed(1)}h)`;
+        const upperVal = parseFloat((wMeanSlept + wSdSlept).toFixed(2));
+        const lowerVal = parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2));
+        bandMeta = { mean: wMeanSlept, sd: wSdSlept, upper: upperVal, lower: lowerVal, hasBand: hasSleepSdBand, unit: 'h' };
 
         datasets = [
             { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 8, order: 2 },
-            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 }
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 0, _isMeanLine: true, _meanColor: '#312e81', _meanText: `${wMeanSlept.toFixed(1)}h` }
         ];
 
         if (hasSleepSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat((wMeanSlept + wSdSlept).toFixed(2)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2)));
+            const plusSdLine = Array(7).fill(upperVal);
+            const minusSdLine = Array(7).fill(lowerVal);
             datasets.push(
-                { type: 'line', label: `+1 DP (+${wSdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', order: 1 }
+                { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 1, _hideFromLegend: true },
+                { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdSlept.toFixed(2)}h (${lowerVal.toFixed(2)}h a ${upperVal.toFixed(2)}h)` }
             );
         }
 
@@ -533,21 +625,22 @@ function renderDashboardCharts() {
     } else if (dashSleepChartMode === 'bed') {
         const hasBedSdBand = weekActive >= 2 && wSdBed > 0;
         const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanBed.toFixed(2)) : null);
-        const meanLabel = hasBedSdBand
-            ? `Média Cama (μ=${wMeanBed.toFixed(1)}h, σ=±${wSdBed.toFixed(2)}h)`
-            : `Média Cama (μ=${wMeanBed.toFixed(1)}h)`;
+        const meanLabel = `Média Cama (μ=${wMeanBed.toFixed(1)}h)`;
+        const upperVal = parseFloat((wMeanBed + wSdBed).toFixed(2));
+        const lowerVal = parseFloat(Math.max(0, wMeanBed - wSdBed).toFixed(2));
+        bandMeta = { mean: wMeanBed, sd: wSdBed, upper: upperVal, lower: lowerVal, hasBand: hasBedSdBand, unit: 'h' };
 
         datasets = [
             { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: 8, order: 2 },
-            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 }
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 0, _isMeanLine: true, _meanColor: '#312e81', _meanText: `${wMeanBed.toFixed(1)}h` }
         ];
 
         if (hasBedSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat((wMeanBed + wSdBed).toFixed(2)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanBed - wSdBed).toFixed(2)));
+            const plusSdLine = Array(7).fill(upperVal);
+            const minusSdLine = Array(7).fill(lowerVal);
             datasets.push(
-                { type: 'line', label: `+1 DP (+${wSdBed.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${wSdBed.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.14)', order: 1 }
+                { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 1, _hideFromLegend: true },
+                { type: 'line', label: `Faixa ±DP (±${wSdBed.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.14)', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdBed.toFixed(2)}h (${lowerVal.toFixed(2)}h a ${upperVal.toFixed(2)}h)` }
             );
         }
 
@@ -558,21 +651,22 @@ function renderDashboardCharts() {
     } else if (dashSleepChartMode === 'eff') {
         const hasEffSdBand = weekActive >= 2 && wSdEff > 0;
         const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanEff.toFixed(1)) : null);
-        const meanLabel = hasEffSdBand
-            ? `μ(E) = ${wMeanEff.toFixed(1)}% (σ=±${wSdEff.toFixed(1)}%)`
-            : `μ(E) = ${wMeanEff.toFixed(1)}%`;
+        const meanLabel = `Média Eficiência (μ=${wMeanEff.toFixed(1)}%)`;
+        const upperVal = parseFloat(Math.min(100, wMeanEff + wSdEff).toFixed(1));
+        const lowerVal = parseFloat(Math.max(0, wMeanEff - wSdEff).toFixed(1));
+        bandMeta = { mean: wMeanEff, sd: wSdEff, upper: upperVal, lower: lowerVal, hasBand: hasEffSdBand, unit: '%' };
 
         datasets = [
             { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: 8, order: 2 },
-            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#6b21a8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 }
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#6b21a8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 0, _isMeanLine: true, _meanColor: '#6b21a8', _meanText: `${wMeanEff.toFixed(1)}%` }
         ];
 
         if (hasEffSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat(Math.min(100, wMeanEff + wSdEff).toFixed(1)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanEff - wSdEff).toFixed(1)));
+            const plusSdLine = Array(7).fill(upperVal);
+            const minusSdLine = Array(7).fill(lowerVal);
             datasets.push(
-                { type: 'line', label: `+1 DP (+${wSdEff.toFixed(1)}%)`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${wSdEff.toFixed(1)}%)`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.14)', order: 1 }
+                { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 1, _hideFromLegend: true },
+                { type: 'line', label: `Faixa ±DP (±${wSdEff.toFixed(1)}%)`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.14)', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdEff.toFixed(1)}% (${lowerVal.toFixed(1)}% a ${upperVal.toFixed(1)}%)` }
             );
         }
 
@@ -583,21 +677,22 @@ function renderDashboardCharts() {
     } else {
         // Modo 'all': Cama vs Dormido com Eficiência e faixa ±DP baseada na semana analisada
         const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
-        const meanLabel = hasSleepSdBand
-            ? `Média Sono (μ=${wMeanSlept.toFixed(1)}h, σ=±${wSdSlept.toFixed(2)}h)`
-            : `Média Sono (μ=${wMeanSlept.toFixed(1)}h)`;
+        const meanLabel = `Média Sono (μ=${wMeanSlept.toFixed(1)}h)`;
+        const upperVal = parseFloat((wMeanSlept + wSdSlept).toFixed(2));
+        const lowerVal = parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2));
+        bandMeta = { mean: wMeanSlept, sd: wSdSlept, upper: upperVal, lower: lowerVal, hasBand: hasSleepSdBand, unit: 'h' };
 
         datasets = [
             { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
-            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 }
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, yAxisID: 'y', order: 1, _isMeanLine: true, _meanColor: '#312e81', _meanText: `${wMeanSlept.toFixed(1)}h` }
         ];
 
         if (hasSleepSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat((wMeanSlept + wSdSlept).toFixed(2)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2)));
+            const plusSdLine = Array(7).fill(upperVal);
+            const minusSdLine = Array(7).fill(lowerVal);
             datasets.push(
-                { type: 'line', label: `+1 DP (+${wSdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', yAxisID: 'y', order: 1 }
+                { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, yAxisID: 'y', order: 1, _hideFromLegend: true },
+                { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', yAxisID: 'y', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdSlept.toFixed(2)}h (${lowerVal.toFixed(2)}h a ${upperVal.toFixed(2)}h)` }
             );
         }
 
@@ -613,22 +708,93 @@ function renderDashboardCharts() {
         };
     }
 
+    const interactionMode = (Chart.Interaction && Chart.Interaction.modes && Chart.Interaction.modes.sleepBandMode)
+        ? 'sleepBandMode'
+        : 'index';
+
     const config = {
         type: 'bar',
         data: { labels: xLabels, datasets },
+        plugins: [sleepLegendDashPlugin],
         options: {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
             animations: { colors: false, x: false, y: false },
             transitions: { active: { animation: { duration: 0 } } },
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+            interaction: { mode: interactionMode, intersect: false },
+            hover: { mode: interactionMode, intersect: false },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 11 },
+                        boxWidth: 36,
+                        generateLabels(chart) {
+                            const baseLabels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                            return baseLabels
+                                .filter(item => {
+                                    const ds = chart.data.datasets[item.datasetIndex];
+                                    return ds && !ds._hideFromLegend;
+                                })
+                                .map(item => {
+                                    const ds = chart.data.datasets[item.datasetIndex];
+                                    if (ds && ds._isMeanLine) {
+                                        // Retira o retângulo e deixa apenas o tracejado desenhado pelo sleepLegendDashPlugin
+                                        return {
+                                            ...item,
+                                            fillStyle: 'rgba(0,0,0,0)',
+                                            strokeStyle: 'rgba(0,0,0,0)',
+                                            lineWidth: 0,
+                                            _isMeanDashLegend: true,
+                                            _dashColor: ds._meanColor || ds.borderColor || '#312e81'
+                                        };
+                                    }
+                                    if (ds && ds._isBandLine) {
+                                        return {
+                                            ...item,
+                                            fillStyle: ds.backgroundColor || 'rgba(99, 102, 241, 0.22)',
+                                            strokeStyle: ds.borderColor || 'rgba(99, 102, 241, 0.55)',
+                                            lineWidth: 1,
+                                            lineDash: [3, 3]
+                                        };
+                                    }
+                                    return item;
+                                });
+                        }
+                    }
+                },
+                tooltip: {
+                    filter(tooltipItem) {
+                        const ds = tooltipItem.dataset;
+                        return ds && !ds._hideFromLegend;
+                    },
+                    callbacks: {
+                        label(context) {
+                            const ds = context.dataset;
+                            if (!ds) return '';
+                            if (ds._isMeanLine) {
+                                return `${ds.label}`;
+                            }
+                            if (ds._isBandLine) {
+                                return ds._bandTooltip || ds.label;
+                            }
+                            const val = context.parsed.y;
+                            if (val === null || val === undefined) return '';
+                            if (ds.label && ds.label.includes('%')) {
+                                return `${ds.label}: ${val}%`;
+                            }
+                            return `${ds.label}: ${val}h`;
+                        }
+                    }
+                }
+            },
             scales
         }
     };
 
     dashSleepChartInstance = new Chart(sleepCanvas.getContext('2d'), config);
+    dashSleepChartInstance.$sleepBandMeta = bandMeta;
 
     renderDashLoadEvolutionChart();
 }
@@ -727,11 +893,11 @@ function populateDashLoadChartSelect(evoData, forceReset) {
     });
 }
 
-function buildLoadDatasetItem(label, seriesObj, color, isSingleView) {
+function buildLoadDatasetItem(label, seriesObj, color, isSingleView, extraOpts = {}) {
     const dataArr = seriesObj.volumeSeries.map(v => v !== null && v !== undefined ? parseFloat(v.toFixed(2)) : null);
     const nonNullCount = dataArr.filter(v => v !== null).length;
-    const baseRadius = isSingleView ? 5.5 : 4.5;
-    const hoverRadius = isSingleView ? 7.5 : 6.5;
+    const baseRadius = extraOpts.pointRadius !== undefined ? extraOpts.pointRadius : (isSingleView ? 5.5 : 5);
+    const hoverRadius = extraOpts.pointHoverRadius !== undefined ? extraOpts.pointHoverRadius : (isSingleView ? 7.5 : 7);
     return {
         type: 'line',
         label,
@@ -741,15 +907,18 @@ function buildLoadDatasetItem(label, seriesObj, color, isSingleView) {
         pointBackgroundColor: color,
         pointBorderColor: '#ffffff',
         pointBorderWidth: 1.5,
-        borderWidth: isSingleView ? 3 : 2.5,
+        borderWidth: extraOpts.borderWidth !== undefined ? extraOpts.borderWidth : (isSingleView ? 3 : 2.5),
+        borderDash: extraOpts.borderDash || [],
         pointRadius: baseRadius,
         pointHoverRadius: hoverRadius,
-        pointHitRadius: 4,
+        pointHitRadius: 5,
         showLine: nonNullCount > 1,
         tension: 0.25,
         spanGaps: true,
         fill: isSingleView && nonNullCount > 1,
-        _weightSeries: seriesObj.weightSeries
+        order: extraOpts.order !== undefined ? extraOpts.order : 1,
+        _weightSeries: seriesObj.weightSeries,
+        _groupId: seriesObj.id || null
     };
 }
 
@@ -758,15 +927,30 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
     const datasets = [];
 
     if (dashLoadChartScope === 'group') {
-        const groupKeys = ['total_all', 'upper_a', 'lower_a', 'upper_b', 'lower_b'];
         if (targetVal === 'all' || !evo.groups[targetVal]) {
-            groupKeys.forEach(gk => {
+            // Coloca os 4 grupos de treino primeiro (order: 1, desenhados na frente) para que suas bolinhas coloridas
+            // e tooltips nunca sejam encobertos pelo Volume Total (Geral).
+            const specificGroups = ['upper_a', 'lower_a', 'upper_b', 'lower_b'];
+            specificGroups.forEach(gk => {
                 const g = evo.groups[gk];
                 if (!g) return;
-                const hasData = g.volumeSeries.some(v => v !== null && v !== undefined);
-                if (!hasData && gk !== 'upper_a' && gk !== 'lower_a') return;
-                datasets.push(buildLoadDatasetItem(g.label, g, g.color, false));
+                datasets.push(buildLoadDatasetItem(g.label, g, g.color, false, {
+                    order: 1,
+                    pointRadius: 5.5,
+                    pointHoverRadius: 7.5
+                }));
             });
+            // Volume Total (Geral) ao fundo (order: 2, tracejado) conectando a tendência geral desde o 1º registro
+            if (evo.groups.total_all) {
+                const gt = evo.groups.total_all;
+                datasets.push(buildLoadDatasetItem(gt.label, gt, gt.color, false, {
+                    order: 2,
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }));
+            }
         } else {
             const g = evo.groups[targetVal];
             if (g) {
@@ -803,7 +987,7 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
             plugins: {
                 legend: { position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } },
                 tooltip: {
-                    // Garante que apenas o único ponto real sob o mouse seja exibido
+                    // Garante que apenas o único ponto real sob o mouse seja exibido (priorizando o grupo específico sobre o total_all)
                     filter(tooltipItem, index) {
                         return index === 0;
                     },
