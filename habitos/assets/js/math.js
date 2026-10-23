@@ -528,11 +528,11 @@ function calcLoadEvolution30d() {
     } catch (e) { logs = {}; }
 
     const groups = {
-        total_all: { id: 'total_all', label: 'Volume Total (Geral)', color: '#18181b', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
-        upper_a:   { id: 'upper_a',   label: 'Upper A',              color: '#e11d48', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
-        lower_a:   { id: 'lower_a',   label: 'Lower A',              color: '#1d4ed8', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
-        upper_b:   { id: 'upper_b',   label: 'Upper B',              color: '#f97316', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
-        lower_b:   { id: 'lower_b',   label: 'Lower B',              color: '#15803d', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 }
+        total_all: { id: 'total_all', label: 'Volume Total (Geral)', color: '#18181b', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
+        upper_a:   { id: 'upper_a',   label: 'Upper A',              color: '#e11d48', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
+        lower_a:   { id: 'lower_a',   label: 'Lower A',              color: '#1d4ed8', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
+        upper_b:   { id: 'upper_b',   label: 'Upper B',              color: '#f97316', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
+        lower_b:   { id: 'lower_b',   label: 'Lower B',              color: '#15803d', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) }
     };
 
     const exercisesMap = new Map();
@@ -548,8 +548,7 @@ function calcLoadEvolution30d() {
                     name: exName,
                     planId: resolveLogGroupPlanId(item),
                     volumeSeries: Array(30).fill(null),
-                    weightSeries: Array(30).fill(null),
-                    syntheticZeroIdx: -1
+                    weightSeries: Array(30).fill(null)
                 });
             }
         });
@@ -583,8 +582,7 @@ function calcLoadEvolution30d() {
                         name: exName,
                         planId,
                         volumeSeries: Array(30).fill(null),
-                        weightSeries: Array(30).fill(null),
-                        syntheticZeroIdx: -1
+                        weightSeries: Array(30).fill(null)
                     });
                 }
                 const exObj = exercisesMap.get(exName);
@@ -594,28 +592,247 @@ function calcLoadEvolution30d() {
         });
     });
 
-    // Garante que séries com apenas 1 registro nos 30 dias tenham um ponto inicial de tendência para conectar linha
-    function ensureTrendLineConnection(seriesObj) {
-        const nonNullIndices = [];
-        seriesObj.volumeSeries.forEach((v, idx) => {
-            if (v !== null && v !== undefined) nonNullIndices.push(idx);
-        });
-        if (nonNullIndices.length === 1) {
-            const onlyIdx = nonNullIndices[0];
-            const anchorIdx = onlyIdx > 0 ? 0 : 1;
-            seriesObj.volumeSeries[anchorIdx] = 0;
-            seriesObj.syntheticZeroIdx = anchorIdx;
-        }
-    }
-
-    Object.values(groups).forEach(ensureTrendLineConnection);
-    exercisesMap.forEach(ensureTrendLineConnection);
-
     return {
         days,
         groups,
         exercises: Array.from(exercisesMap.values()),
         hasAnyLog
+    };
+}
+
+/* Categoriza o texto de músculo em um dos grupamentos anatômicos principais */
+function categorizeMuscleGroup(rawMuscle, exName) {
+    const txt = `${rawMuscle || ''} ${exName || ''}`.toLowerCase();
+    if (txt.includes('peito') || txt.includes('peitor') || txt.includes('supino')) return 'Peitoral';
+    if (txt.includes('costa') || txt.includes('dorsal') || txt.includes('romboide') || txt.includes('remada') || txt.includes('puxada') || txt.includes('barra fixa')) return 'Costas';
+    if (txt.includes('quadr') || txt.includes('squat') || txt.includes('agacha') || txt.includes('leg press') || txt.includes('extensora')) return 'Quadríceps';
+    if (txt.includes('isquio') || txt.includes('flexora') || txt.includes('rdl') || txt.includes('stiff') || txt.includes('glúteo') || txt.includes('gluteo')) return 'Posterior / Glúteos';
+    if (txt.includes('deltoide') || txt.includes('ombro') || txt.includes('elevação lateral') || txt.includes('desenvolvimento')) return 'Ombros';
+    if (txt.includes('bíceps') || txt.includes('biceps') || txt.includes('rosca') || txt.includes('martelo')) return 'Bíceps';
+    if (txt.includes('tríceps') || txt.includes('triceps')) return 'Tríceps';
+    if (txt.includes('panturrilha') || txt.includes('sóleo') || txt.includes('gastrocnêmio')) return 'Panturrilhas';
+    if (txt.includes('abdom') || txt.includes('crunch') || txt.includes('infra')) return 'Abdômen';
+    if (txt.includes('cardio') || txt.includes('esteira') || txt.includes('bike')) return 'Cardio';
+    return 'Outros';
+}
+
+/* Calcula as métricas avançadas da aba Métricas (Opção B: PRs, 1RM Epley, Equilíbrio Muscular, Correlação Sono×Treino e Regularidade Circadiana) */
+function calcAdvancedAnalytics() {
+    let logs = {};
+    try {
+        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch (e) { logs = {}; }
+
+    const today = new Date();
+    const cutoff30dDate = new Date(today);
+    cutoff30dDate.setDate(today.getDate() - 29);
+    const cutoff30dIso = `${cutoff30dDate.getFullYear()}-${String(cutoff30dDate.getMonth() + 1).padStart(2, '0')}-${String(cutoff30dDate.getDate()).padStart(2, '0')}`;
+
+    // 1. PRs, 1RM Estimado (Epley) e Progressão por Exercício
+    const prMap = new Map();
+    const muscleBalance = {
+        'Costas': { sets: 0, volume: 0, sessions: 0 },
+        'Peitoral': { sets: 0, volume: 0, sessions: 0 },
+        'Quadríceps': { sets: 0, volume: 0, sessions: 0 },
+        'Posterior / Glúteos': { sets: 0, volume: 0, sessions: 0 },
+        'Ombros': { sets: 0, volume: 0, sessions: 0 },
+        'Bíceps': { sets: 0, volume: 0, sessions: 0 },
+        'Tríceps': { sets: 0, volume: 0, sessions: 0 },
+        'Panturrilhas': { sets: 0, volume: 0, sessions: 0 },
+        'Abdômen': { sets: 0, volume: 0, sessions: 0 }
+    };
+
+    const dailyWorkoutVolume = {}; // { 'YYYY-MM-DD': totalVol }
+
+    const sortedLogDates = Object.keys(logs).sort();
+    sortedLogDates.forEach(dateIso => {
+        const list = logs[dateIso];
+        if (!Array.isArray(list) || list.length === 0) return;
+
+        let dayVol = 0;
+        list.forEach(item => {
+            if (!item || !item.exerciseName) return;
+            const exName = String(item.exerciseName).trim();
+            const w = parseFloat(item.weight) || 0;
+            const vol = calcLogEntryVolume(item);
+            dayVol += vol;
+
+            const meta = findExerciseMeta(exName, item.habitId);
+            const sets = parseInt(item.sets, 10) || (meta && meta.sets ? parseInt(meta.sets, 10) : 3) || 3;
+            let reps = 10;
+            const repsStr = String(item.reps || (meta && meta.reps) || '10');
+            const mRange = repsStr.match(/(\d+)\s*[-–]\s*(\d+)/);
+            if (mRange) reps = (parseFloat(mRange[1]) + parseFloat(mRange[2])) / 2;
+            else {
+                const mSingle = repsStr.match(/(\d+)/);
+                if (mSingle) reps = parseFloat(mSingle[1]);
+            }
+
+            const muscleCat = categorizeMuscleGroup(item.muscle || (meta && meta.muscle), exName);
+            if (dateIso >= cutoff30dIso && muscleBalance[muscleCat]) {
+                muscleBalance[muscleCat].sets += sets;
+                muscleBalance[muscleCat].volume += vol;
+                muscleBalance[muscleCat].sessions += 1;
+            }
+
+            if (w <= 0) return;
+            // Fórmula de Epley para 1RM: w * (1 + reps / 30)
+            const epley1RM = w * (1 + Math.min(reps, 20) / 30);
+
+            if (!prMap.has(exName)) {
+                prMap.set(exName, {
+                    name: exName,
+                    muscleCategory: muscleCat,
+                    sessions: 0,
+                    firstDate: dateIso,
+                    firstWeight: w,
+                    lastDate: dateIso,
+                    lastWeight: w,
+                    maxWeight: w,
+                    maxWeightDate: dateIso,
+                    best1RM: epley1RM,
+                    maxSessionVolume: vol,
+                    maxVolumeDate: dateIso
+                });
+            }
+
+            const rec = prMap.get(exName);
+            rec.sessions += 1;
+            rec.lastDate = dateIso;
+            rec.lastWeight = w;
+            if (w >= rec.maxWeight) {
+                rec.maxWeight = w;
+                rec.maxWeightDate = dateIso;
+            }
+            if (epley1RM > rec.best1RM) {
+                rec.best1RM = epley1RM;
+            }
+            if (vol >= rec.maxSessionVolume) {
+                rec.maxSessionVolume = vol;
+                rec.maxVolumeDate = dateIso;
+            }
+        });
+
+        if (dayVol > 0) {
+            dailyWorkoutVolume[dateIso] = dayVol;
+        }
+    });
+
+    const exercisePRs = Array.from(prMap.values()).map(r => {
+        const progressionPct = r.firstWeight > 0 ? ((r.lastWeight - r.firstWeight) / r.firstWeight) * 100 : 0;
+        return { ...r, progressionPct };
+    }).sort((a, b) => b.best1RM - a.best1RM);
+
+    // 2. Correlação Sono × Performance de Treino (Scatter + Regressão Linear)
+    const correlationPoints = [];
+    Object.keys(dailyWorkoutVolume).sort().forEach(dateIso => {
+        const vol = dailyWorkoutVolume[dateIso];
+        const sleepEntry = sleepJournal ? sleepJournal[dateIso] : null;
+        if (sleepEntry && sleepEntry.bed && sleepEntry.bed !== '—') {
+            const { sleptH, eff } = calcSleepJournalEntry(sleepEntry);
+            if (sleptH > 0) {
+                const parts = dateIso.split('-');
+                const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateIso;
+                correlationPoints.push({ dateIso, label, sleptH: parseFloat(sleptH.toFixed(2)), volume: parseFloat(vol.toFixed(2)), eff: Math.round(eff) });
+            }
+        }
+    });
+
+    let pearsonR = null;
+    let regSlope = 0;
+    let regIntercept = 0;
+    if (correlationPoints.length >= 2) {
+        const n = correlationPoints.length;
+        const meanX = correlationPoints.reduce((a, p) => a + p.sleptH, 0) / n;
+        const meanY = correlationPoints.reduce((a, p) => a + p.volume, 0) / n;
+        let num = 0, denX = 0, denY = 0;
+        correlationPoints.forEach(p => {
+            const dx = p.sleptH - meanX;
+            const dy = p.volume - meanY;
+            num += dx * dy;
+            denX += dx * dx;
+            denY += dy * dy;
+        });
+        if (denX > 0 && denY > 0) {
+            pearsonR = num / Math.sqrt(denX * denY);
+            regSlope = num / denX;
+            regIntercept = meanY - regSlope * meanX;
+        }
+    }
+
+    // 3. Regularidade Circadiana (Consistência de Horário de Dormir e Acordar)
+    const circadianSeries = [];
+    const sleepDatesSorted = Object.keys(sleepJournal || {}).sort().slice(-30);
+    sleepDatesSorted.forEach(dateIso => {
+        const e = sleepJournal[dateIso];
+        if (!e || !e.bed || e.bed === '—') return;
+        const sleptMin = parseTimeHM(e.slept);
+        const wakeMin = parseTimeHM(e.wake);
+        const { sleptH, eff } = calcSleepJournalEntry(e);
+        if (sleptMin === null || wakeMin === null || sleptH <= 0) return;
+
+        // Normaliza horário de dormir em escala contínua (ex: 23:30 = 23.5, 01:00 = 25.0)
+        let sleptHourCont = sleptMin / 60;
+        if (sleptHourCont < 14) sleptHourCont += 24;
+        const wakeHour = wakeMin / 60;
+
+        const parts = dateIso.split('-');
+        const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateIso;
+        circadianSeries.push({
+            dateIso,
+            label,
+            sleptStr: e.slept,
+            wakeStr: e.wake,
+            sleptHourCont: parseFloat(sleptHourCont.toFixed(2)),
+            wakeHour: parseFloat(wakeHour.toFixed(2)),
+            sleptH: parseFloat(sleptH.toFixed(2)),
+            eff: Math.round(eff)
+        });
+    });
+
+    let bedtimeSdMinutes = null;
+    let wakeSdMinutes = null;
+    let avgSleptClock = '—';
+    let avgWakeClock = '—';
+
+    function formatContHourToHHMM(contH) {
+        let hNorm = contH % 24;
+        if (hNorm < 0) hNorm += 24;
+        const totalMin = Math.round(hNorm * 60);
+        const hh = Math.floor(totalMin / 60) % 24;
+        const mm = totalMin % 60;
+        return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    }
+
+    if (circadianSeries.length >= 1) {
+        const n = circadianSeries.length;
+        const meanSleptCont = circadianSeries.reduce((a, c) => a + c.sleptHourCont, 0) / n;
+        const meanWake = circadianSeries.reduce((a, c) => a + c.wakeHour, 0) / n;
+        avgSleptClock = formatContHourToHHMM(meanSleptCont);
+        avgWakeClock = formatContHourToHHMM(meanWake);
+
+        if (n >= 2) {
+            const varSlept = circadianSeries.reduce((a, c) => a + Math.pow((c.sleptHourCont - meanSleptCont) * 60, 2), 0) / n;
+            const varWake = circadianSeries.reduce((a, c) => a + Math.pow((c.wakeHour - meanWake) * 60, 2), 0) / n;
+            bedtimeSdMinutes = Math.round(Math.sqrt(varSlept));
+            wakeSdMinutes = Math.round(Math.sqrt(varWake));
+        }
+    }
+
+    return {
+        exercisePRs,
+        muscleBalance,
+        correlationPoints,
+        pearsonR,
+        regSlope,
+        regIntercept,
+        circadianSeries,
+        bedtimeSdMinutes,
+        wakeSdMinutes,
+        avgSleptClock,
+        avgWakeClock
     };
 }
 

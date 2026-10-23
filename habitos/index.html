@@ -475,42 +475,158 @@
             </div>
         </section>
 
-        <!-- MÉTRICAS -->
+        <!-- MÉTRICAS (OPÇÃO B — PERFORMANCE & CORRELAÇÕES) -->
         <section id="view-metrics" class="hidden space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-                    <div>
-                        <span class="text-[11px] font-mono uppercase font-bold text-emerald-600">1. PAINEL TOTAL — HORAS POR DIA VS. ENGAJAMENTO DIÁRIO</span>
-                        <p class="text-xs text-zinc-500 mt-1 mb-4">Volume diário agregado de todas as atividades na semana.</p>
+            <!-- KPIs de Performance & Correlação -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white border border-zinc-200 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-amber-600 font-bold">Maior 1RM Estimado</span>
+                        <span class="w-8 h-8 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                            <i data-lucide="trophy" class="w-4 h-4"></i>
+                        </span>
                     </div>
-                    <div class="relative h-80 w-full"><canvas id="totalPanelChart"></canvas></div>
+                    <div class="mt-3">
+                        <p id="metrics-kpi-1rm" class="text-2xl font-bold font-mono text-zinc-900">N/A</p>
+                        <p id="metrics-kpi-1rm-sub" class="text-xs text-zinc-500 mt-1 truncate">Fórmula de Epley: Carga × (1 + Reps/30)</p>
+                    </div>
                 </div>
 
+                <div class="bg-white border border-zinc-200 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-emerald-600 font-bold">Foco Muscular (30d)</span>
+                        <span class="w-8 h-8 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                            <i data-lucide="biceps-flexed" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="mt-3">
+                        <p id="metrics-kpi-muscle" class="text-2xl font-bold font-mono text-zinc-900">N/A</p>
+                        <p id="metrics-kpi-muscle-sub" class="text-xs text-zinc-500 mt-1 truncate">Grupamento com maior volume de séries</p>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-zinc-200 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-indigo-600 font-bold">Correlação Sono × Carga</span>
+                        <span class="w-8 h-8 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                            <i data-lucide="git-compare-arrows" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="mt-3">
+                        <p id="metrics-kpi-corr" class="text-2xl font-bold font-mono text-zinc-900">N/A</p>
+                        <p id="metrics-kpi-corr-sub" class="text-xs text-zinc-500 mt-1 truncate">Coeficiente r de Pearson (Sono vs. Volume)</p>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-zinc-200 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-purple-600 font-bold">Regularidade Circadiana</span>
+                        <span class="w-8 h-8 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
+                            <i data-lucide="clock-4" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                    <div class="mt-3">
+                        <p id="metrics-kpi-circadian" class="text-2xl font-bold font-mono text-zinc-900">N/A</p>
+                        <p id="metrics-kpi-circadian-sub" class="text-xs text-zinc-500 mt-1 truncate">Oscilação do horário de dormir (±DP min)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Linha 1 de Gráficos: Equilíbrio Muscular (30d) + Correlação Sono x Performance -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 1. Equilíbrio Muscular -->
                 <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-                    <div class="space-y-3 mb-3">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                            <div>
-                                <span class="text-[11px] font-mono uppercase font-bold text-purple-600">2. PAINEL POR ATIVIDADE (LINHA + DESVIO-PADRÃO ±σ<sub>H</sub>)</span>
-                                <p class="text-xs text-zinc-500">Eixo X: Dias da Semana • Eixo Y: Horas de Atividade</p>
-                            </div>
-                            <div class="flex bg-zinc-100 p-1 rounded-full border border-zinc-200 text-xs shrink-0">
-                                <button type="button" onclick="setActivityChartScope('molecular')" id="btn-scope-molecular" class="px-3 py-1 rounded-full bg-black text-white font-semibold transition">Molecular</button>
-                                <button type="button" onclick="setActivityChartScope('group')" id="btn-scope-group" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Por Grupo</button>
-                            </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                            <span class="text-[11px] font-mono uppercase font-bold text-emerald-600">1. EQUILÍBRIO MUSCULAR (ÚLTIMOS 30 DIAS)</span>
+                            <h3 class="text-base font-bold text-zinc-900 mt-0.5">Séries & Volume por Grupamento Muscular</h3>
+                            <p class="text-xs text-zinc-500 mt-0.5">Identifique grupos sub-treinados ou dominantes no ciclo recente.</p>
                         </div>
-                        <div id="group-view-mode-bar" class="hidden items-center justify-between gap-2 bg-purple-50/80 px-3.5 py-2 rounded-2xl border border-purple-200/80">
-                            <span class="text-[11px] font-semibold text-purple-900">Modo de Grupo:</span>
-                            <div class="flex bg-white p-0.5 rounded-full border border-purple-200 text-[11px]">
-                                <button type="button" onclick="setGroupViewMode('total')" id="btn-group-total" class="px-3 py-1 rounded-full bg-purple-600 text-white font-semibold transition">Visualização Total (Todos)</button>
-                                <button type="button" onclick="setGroupViewMode('particular')" id="btn-group-particular" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Visualização Particular</button>
-                            </div>
-                        </div>
-                        <div id="activity-target-selector-row" class="flex items-center justify-between gap-2 bg-zinc-50 px-3.5 py-2 rounded-2xl border border-zinc-200">
-                            <span id="activity-target-label" class="text-xs text-zinc-600 font-medium">Selecionar Atividade Molecular:</span>
-                            <select id="activity-chart-target" onchange="renderMetricsView()" class="bg-white border border-zinc-200 rounded-full px-3 py-1 text-xs font-medium text-zinc-900 max-w-[240px]"></select>
+                        <div class="inline-flex bg-zinc-100 p-1 rounded-full border border-zinc-200 text-xs shrink-0 self-start sm:self-auto">
+                            <button type="button" onclick="setMetricsMuscleMode('sets')" id="btn-muscle-mode-sets" class="px-3 py-1 rounded-full bg-black text-white font-semibold transition">Séries</button>
+                            <button type="button" onclick="setMetricsMuscleMode('volume')" id="btn-muscle-mode-volume" class="px-3 py-1 rounded-full text-zinc-600 hover:text-black transition">Volume (kg)</button>
                         </div>
                     </div>
-                    <div class="relative h-72 w-full"><canvas id="activityPanelChart"></canvas></div>
+                    <div class="relative h-72 w-full">
+                        <canvas id="metricsMuscleChart"></canvas>
+                        <div id="metrics-muscle-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center bg-white/95 rounded-2xl p-4">
+                            <i data-lucide="dumbbell" class="w-8 h-8 text-zinc-300 mb-2"></i>
+                            <p class="text-xs font-semibold text-zinc-500">Nenhum exercício registrado nos últimos 30 dias.</p>
+                            <p class="text-[11px] text-zinc-400 mt-0.5">Registre seus treinos na aba Atividade Física para visualizar o equilíbrio muscular.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Correlação Sono x Performance (Scatter + Regressão) -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] font-mono uppercase font-bold text-indigo-600">2. CORRELAÇÃO SONO × PERFORMANCE DE TREINO</span>
+                            <span id="metrics-corr-badge" class="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">r = N/A</span>
+                        </div>
+                        <h3 class="text-base font-bold text-zinc-900 mt-0.5">Impacto das Horas Dormidas no Volume de Carga</h3>
+                        <p class="text-xs text-zinc-500 mt-0.5">Cruzamento entre horas dormidas na noite (Eixo X) e volume total levantado no dia (Eixo Y).</p>
+                    </div>
+                    <div class="relative h-72 w-full">
+                        <canvas id="metricsSleepLoadCorrChart"></canvas>
+                        <div id="metrics-corr-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center bg-white/95 rounded-2xl p-4">
+                            <i data-lucide="scatter-chart" class="w-8 h-8 text-zinc-300 mb-2"></i>
+                            <p class="text-xs font-semibold text-zinc-500">Dados combinados insuficientes para correlação.</p>
+                            <p class="text-[11px] text-zinc-400 mt-0.5">Registre o sono e os exercícios nas mesmas datas para traçar a dispersão e a reta de tendência.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Linha 2: Regularidade Circadiana (Consistência de Horário) -->
+            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div>
+                        <span class="text-[11px] font-mono uppercase font-bold text-purple-600">3. REGULARIDADE CIRCADIANA & SOCIAL JETLAG (ÚLTIMOS 30 REGISTROS)</span>
+                        <h3 class="text-base font-bold text-zinc-900 mt-0.5">Consistência dos Horários de Dormir e Acordar</h3>
+                        <p class="text-xs text-zinc-500 mt-0.5">Quanto menor a oscilação (desvio-padrão em minutos), mais alinhado está o seu relógio biológico.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+                        <span id="metrics-circadian-slept-avg" class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">Dormir: —</span>
+                        <span id="metrics-circadian-wake-avg" class="px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-semibold">Acordar: —</span>
+                    </div>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="metricsCircadianChart"></canvas>
+                    <div id="metrics-circadian-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center bg-white/95 rounded-2xl p-4">
+                        <i data-lucide="moon" class="w-8 h-8 text-zinc-300 mb-2"></i>
+                        <p class="text-xs font-semibold text-zinc-500">Nenhum horário registrado no Diário do Sono.</p>
+                        <p class="text-[11px] text-zinc-400 mt-0.5">Utilize a aba Gestão do Sono para registrar seus horários de dormir e acordar.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Linha 3: Recordes Pessoais (PRs), 1RM Estimado e Progressão por Exercício -->
+            <div class="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
+                <div class="p-6 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <span class="text-[11px] font-mono uppercase font-bold text-amber-600">4. RECORDES PESSOAIS (PRs), 1RM ESTIMADO & PROGRESSÃO</span>
+                        <h3 class="text-base font-bold text-zinc-900 mt-0.5">Tabela Analítica de Força por Exercício</h3>
+                        <p class="text-xs text-zinc-500 mt-0.5">Comparativo entre primeira carga registrada, carga atual, recorde pessoal (PR) e 1RM estimado (Epley).</p>
+                    </div>
+                    <span id="metrics-prs-count-badge" class="text-xs font-mono font-semibold px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 self-start sm:self-auto">0 exercícios</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-zinc-200 text-[11px] font-mono uppercase text-zinc-400 bg-zinc-50/70">
+                                <th class="py-3.5 px-5">Exercício</th>
+                                <th class="py-3.5 px-3 text-center">Grupo Muscular</th>
+                                <th class="py-3.5 px-3 text-center">Sessões</th>
+                                <th class="py-3.5 px-3 text-center">Carga Inicial → Atual</th>
+                                <th class="py-3.5 px-3 text-center">Evolução (%)</th>
+                                <th class="py-3.5 px-3 text-center">PR Carga Máx.</th>
+                                <th class="py-3.5 px-3 text-center" title="Fórmula de Epley: Carga × (1 + Reps / 30)">1RM Estimado (Epley)</th>
+                                <th class="py-3.5 px-5 text-right">PR Volume (Sessão)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metrics-prs-tbody" class="divide-y divide-zinc-200 text-sm"></tbody>
+                    </table>
                 </div>
             </div>
         </section>

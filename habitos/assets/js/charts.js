@@ -1,7 +1,7 @@
-let activityChartScope = 'molecular';
-let groupViewMode = 'total';
-let totalChartInstance = null;
-let activityChartInstance = null;
+let metricsMuscleChartInstance = null;
+let metricsCorrChartInstance = null;
+let metricsCircadianChartInstance = null;
+let metricsMuscleMode = 'sets'; // 'sets' | 'volume'
 
 function hexToRgba(hex, alpha) {
     const clean = hex.replace('#', '');
@@ -11,191 +11,436 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-window.setActivityChartScope = function(scope) {
-    activityChartScope = scope;
-    document.getElementById('btn-scope-molecular').className = scope === 'molecular'
-        ? "px-3 py-1 rounded-full bg-black text-white font-semibold transition"
-        : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
-    document.getElementById('btn-scope-group').className = scope === 'group'
-        ? "px-3 py-1 rounded-full bg-black text-white font-semibold transition"
-        : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
-
-    const modeBar = document.getElementById('group-view-mode-bar');
-    if (modeBar) {
-        modeBar.classList.toggle('hidden', scope !== 'group');
-        modeBar.classList.toggle('flex', scope === 'group');
-    }
-
-    populateActivityChartTargetSelect();
-    renderMetricsView();
-};
-
-window.setGroupViewMode = function(mode) {
-    groupViewMode = mode;
-    const btnT = document.getElementById('btn-group-total');
-    const btnP = document.getElementById('btn-group-particular');
-    if (btnT && btnP) {
-        btnT.className = mode === 'total'
-            ? "px-3 py-1 rounded-full bg-purple-600 text-white font-semibold transition"
-            : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
-        btnP.className = mode === 'particular'
-            ? "px-3 py-1 rounded-full bg-purple-600 text-white font-semibold transition"
-            : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
-    }
-    populateActivityChartTargetSelect();
-    renderMetricsView();
-};
-
 function populateActivityChartTargetSelect() {
-    const sel = document.getElementById('activity-chart-target');
-    if (!sel) return;
-    const prev = sel.value;
-    sel.innerHTML = '';
-
-    if (activityChartScope === 'molecular') {
-        habits.forEach((h, idx) => {
-            const cat = CATEGORIES[h.category] || CATEGORIES.atv_fisica;
-            sel.innerHTML += `<option value="${idx}">${cat.emoji} ${h.name} (c/ ±DP)</option>`;
-        });
-        sel.innerHTML += `<option value="all">📊 Todas as Moleculares</option>`;
-    } else {
-        Object.keys(CATEGORIES).forEach(key => {
-            const cat = CATEGORIES[key];
-            sel.innerHTML += `<option value="${key}">${cat.emoji} Grupo: ${cat.label} (c/ ±DP)</option>`;
-        });
-        sel.innerHTML += `<option value="all">📊 Todos os Grupos</option>`;
-    }
-    if (prev && Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+    // Mantido por compatibilidade com chamadas legadas em renderAll()
 }
 
-function buildLineWithSdDatasets(label, series, colorHex, showBand) {
-    const n = series.length || 1;
-    const mean = series.reduce((a, b) => a + b, 0) / n;
-    const sd = Math.sqrt(series.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / n);
-
-    const datasets = [{
-        label: `${label} (μ=${mean.toFixed(2)}h, σ=${sd.toFixed(2)}h)`,
-        data: series.map(v => parseFloat(v.toFixed(2))),
-        borderColor: colorHex,
-        backgroundColor: colorHex,
-        borderWidth: 2.5,
-        pointRadius: 4,
-        tension: 0.35,
-        fill: false
-    }];
-
-    if (showBand) {
-        datasets.push(
-            {
-                label: `+1 DP (+${sd.toFixed(2)}h)`,
-                data: series.map(v => parseFloat((v + sd).toFixed(2))),
-                borderColor: hexToRgba(colorHex, 0.4),
-                borderWidth: 1,
-                borderDash: [4, 4],
-                pointRadius: 0,
-                tension: 0.35,
-                fill: false
-            },
-            {
-                label: `Banda ±DP (±${sd.toFixed(2)}h)`,
-                data: series.map(v => parseFloat(Math.max(0, v - sd).toFixed(2))),
-                borderColor: hexToRgba(colorHex, 0.4),
-                backgroundColor: hexToRgba(colorHex, 0.15),
-                borderWidth: 1,
-                borderDash: [4, 4],
-                pointRadius: 0,
-                tension: 0.35,
-                fill: '-1'
-            }
-        );
+window.setMetricsMuscleMode = function(mode) {
+    metricsMuscleMode = mode === 'volume' ? 'volume' : 'sets';
+    const btnSets = document.getElementById('btn-muscle-mode-sets');
+    const btnVol = document.getElementById('btn-muscle-mode-volume');
+    if (btnSets) {
+        btnSets.className = metricsMuscleMode === 'sets'
+            ? "px-3 py-1 rounded-full bg-black text-white font-semibold transition"
+            : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
     }
-    return datasets;
+    if (btnVol) {
+        btnVol.className = metricsMuscleMode === 'volume'
+            ? "px-3 py-1 rounded-full bg-black text-white font-semibold transition"
+            : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
+    }
+    renderMetricsView();
+};
+
+function formatDateBrShort(isoStr) {
+    if (!isoStr || typeof isoStr !== 'string') return '—';
+    const p = isoStr.split('-');
+    if (p.length !== 3) return isoStr;
+    return `${p[2]}/${p[1]}`;
+}
+
+function formatCircadianAxisHour(val) {
+    let h = ((val % 24) + 24) % 24;
+    const hh = Math.floor(h);
+    const mm = Math.round((h - hh) * 60);
+    return `${String(hh).padStart(2, '0')}:${String(mm === 60 ? 0 : mm).padStart(2, '0')}`;
 }
 
 function renderMetricsView() {
-    if (typeof Chart === 'undefined') return;
-    const sel = document.getElementById('activity-chart-target');
-    if (sel && sel.options.length === 0) populateActivityChartTargetSelect();
+    if (typeof Chart === 'undefined' || typeof calcAdvancedAnalytics !== 'function') return;
+    const data = calcAdvancedAnalytics();
 
-    const xLabels = weekDays.map(d => d.shortName);
-
-    const ctxTotal = document.getElementById('totalPanelChart').getContext('2d');
-    if (totalChartInstance) totalChartInstance.destroy();
-
-    const dailyHoursSum = [0, 0, 0, 0, 0, 0, 0];
-    const dailyChecksSum = [0, 0, 0, 0, 0, 0, 0];
-    habits.forEach(h => {
-        h.dailyHours.forEach((hr, i) => dailyHoursSum[i] += (parseFloat(hr) || 0));
-        h.checks.forEach((c, i) => { if (c) dailyChecksSum[i]++; });
-    });
-
-    totalChartInstance = new Chart(ctxTotal, {
-        type: 'bar',
-        data: {
-            labels: xLabels,
-            datasets: [
-                { label: 'Horas (h)', data: dailyHoursSum.map(v => parseFloat(v.toFixed(2))), backgroundColor: '#fde68a', borderRadius: 8, yAxisID: 'y' },
-                { label: 'Conclusão (%)', data: dailyChecksSum.map(c => habits.length > 0 ? Math.round((c / habits.length) * 100) : 0), backgroundColor: '#6ee7b7', borderRadius: 8, yAxisID: 'y1' }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            plugins: { legend: { position: 'bottom' } },
-            scales: {
-                y: { position: 'left', min: 0, grid: { color: '#f4f4f5' } },
-                y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } }
-            }
-        }
-    });
-
-    const ctxAct = document.getElementById('activityPanelChart').getContext('2d');
-    if (activityChartInstance) activityChartInstance.destroy();
-
-    const targetVal = sel ? sel.value : '0';
-    let datasets = [];
-
-    if (activityChartScope === 'molecular') {
-        if (targetVal === 'all') {
-            habits.forEach((h, idx) => {
-                datasets.push(...buildLineWithSdDatasets(h.name, h.dailyHours.map(v => parseFloat(v) || 0), PALETTE[idx % PALETTE.length], false));
-            });
+    // 1. KPIs Superiores
+    const kpi1rm = document.getElementById('metrics-kpi-1rm');
+    const kpi1rmSub = document.getElementById('metrics-kpi-1rm-sub');
+    if (kpi1rm && kpi1rmSub) {
+        if (data.exercisePRs.length > 0) {
+            const top = data.exercisePRs[0];
+            kpi1rm.textContent = `${top.best1RM.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
+            kpi1rmSub.textContent = `${top.name} (PR Carga: ${top.maxWeight.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg)`;
         } else {
-            const h = habits[parseInt(targetVal, 10) || 0] || habits[0];
-            if (h) datasets.push(...buildLineWithSdDatasets(h.name, h.dailyHours.map(v => parseFloat(v) || 0), (CATEGORIES[h.category] || CATEGORIES.atv_fisica).hex, true));
-        }
-    } else {
-        if (targetVal === 'all' || groupViewMode === 'total') {
-            Object.keys(CATEGORIES).forEach(key => {
-                const cat = CATEGORIES[key];
-                const series = [0, 0, 0, 0, 0, 0, 0];
-                habits.filter(h => h.category === key).forEach(h => h.dailyHours.forEach((hr, d) => series[d] += (parseFloat(hr) || 0)));
-                datasets.push(...buildLineWithSdDatasets(cat.label, series, cat.hex, false));
-            });
-        } else {
-            const cat = CATEGORIES[targetVal] || CATEGORIES.atv_fisica;
-            const series = [0, 0, 0, 0, 0, 0, 0];
-            habits.filter(h => h.category === targetVal).forEach(h => h.dailyHours.forEach((hr, d) => series[d] += (parseFloat(hr) || 0)));
-            datasets.push(...buildLineWithSdDatasets(`Grupo ${cat.label}`, series, cat.hex, true));
+            kpi1rm.textContent = 'N/A';
+            kpi1rmSub.textContent = 'Registre exercícios para estimar 1RM';
         }
     }
 
-    activityChartInstance = new Chart(ctxAct, {
-        type: 'line',
-        data: { labels: xLabels, datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
-            scales: {
-                x: { title: { display: true, text: 'Dias da Semana' }, grid: { color: '#f4f4f5' } },
-                y: { min: 0, title: { display: true, text: 'Horas de Atividade (h)' }, grid: { color: '#f4f4f5' } }
-            }
+    const kpiMuscle = document.getElementById('metrics-kpi-muscle');
+    const kpiMuscleSub = document.getElementById('metrics-kpi-muscle-sub');
+    if (kpiMuscle && kpiMuscleSub) {
+        if (data.muscleBalance.length > 0) {
+            const topM = data.muscleBalance[0];
+            kpiMuscle.textContent = topM.muscle;
+            kpiMuscleSub.textContent = `${topM.sets} séries • ${topM.volume.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg em 30d`;
+        } else {
+            kpiMuscle.textContent = 'N/A';
+            kpiMuscleSub.textContent = 'Sem séries registradas nos últimos 30d';
         }
-    });
+    }
+
+    const kpiCorr = document.getElementById('metrics-kpi-corr');
+    const kpiCorrSub = document.getElementById('metrics-kpi-corr-sub');
+    const corrBadge = document.getElementById('metrics-corr-badge');
+    if (kpiCorr && kpiCorrSub) {
+        if (data.pearsonR !== null) {
+            const rStr = (data.pearsonR >= 0 ? '+' : '') + data.pearsonR.toFixed(2);
+            kpiCorr.textContent = `r = ${rStr}`;
+            const absR = Math.abs(data.pearsonR);
+            const strength = absR >= 0.6 ? 'Forte' : absR >= 0.3 ? 'Moderada' : 'Fraca / Neutra';
+            const dir = data.pearsonR > 0.1 ? 'positiva' : data.pearsonR < -0.1 ? 'inversa' : 'estável';
+            kpiCorrSub.textContent = `Relação ${strength.toLowerCase()} ${dir} (${data.correlationPoints.length} dias c/ treino + sono)`;
+            if (corrBadge) corrBadge.textContent = `r = ${rStr} (${strength})`;
+        } else {
+            kpiCorr.textContent = 'N/A';
+            kpiCorrSub.textContent = data.correlationPoints.length === 1
+                ? '1 dia combinado (mín. 2 dias p/ correlação)'
+                : 'Registre sono e treino nas mesmas datas';
+            if (corrBadge) corrBadge.textContent = 'r = N/A';
+        }
+    }
+
+    const kpiCirc = document.getElementById('metrics-kpi-circadian');
+    const kpiCircSub = document.getElementById('metrics-kpi-circadian-sub');
+    if (kpiCirc && kpiCircSub) {
+        if (data.bedtimeSdMinutes !== null) {
+            kpiCirc.textContent = `±${data.bedtimeSdMinutes} min`;
+            const status = data.bedtimeSdMinutes <= 30 ? 'Alta consistência circadiana'
+                : data.bedtimeSdMinutes <= 60 ? 'Oscilação moderada de horário'
+                : 'Social Jetlag elevado (horários irregulares)';
+            kpiCircSub.textContent = `${status} (Acordar: ±${data.wakeSdMinutes || 0} min)`;
+        } else {
+            kpiCirc.textContent = 'N/A';
+            kpiCircSub.textContent = data.circadianSeries.length === 1
+                ? 'Mínimo de 2 noites no Diário para calcular ±DP'
+                : 'Registre horários no Diário do Sono';
+        }
+    }
+
+    // 2. Gráfico 1: Equilíbrio Muscular (Últimos 30d)
+    const muscleCanvas = document.getElementById('metricsMuscleChart');
+    const muscleEmpty = document.getElementById('metrics-muscle-empty');
+    if (metricsMuscleChartInstance) {
+        metricsMuscleChartInstance.destroy();
+        metricsMuscleChartInstance = null;
+    }
+    if (muscleCanvas) {
+        const hasMuscle = data.muscleBalance.length > 0;
+        if (muscleEmpty) {
+            muscleEmpty.classList.toggle('hidden', hasMuscle);
+            muscleEmpty.classList.toggle('flex', !hasMuscle);
+        }
+        if (hasMuscle) {
+            const labels = data.muscleBalance.map(m => m.muscle);
+            const values = data.muscleBalance.map(m => metricsMuscleMode === 'volume' ? m.volume : m.sets);
+            const colors = data.muscleBalance.map((_, idx) => getDistinctExerciseColor(idx));
+
+            metricsMuscleChartInstance = new Chart(muscleCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: metricsMuscleMode === 'volume' ? 'Volume Acumulado (kg)' : 'Séries Totais (30d)',
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 8,
+                        barThickness: 22
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label(ctx) {
+                                    const item = data.muscleBalance[ctx.dataIndex];
+                                    if (!item) return '';
+                                    const volFmt = item.volume.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                                    return `${item.sets} séries • ${volFmt} kg (${item.sessions} sessões)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            grid: { color: '#f4f4f5' },
+                            title: {
+                                display: true,
+                                text: metricsMuscleMode === 'volume' ? 'Volume Total (kg)' : 'Total de Séries Trabalhadas'
+                            }
+                        },
+                        y: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // 3. Gráfico 2: Correlação Sono x Performance (Scatter + Linha de Tendência)
+    const corrCanvas = document.getElementById('metricsSleepLoadCorrChart');
+    const corrEmpty = document.getElementById('metrics-corr-empty');
+    if (metricsCorrChartInstance) {
+        metricsCorrChartInstance.destroy();
+        metricsCorrChartInstance = null;
+    }
+    if (corrCanvas) {
+        const pts = data.correlationPoints;
+        const hasCorr = pts.length > 0;
+        if (corrEmpty) {
+            corrEmpty.classList.toggle('hidden', hasCorr);
+            corrEmpty.classList.toggle('flex', !hasCorr);
+        }
+        if (hasCorr) {
+            const scatterData = pts.map(p => ({ x: p.sleptH, y: p.volume, date: p.date, maxWeight: p.maxWeight }));
+            const datasets = [{
+                type: 'scatter',
+                label: 'Sessão (Sono × Volume)',
+                data: scatterData,
+                backgroundColor: '#4f46e5',
+                borderColor: '#ffffff',
+                borderWidth: 1.5,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }];
+
+            if (pts.length >= 2 && data.regSlope !== null && data.regIntercept !== null) {
+                const xs = pts.map(p => p.sleptH);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                if (maxX > minX) {
+                    const y1 = Math.max(0, data.regIntercept + data.regSlope * minX);
+                    const y2 = Math.max(0, data.regIntercept + data.regSlope * maxX);
+                    datasets.push({
+                        type: 'line',
+                        label: 'Tendência Linear',
+                        data: [
+                            { x: parseFloat(minX.toFixed(2)), y: parseFloat(y1.toFixed(2)) },
+                            { x: parseFloat(maxX.toFixed(2)), y: parseFloat(y2.toFixed(2)) }
+                        ],
+                        borderColor: '#e11d48',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false,
+                        tension: 0
+                    });
+                }
+            }
+
+            metricsCorrChartInstance = new Chart(corrCanvas.getContext('2d'), {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                        tooltip: {
+                            filter(item) {
+                                return item.datasetIndex === 0;
+                            },
+                            callbacks: {
+                                label(ctx) {
+                                    const raw = ctx.raw;
+                                    if (!raw) return '';
+                                    const dStr = formatDateBrShort(raw.date);
+                                    const volFmt = (raw.y || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                                    return `Data ${dStr}: ${raw.x.toFixed(1)}h dormidas → Volume: ${volFmt} kg`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            suggestedMin: 4,
+                            suggestedMax: 10,
+                            grid: { color: '#f4f4f5' },
+                            title: { display: true, text: 'Horas Dormidas na Noite (h)' },
+                            ticks: { callback: v => v + 'h' }
+                        },
+                        y: {
+                            min: 0,
+                            grid: { color: '#f4f4f5' },
+                            title: { display: true, text: 'Volume Total de Carga no Dia (kg)' },
+                            ticks: { callback: v => v.toLocaleString('pt-BR') + ' kg' }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // 4. Gráfico 3: Regularidade Circadiana
+    const circCanvas = document.getElementById('metricsCircadianChart');
+    const circEmpty = document.getElementById('metrics-circadian-empty');
+    const sleptAvgBadge = document.getElementById('metrics-circadian-slept-avg');
+    const wakeAvgBadge = document.getElementById('metrics-circadian-wake-avg');
+
+    if (sleptAvgBadge) {
+        sleptAvgBadge.textContent = data.avgSleptClock
+            ? `Dormir médio: ${data.avgSleptClock}${data.bedtimeSdMinutes !== null ? ` (±${data.bedtimeSdMinutes}m)` : ''}`
+            : 'Dormir: —';
+    }
+    if (wakeAvgBadge) {
+        wakeAvgBadge.textContent = data.avgWakeClock
+            ? `Acordar médio: ${data.avgWakeClock}${data.wakeSdMinutes !== null ? ` (±${data.wakeSdMinutes}m)` : ''}`
+            : 'Acordar: —';
+    }
+
+    if (metricsCircadianChartInstance) {
+        metricsCircadianChartInstance.destroy();
+        metricsCircadianChartInstance = null;
+    }
+    if (circCanvas) {
+        const cs = data.circadianSeries;
+        const hasCirc = cs.length > 0;
+        if (circEmpty) {
+            circEmpty.classList.toggle('hidden', hasCirc);
+            circEmpty.classList.toggle('flex', !hasCirc);
+        }
+        if (hasCirc) {
+            const xLabels = cs.map(c => c.label);
+            const sleptHours = cs.map(c => c.sleptMin !== null ? parseFloat((c.sleptMin / 60).toFixed(2)) : null);
+            const wakeHours = cs.map(c => c.wakeMin !== null ? parseFloat((c.wakeMin / 60).toFixed(2)) : null);
+            const sleptCount = sleptHours.filter(v => v !== null).length;
+            const wakeCount = wakeHours.filter(v => v !== null).length;
+
+            metricsCircadianChartInstance = new Chart(circCanvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: xLabels,
+                    datasets: [
+                        {
+                            label: 'Horário de Dormir',
+                            data: sleptHours,
+                            borderColor: '#4f46e5',
+                            backgroundColor: '#4f46e5',
+                            borderWidth: 2.5,
+                            pointRadius: 4.5,
+                            showLine: sleptCount > 1,
+                            spanGaps: true,
+                            tension: 0.25,
+                            _rawClock: cs.map(c => c.rawSlept || '—')
+                        },
+                        {
+                            label: 'Horário de Acordar',
+                            data: wakeHours,
+                            borderColor: '#9333ea',
+                            backgroundColor: '#9333ea',
+                            borderWidth: 2.5,
+                            pointRadius: 4.5,
+                            showLine: wakeCount > 1,
+                            spanGaps: true,
+                            tension: 0.25,
+                            _rawClock: cs.map(c => c.rawWake || '—')
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label(ctx) {
+                                    const rawArr = ctx.dataset._rawClock;
+                                    const clockStr = rawArr ? rawArr[ctx.dataIndex] : formatCircadianAxisHour(ctx.parsed.y);
+                                    return `${ctx.dataset.label}: ${clockStr}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: {
+                            grid: { color: '#f4f4f5' },
+                            title: { display: true, text: 'Horário do Relógio (HH:MM)' },
+                            ticks: {
+                                callback: v => formatCircadianAxisHour(v)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // 5. Tabela de Recordes Pessoais (PRs), 1RM Estimado e Progressão
+    const tbody = document.getElementById('metrics-prs-tbody');
+    const countBadge = document.getElementById('metrics-prs-count-badge');
+    if (countBadge) {
+        countBadge.textContent = `${data.exercisePRs.length} ${data.exercisePRs.length === 1 ? 'exercício' : 'exercícios'}`;
+    }
+    if (tbody) {
+        tbody.innerHTML = '';
+        if (data.exercisePRs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="py-10 px-6 text-center text-xs text-zinc-400">
+                        Nenhum exercício registrado ainda. Marque seus treinos na aba <strong>Atividade Física</strong> para acompanhar seus Recordes Pessoais (PRs) e 1RM Estimado.
+                    </td>
+                </tr>
+            `;
+        } else {
+            data.exercisePRs.forEach(ex => {
+                const firstFmt = ex.firstWeight.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const currFmt = ex.currentWeight.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const maxWFmt = ex.maxWeight.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const rmFmt = ex.best1RM.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                const volFmt = ex.maxVolume.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+                let progBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-zinc-100 text-zinc-600">0.0%</span>`;
+                if (ex.sessionsCount > 1) {
+                    if (ex.progressionPct > 0.05) {
+                        progBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">+${ex.progressionPct.toFixed(1)}%</span>`;
+                    } else if (ex.progressionPct < -0.05) {
+                        progBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">${ex.progressionPct.toFixed(1)}%</span>`;
+                    }
+                } else {
+                    progBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono text-zinc-400 bg-zinc-50 border border-zinc-200">1ª sessão</span>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-zinc-50/80 transition">
+                        <td class="py-3.5 px-5 font-semibold text-zinc-900">${ex.name}</td>
+                        <td class="py-3.5 px-3 text-center">
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-700">${ex.muscleGroup}</span>
+                        </td>
+                        <td class="py-3.5 px-3 text-center font-mono text-xs text-zinc-600">${ex.sessionsCount}</td>
+                        <td class="py-3.5 px-3 text-center font-mono text-xs text-zinc-700">
+                            ${firstFmt} kg <span class="text-zinc-400 mx-1">→</span> <strong>${currFmt} kg</strong>
+                        </td>
+                        <td class="py-3.5 px-3 text-center">${progBadge}</td>
+                        <td class="py-3.5 px-3 text-center font-mono font-bold text-zinc-900">
+                            ${maxWFmt} kg
+                            <span class="block text-[10px] font-normal text-zinc-400">${formatDateBrShort(ex.maxWeightDate)}</span>
+                        </td>
+                        <td class="py-3.5 px-3 text-center font-mono font-bold text-amber-700 bg-amber-50/40">
+                            ${rmFmt} kg
+                        </td>
+                        <td class="py-3.5 px-5 text-right font-mono text-xs font-semibold text-zinc-800">
+                            ${volFmt} kg
+                            <span class="block text-[10px] font-normal text-zinc-400">${formatDateBrShort(ex.maxVolumeDate)}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    }
+
+    if (typeof refreshIcons === 'function') refreshIcons();
 }
 
 /* ===== Dashboard (somente leitura) ===== */
@@ -483,28 +728,28 @@ function populateDashLoadChartSelect(evoData, forceReset) {
 }
 
 function buildLoadDatasetItem(label, seriesObj, color, isSingleView) {
-    const synIdx = typeof seriesObj.syntheticZeroIdx === 'number' ? seriesObj.syntheticZeroIdx : -1;
+    const dataArr = seriesObj.volumeSeries.map(v => v !== null && v !== undefined ? parseFloat(v.toFixed(2)) : null);
+    const nonNullCount = dataArr.filter(v => v !== null).length;
     const baseRadius = isSingleView ? 5.5 : 4.5;
     const hoverRadius = isSingleView ? 7.5 : 6.5;
     return {
         type: 'line',
         label,
-        data: seriesObj.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
+        data: dataArr,
         borderColor: color,
         backgroundColor: isSingleView ? hexToRgba(color, 0.16) : color,
         pointBackgroundColor: color,
         pointBorderColor: '#ffffff',
         pointBorderWidth: 1.5,
         borderWidth: isSingleView ? 3 : 2.5,
-        pointRadius: ctx => ctx.dataIndex === synIdx ? 0 : baseRadius,
-        pointHoverRadius: ctx => ctx.dataIndex === synIdx ? 0 : hoverRadius,
-        pointHitRadius: ctx => ctx.dataIndex === synIdx ? 0 : 4,
-        showLine: true,
+        pointRadius: baseRadius,
+        pointHoverRadius: hoverRadius,
+        pointHitRadius: 4,
+        showLine: nonNullCount > 1,
         tension: 0.25,
         spanGaps: true,
-        fill: isSingleView,
-        _weightSeries: seriesObj.weightSeries,
-        _syntheticZeroIdx: synIdx
+        fill: isSingleView && nonNullCount > 1,
+        _weightSeries: seriesObj.weightSeries
     };
 }
 
@@ -518,7 +763,7 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
             groupKeys.forEach(gk => {
                 const g = evo.groups[gk];
                 if (!g) return;
-                const hasData = g.volumeSeries.some((v, idx) => v !== null && idx !== g.syntheticZeroIdx);
+                const hasData = g.volumeSeries.some(v => v !== null && v !== undefined);
                 if (!hasData && gk !== 'upper_a' && gk !== 'lower_a') return;
                 datasets.push(buildLoadDatasetItem(g.label, g, g.color, false));
             });
@@ -558,16 +803,12 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
             plugins: {
                 legend: { position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } },
                 tooltip: {
-                    // Garante que apenas o único ponto real sob o mouse seja exibido (sem mostrar outros exercícios nem o ponto de origem 0)
+                    // Garante que apenas o único ponto real sob o mouse seja exibido
                     filter(tooltipItem, index) {
-                        if (tooltipItem.dataset && tooltipItem.dataIndex === tooltipItem.dataset._syntheticZeroIdx) {
-                            return false;
-                        }
                         return index === 0;
                     },
                     callbacks: {
                         label(context) {
-                            if (context.dataset && context.dataIndex === context.dataset._syntheticZeroIdx) return '';
                             const vol = context.parsed.y;
                             if (vol === null || vol === undefined) return '';
                             const ws = context.dataset._weightSeries;
