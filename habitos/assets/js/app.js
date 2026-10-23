@@ -9,12 +9,15 @@ function refreshIcons() {
 
 window.toggleDesktopSidebar = function() {
     const sb = document.getElementById('desktop-sidebar');
-    const icon = document.getElementById('sidebar-toggle-icon');
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
     if (!sb) return;
     isSidebarCollapsed = !isSidebarCollapsed;
     sb.classList.toggle('sidebar-expanded', !isSidebarCollapsed);
     sb.classList.toggle('sidebar-collapsed', isSidebarCollapsed);
-    if (icon) icon.setAttribute('data-lucide', isSidebarCollapsed ? 'panel-left-open' : 'panel-left-close');
+    if (toggleBtn) {
+        const iconName = isSidebarCollapsed ? 'panel-left-open' : 'panel-left-close';
+        toggleBtn.innerHTML = `<i data-lucide="${iconName}" id="sidebar-toggle-icon" class="w-4 h-4"></i>`;
+    }
     refreshIcons();
 };
 

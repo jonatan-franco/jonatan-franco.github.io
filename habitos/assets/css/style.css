@@ -1,12 +1,38 @@
 /* Transição e Estado da Sidebar Expandível */
+#desktop-sidebar {
+    overflow-x: hidden;
+}
 #desktop-sidebar.sidebar-expanded {
     width: 15.5rem; /* 248px */
+    min-width: 15.5rem;
 }
 #desktop-sidebar.sidebar-collapsed {
-    width: 4.75rem; /* 76px */
+    width: 4.5rem; /* 72px */
+    min-width: 4.5rem;
 }
 #desktop-sidebar.sidebar-collapsed .sidebar-label {
-    display: none;
+    display: none !important;
+}
+#desktop-sidebar.sidebar-collapsed > div {
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+}
+#desktop-sidebar.sidebar-collapsed #sidebar-header-row {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+}
+#desktop-sidebar.sidebar-collapsed #sidebar-profile-trigger {
+    gap: 0;
+    justify-content: center;
+}
+#desktop-sidebar.sidebar-collapsed .nav-item,
+#desktop-sidebar.sidebar-collapsed .sidebar-footer-btn {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    gap: 0;
 }
 
 /* Custom Checkboxes na Tabela Métrica Semanal */

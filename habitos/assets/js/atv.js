@@ -59,7 +59,7 @@ const WORKOUT_PLAN = [
     }
 ];
 const PLAN_SEED_KEY = 'hq_plan_seeded_v1';
-const ATV_UI_STATE_KEY = 'hq_atv_ui_state_v1';
+const ATV_UI_STATE_KEY = 'hq_atv_ui_state_v2';
 
 let atvLogs = {}; // { "YYYY-MM-DD": [ { id, habitId, planId, exerciseName, muscle, sets, reps, rest, weight, notes }, ... ] }
 
@@ -103,11 +103,19 @@ function loadAtvUiState() {
             if (parsed && typeof parsed === 'object') {
                 if (parsed.selectedAtvDate) selectedAtvDate = parsed.selectedAtvDate;
                 if (parsed.selectedWorkoutPlanId) selectedWorkoutPlanId = parsed.selectedWorkoutPlanId;
+                const cleanCardInputs = {};
+                if (parsed.cardInputs && typeof parsed.cardInputs === 'object') {
+                    Object.keys(parsed.cardInputs).forEach(k => {
+                        if (/^\d{4}-\d{2}-\d{2}_/.test(k)) {
+                            cleanCardInputs[k] = parsed.cardInputs[k];
+                        }
+                    });
+                }
                 atvUiState = {
                     selectedAtvDate: selectedAtvDate,
                     selectedWorkoutPlanId: selectedWorkoutPlanId,
                     carouselScrollLeft: Number(parsed.carouselScrollLeft) || 0,
-                    cardInputs: (parsed.cardInputs && typeof parsed.cardInputs === 'object') ? parsed.cardInputs : {},
+                    cardInputs: cleanCardInputs,
                     customInputs: (parsed.customInputs && typeof parsed.customInputs === 'object')
                         ? { name: '', muscle: '', weight: '', sets: '3', reps: '10', rest: '90s', notes: '', ...parsed.customInputs }
                         : { name: '', muscle: '', weight: '', sets: '3', reps: '10', rest: '90s', notes: '' }
@@ -316,7 +324,7 @@ window.onAtvCarouselScroll = function(trackEl) {
 };
 
 window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
-    const key = `${selectedWorkoutPlanId}_${cardIndex}`;
+    const key = `${selectedAtvDate}_${selectedWorkoutPlanId}_${cardIndex}`;
     const exEl = document.getElementById(`atv-card-ex-${cardIndex}`);
     const weightEl = document.getElementById(`atv-card-weight-${cardIndex}`);
     const notesEl = document.getElementById(`atv-card-notes-${cardIndex}`);
@@ -326,7 +334,7 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
     const chosenName = exEl ? exEl.value : (ex ? ex.name : '');
 
     if (exerciseChanged && ex) {
-        // Atualiza o título e a carga de referência sugerida para a variação escolhida
+        // Atualiza apenas o título e o selo de referência para a variação escolhida (sem preencher o input de carga)
         const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name], ex.load);
         const refFormatted = refVal !== null ? formatWeightNumber(refVal) : '';
         const titleEl = document.getElementById(`atv-card-title-${cardIndex}`);
@@ -342,9 +350,6 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
             } else {
                 refBadgeEl.classList.add('hidden');
             }
-        }
-        if (weightEl && refFormatted) {
-            weightEl.value = refFormatted;
         }
     }
 
@@ -488,6 +493,9 @@ window.submitAtvCardLog = function(cardIndex) {
         notes: notesVal
     });
 
+    if (weightInput) weightInput.value = '';
+    if (notesInput) notesInput.value = '';
+
     const track = document.getElementById('atv-carousel-track');
     if (track) atvUiState.carouselScrollLeft = track.scrollLeft;
     window.onAtvCardFieldChange(cardIndex, false);
@@ -538,6 +546,11 @@ window.submitCustomAtvLog = function(event) {
         weight: parseFloat(weightVal.toFixed(2)),
         notes
     });
+
+    if (nameEl) nameEl.value = '';
+    if (muscleEl) muscleEl.value = '';
+    if (weightEl) weightEl.value = '';
+    if (notesEl) notesEl.value = '';
 
     const track = document.getElementById('atv-carousel-track');
     if (track) atvUiState.carouselScrollLeft = track.scrollLeft;
@@ -848,7 +861,7 @@ function renderAtvFisicaInteractiveView() {
         const muscleEmoji = getMuscleEmoji(ex.muscle);
         const dayLoggedCount = currentLogs.filter(l => l.exerciseName === ex.name || (ex.variations && ex.variations.includes(l.exerciseName))).length;
 
-        const savedCardState = atvUiState.cardInputs[`${currentWorkout.planId}_${idx}`] || {};
+        const savedCardState = atvUiState.cardInputs[`${selectedAtvDate}_${currentWorkout.planId}_${idx}`] || {};
         const selectedExName = savedCardState.exercise && (savedCardState.exercise === ex.name || (ex.variations && ex.variations.includes(savedCardState.exercise)))
             ? savedCardState.exercise
             : ex.name;
@@ -857,9 +870,7 @@ function renderAtvFisicaInteractiveView() {
         const weightedRef = calcWeightedExerciseRefLoad([selectedExName, ex.name, ...(ex.variations || [])], ex.load);
         const suggestedLoad = weightedRef !== null ? formatWeightNumber(weightedRef) : '';
 
-        const weightValueToUse = (savedCardState.weight !== undefined && savedCardState.weight !== '')
-            ? savedCardState.weight
-            : suggestedLoad;
+        const weightValueToUse = savedCardState.weight || '';
         const notesValueToUse = savedCardState.notes || '';
 
         const mainRefVal = calcWeightedExerciseRefLoad([ex.name, ...(ex.variations || [])], ex.load);
