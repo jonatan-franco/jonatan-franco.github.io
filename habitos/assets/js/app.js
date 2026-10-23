@@ -26,7 +26,7 @@ const ROUTE_CONFIG = {
     dashboard:  { eyebrow: 'DASHBOARD' },
     atv_fisica: { eyebrow: 'GRUPO',     title: 'Atividade Física' },
     sono:       { eyebrow: 'GRUPO',     title: 'Gestão do Sono' },
-    timer:      { eyebrow: 'TIMER',     title: 'Cronômetro & Pomodoro' },
+    timer:      { eyebrow: 'TIMER',     title: 'Timer' },
     metrics:    { eyebrow: 'ANÁLISE',   title: 'Métricas' },
     calendar:   { eyebrow: 'AGENDA',    title: 'Calendário Semanal' }
 };
@@ -877,7 +877,7 @@ window.pullFromGist = async function() {
     SafeStorage.setItem('hq_gist_token', token);
     SafeStorage.setItem('hq_gist_id', gistId);
     status.textContent = "Baixando...";
-    const ok = await autoPullFromGist();
+    const ok = await autoPullFromGist(true);
     if (ok && typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
     if (ok) renderAll();
     status.textContent = ok ? "✅ Sincronizado!" : "❌ Falha ao baixar. Verifique o Token e o ID.";
@@ -958,17 +958,20 @@ window.addEventListener('DOMContentLoaded', () => {
     if (typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();
     if (typeof loadAtvLogs === 'function') loadAtvLogs();
 
-    document.getElementById('manual-hours-form').addEventListener('submit', e => {
-        e.preventDefault();
-        const hIdx = parseInt(document.getElementById('manual-habit-select').value, 10);
-        const dIdx = parseInt(document.getElementById('manual-day-select').value, 10);
-        const hrs = parseFloat(document.getElementById('manual-hours-input').value) || 0;
-        if (habits[hIdx] && hrs > 0) {
-            habits[hIdx].dailyHours[dIdx] = parseFloat(((habits[hIdx].dailyHours[dIdx] || 0) + hrs).toFixed(2));
-            habits[hIdx].checks[dIdx] = true;
-            saveData();
-        }
-    });
+    const manualForm = document.getElementById('manual-hours-form');
+    if (manualForm) {
+        manualForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const hIdx = parseInt(document.getElementById('manual-habit-select').value, 10);
+            const dIdx = parseInt(document.getElementById('manual-day-select').value, 10);
+            const hrs = parseFloat(document.getElementById('manual-hours-input').value) || 0;
+            if (habits[hIdx] && hrs > 0) {
+                habits[hIdx].dailyHours[dIdx] = parseFloat(((habits[hIdx].dailyHours[dIdx] || 0) + hrs).toFixed(2));
+                habits[hIdx].checks[dIdx] = true;
+                saveData();
+            }
+        });
+    }
 
     document.getElementById('habit-modal-form').addEventListener('submit', e => {
         e.preventDefault();
@@ -1058,9 +1061,9 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(refreshIcons, 300);
     setTimeout(refreshIcons, 1000);
 
-    autoPullFromGist();
-    window.addEventListener('focus', autoPullFromGist);
+    autoPullFromGist(false);
+    window.addEventListener('focus', () => autoPullFromGist(false));
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') autoPullFromGist();
+        if (document.visibilityState === 'visible') autoPullFromGist(false);
     });
 });

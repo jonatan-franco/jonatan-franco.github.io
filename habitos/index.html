@@ -288,104 +288,109 @@
             </div>
         </section>
 
-        <!-- TIMER -->
-        <section id="view-timer" class="hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div class="lg:col-span-7 bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div onclick="selectTimerMode('stopwatch')" id="card-tmode-stopwatch" class="cursor-pointer p-3.5 rounded-2xl border-2 border-purple-300 bg-[#ede9fe] transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>CRONÔMETRO</span><span>🕒</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-stopwatch" value="0" min="0" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Progressivo</span>
-                        </div>
-                        <div onclick="selectTimerMode('countdown')" id="card-tmode-countdown" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>REGRESSIVO</span><span>⏳</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-countdown" value="30" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Regressivo</span>
-                        </div>
-                        <div onclick="selectTimerMode('pomodoro')" id="card-tmode-pomodoro" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>POMODORO</span><span>🔥</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-pomodoro" value="25" min="1" max="240" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Regressivo</span>
-                        </div>
-                        <div onclick="selectTimerMode('deepwork')" id="card-tmode-deepwork" class="cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center">
-                            <div class="flex justify-between items-center w-full text-[10px] font-bold uppercase text-zinc-800"><span>DEEP WORK</span><span>🧠</span></div>
-                            <div class="my-2.5" onclick="event.stopPropagation()">
-                                <input type="number" id="input-min-deepwork" value="50" min="1" max="360" onchange="onTimerConfigChange()" class="w-16 bg-white rounded-full py-1 text-center font-mono font-bold text-sm text-zinc-900 shadow-sm border border-zinc-200">
-                            </div>
-                            <span class="text-[11px] text-zinc-600">Regressivo</span>
+        <!-- TIMER (CRONÔMETRO & REGRESSIVO — ESTILO SAMSUNG CLOCK SWIPEABLE) -->
+        <section id="view-timer" class="hidden space-y-5">
+            <!-- Barra superior de abas + navegação entre as duas telas -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-zinc-200 rounded-3xl px-5 py-3.5 shadow-xs">
+                <div class="flex items-center gap-2 bg-zinc-100 p-1 rounded-full border border-zinc-200">
+                    <button type="button" id="tab-timer-stopwatch" onclick="scrollToTimerSlide('stopwatch')" class="px-5 py-2 rounded-full bg-black text-white text-xs sm:text-sm font-bold shadow-xs transition">
+                        🕒 Cronômetro
+                    </button>
+                    <button type="button" id="tab-timer-countdown" onclick="scrollToTimerSlide('countdown')" class="px-5 py-2 rounded-full text-zinc-600 hover:text-black text-xs sm:text-sm font-bold transition">
+                        ⏳ Regressivo
+                    </button>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-mono text-zinc-400">
+                    <span>Arraste para o lado</span>
+                    <button type="button" onclick="scrollToTimerSlide('stopwatch')" class="w-8 h-8 rounded-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-bold flex items-center justify-center transition" title="Cronômetro">‹</button>
+                    <button type="button" onclick="scrollToTimerSlide('countdown')" class="w-8 h-8 rounded-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 font-bold flex items-center justify-center transition" title="Regressivo">›</button>
+                </div>
+            </div>
+
+            <!-- Carrossel Horizontal (2 Telas: Cronômetro e Regressivo) -->
+            <div id="timer-carousel-track" onscroll="onTimerCarouselScroll(this)" class="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 scrollbar-thin">
+                <!-- TELA 1: CRONÔMETRO (ESTILO SAMSUNG A34) -->
+                <div id="timer-slide-stopwatch" class="w-full shrink-0 snap-center bg-zinc-950 text-white rounded-[2.5rem] p-6 sm:p-12 shadow-xl min-h-[520px] flex flex-col items-center justify-between border border-zinc-800">
+                    <div class="w-full flex justify-between items-center">
+                        <span class="text-[11px] font-mono uppercase tracking-widest text-indigo-400 font-bold">🕒 CRONÔMETRO</span>
+                        <span id="sw-status-badge" class="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-400">Pronto</span>
+                    </div>
+
+                    <!-- Visor Gigante Estilo Relógio Samsung -->
+                    <div class="my-6 flex flex-col items-center justify-center text-center select-none">
+                        <div class="flex items-baseline justify-center">
+                            <span id="sw-main-display" class="text-6xl sm:text-7xl md:text-8xl font-mono font-extrabold tracking-tight text-white">00:00:00</span>
+                            <span id="sw-ms-display" class="text-2xl sm:text-4xl font-mono font-bold text-indigo-400 ml-1.5">.00</span>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-100 p-4 rounded-2xl">
-                        <div>
-                            <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
-                            <select id="timer-habit-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">DIA</label>
-                            <select id="timer-day-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                        </div>
-                    </div>
+                    <!-- Lista de Voltas (Laps) -->
+                    <div id="sw-laps-container" class="hidden w-full max-w-md max-h-40 overflow-y-auto bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3 mb-4 divide-y divide-zinc-800/80 text-xs font-mono"></div>
 
-                    <div class="bg-black text-white rounded-3xl py-8 px-4 flex flex-col items-center justify-center shadow-inner">
-                        <span id="timer-mode-badge" class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 mb-2">MODO: CRONÔMETRO</span>
-                        <div id="timer-display" class="text-5xl sm:text-6xl font-mono font-bold tracking-wider">00:00:00</div>
-                        <div id="countdown-progress-container" class="hidden w-full max-w-xs bg-zinc-800 h-1.5 rounded-full overflow-hidden mt-4">
-                            <div id="countdown-progress-bar" class="bg-[#00e676] h-full transition-all duration-300" style="width: 100%"></div>
-                        </div>
-                        <div class="flex items-center gap-2 mt-5">
-                            <button type="button" onclick="adjustTimerMinutes(-5)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-5m</button>
-                            <button type="button" onclick="adjustTimerMinutes(-1)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">-1m</button>
-                            <button type="button" onclick="adjustTimerMinutes(1)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">+1m</button>
-                            <button type="button" onclick="adjustTimerMinutes(5)" class="px-3 py-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono">+5m</button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <label class="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
-                            <input type="checkbox" id="timer-auto-check" checked class="rounded text-blue-600">
-                            <span>Marcar presença ao salvar</span>
-                        </label>
-                        <div class="flex items-center gap-3">
-                            <button type="button" onclick="toggleTimer()" id="btn-timer-toggle" class="flex-1 py-3 bg-black hover:bg-zinc-800 text-white rounded-full text-sm font-semibold transition">▷ Iniciar</button>
-                            <button type="button" onclick="finishAndLogSession(false)" class="px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-900 border border-zinc-300 rounded-full text-sm font-semibold transition">✓ Salvar</button>
-                            <button type="button" onclick="selectTimerMode(timerMode)" class="p-3 bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-full transition">↺</button>
-                        </div>
+                    <!-- Botões Estilo One UI -->
+                    <div class="flex items-center justify-center gap-4 sm:gap-6 w-full pt-2">
+                        <button type="button" id="btn-sw-lap-reset" onclick="lapOrResetStopwatch()" class="w-36 sm:w-44 py-4 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm sm:text-base transition shadow-md">
+                            Restaurar
+                        </button>
+                        <button type="button" id="btn-sw-toggle" onclick="toggleStopwatch()" class="w-36 sm:w-44 py-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm sm:text-base transition shadow-lg">
+                            Iniciar
+                        </button>
                     </div>
                 </div>
 
-                <div class="lg:col-span-5 bg-[#fef3c7] rounded-3xl p-6 flex flex-col justify-between space-y-6">
-                    <div>
-                        <h3 class="text-lg font-bold text-zinc-900">Registro Rápido</h3>
-                        <p class="text-xs text-zinc-600 mb-4">Adicione horas diretamente a qualquer atividade</p>
-                        <form id="manual-hours-form" class="bg-white/70 p-4 rounded-2xl space-y-3.5">
-                            <div>
-                                <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">ATIVIDADE</label>
-                                <select id="manual-habit-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">DIA</label>
-                                    <select id="manual-day-select" class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-medium text-zinc-900"></select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-mono uppercase text-zinc-500 mb-1">HORAS</label>
-                                    <input type="number" id="manual-hours-input" step="0.25" min="0.1" max="24" value="1" required class="w-full bg-white border border-zinc-200 rounded-full px-3.5 py-2 text-xs font-mono text-zinc-900">
-                                </div>
-                            </div>
-                            <button type="submit" class="w-full py-2.5 bg-black hover:bg-zinc-800 text-white font-semibold rounded-full text-xs transition">Adicionar Horas</button>
-                        </form>
+                <!-- TELA 2: REGRESSIVO (ESTILO SAMSUNG A34) -->
+                <div id="timer-slide-countdown" class="w-full shrink-0 snap-center bg-zinc-950 text-white rounded-[2.5rem] p-6 sm:p-12 shadow-xl min-h-[520px] flex flex-col items-center justify-between border border-zinc-800">
+                    <div class="w-full flex justify-between items-center">
+                        <span class="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-bold">⏳ TEMPORIZADOR REGRESSIVO</span>
+                        <span id="cd-status-badge" class="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-400">30 min</span>
                     </div>
-                    <div class="pt-4 border-t border-black/10">
-                        <h4 class="text-[10px] font-mono uppercase tracking-wider text-zinc-600 mb-3">VOLUME POR CATEGORIA</h4>
-                        <div id="category-hours-summary" class="space-y-3"></div>
+
+                    <!-- Anel Circular + Visor Gigante Estilo Samsung Clock -->
+                    <div class="relative w-64 h-64 sm:w-76 sm:h-76 flex items-center justify-center my-4 select-none">
+                        <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 240 240">
+                            <circle cx="120" cy="120" r="108" stroke="#27272a" stroke-width="8" fill="transparent"></circle>
+                            <circle id="cd-ring-progress" cx="120" cy="120" r="108" stroke="#10b981" stroke-width="8" stroke-linecap="round" fill="transparent" stroke-dasharray="678.58" stroke-dashoffset="0" class="transition-all duration-300"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                            <div id="cd-main-display" class="text-4xl sm:text-5xl md:text-6xl font-mono font-extrabold tracking-tight text-white">00:30:00</div>
+                            <span id="cd-sub-label" class="text-[11px] font-mono text-zinc-400 mt-2">Toque nos atalhos abaixo para ajustar</span>
+                        </div>
+                    </div>
+
+                    <!-- Atalhos Rápidos & Ajuste de Minutos Estilo Samsung -->
+                    <div class="w-full max-w-lg space-y-3 my-2">
+                        <div class="flex flex-wrap items-center justify-center gap-2">
+                            <button type="button" onclick="setCountdownPresetMinutes(1)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">1m</button>
+                            <button type="button" onclick="setCountdownPresetMinutes(3)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">3m</button>
+                            <button type="button" onclick="setCountdownPresetMinutes(5)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">5m</button>
+                            <button type="button" onclick="setCountdownPresetMinutes(10)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">10m</button>
+                            <button type="button" onclick="setCountdownPresetMinutes(15)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">15m</button>
+                            <button type="button" onclick="setCountdownPresetMinutes(30)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">30m</button>
+                            <button type="button" onclick="setCountdownPresetMinutes(45)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">45m</button>
+                            <button type="button" onclick="setCountdownPresetMinutes(60)" class="w-12 h-12 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-bold text-zinc-200 transition">60m</button>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+                            <button type="button" onclick="adjustCountdownSeconds(-300)" class="px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-mono">-5m</button>
+                            <button type="button" onclick="adjustCountdownSeconds(-60)" class="px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-mono">-1m</button>
+                            <button type="button" onclick="adjustCountdownSeconds(-15)" class="px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-mono">-15s</button>
+                            <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-full px-3 py-1">
+                                <input type="number" id="input-min-countdown" value="30" min="1" max="360" onchange="onTimerConfigChange()" class="w-14 bg-transparent text-center font-mono font-bold text-xs text-white focus:outline-none">
+                                <span class="text-[10px] font-mono text-zinc-400">min</span>
+                            </div>
+                            <button type="button" onclick="adjustCountdownSeconds(15)" class="px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-mono">+15s</button>
+                            <button type="button" onclick="adjustCountdownSeconds(60)" class="px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-mono">+1m</button>
+                            <button type="button" onclick="adjustCountdownSeconds(300)" class="px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-mono">+5m</button>
+                        </div>
+                    </div>
+
+                    <!-- Botões Estilo One UI -->
+                    <div class="flex items-center justify-center gap-4 sm:gap-6 w-full pt-2">
+                        <button type="button" id="btn-cd-reset" onclick="resetCountdown()" class="w-36 sm:w-44 py-4 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm sm:text-base transition shadow-md">
+                            Restaurar
+                        </button>
+                        <button type="button" id="btn-cd-toggle" onclick="toggleCountdown()" class="w-36 sm:w-44 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm sm:text-base transition shadow-lg">
+                            Iniciar
+                        </button>
                     </div>
                 </div>
             </div>

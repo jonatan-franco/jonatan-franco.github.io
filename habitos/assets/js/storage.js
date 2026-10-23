@@ -134,14 +134,20 @@ function loadData() {
     applyDataMigrations();
 }
 
-function saveData(skipCloud = false) {
+let isPendingCloudPush = false;
+
+function saveData(skipCloud = false, skipRender = false) {
+    if (!skipCloud) {
+        SafeStorage.setItem('hq_last_mutation_at', String(Date.now()));
+    }
     SafeStorage.setItem(STORAGE_KEY, JSON.stringify({ habits, calendarEvents, timerConfig, sleepJournal }));
-    if (typeof renderAll === 'function') renderAll();
+    if (!skipRender && typeof renderAll === 'function') renderAll();
 
     if (!skipCloud && SafeStorage.getItem('hq_gist_token') && SafeStorage.getItem('hq_gist_id')) {
+        isPendingCloudPush = true;
         updateCloudBadge('⏳ Salvando...');
         clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(autoPushToGist, 1000);
+        syncTimeout = setTimeout(autoPushToGist, 800);
     }
 }
 
@@ -163,8 +169,9 @@ function buildGistPayload() {
         if (rawProf) profileData = JSON.parse(rawProf);
     } catch (e) { profileData = null; }
 
+    const mutationTs = Number(SafeStorage.getItem('hq_last_mutation_at')) || Date.now();
     return {
-        updatedAt: Date.now(),
+        updatedAt: mutationTs,
         habits,
         calendarEvents,
         timerConfig,
@@ -177,7 +184,10 @@ function buildGistPayload() {
 async function autoPushToGist() {
     const token = SafeStorage.getItem('hq_gist_token');
     const gistId = SafeStorage.getItem('hq_gist_id');
-    if (!token || !gistId) return false;
+    if (!token || !gistId) {
+        isPendingCloudPush = false;
+        return false;
+    }
     try {
         const res = await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
@@ -185,17 +195,26 @@ async function autoPushToGist() {
             body: JSON.stringify({ files: { "habitquant_data.json": { content: JSON.stringify(buildGistPayload()) } } })
         });
         if (res.ok) {
+            isPendingCloudPush = false;
             updateCloudBadge('✅ Sync Ativo');
             return true;
         }
     } catch (e) { updateCloudBadge('⚠️ Offline'); }
+    isPendingCloudPush = false;
     return false;
 }
 
-async function autoPullFromGist() {
+async function autoPullFromGist(forceManual = false) {
+    const isForced = forceManual === true;
     const token = SafeStorage.getItem('hq_gist_token');
     const gistId = SafeStorage.getItem('hq_gist_id');
     if (!token || !gistId) return false;
+
+    const lastLocalMutation = Number(SafeStorage.getItem('hq_last_mutation_at') || 0);
+    if (!isForced && (isPendingCloudPush || (Date.now() - lastLocalMutation < 4000))) {
+        return false;
+    }
+
     try {
         const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
@@ -210,25 +229,34 @@ async function autoPullFromGist() {
                 if (rawRes.ok) rawContent = await rawRes.text();
             }
             const content = JSON.parse(rawContent);
+
+            // Se houve alteração local mais recente que o Gist e não é um pull manual, envia o local em vez de sobrescrever
+            const currentLocalMutation = Number(SafeStorage.getItem('hq_last_mutation_at') || 0);
+            if (!isForced && (isPendingCloudPush || (content.updatedAt && currentLocalMutation > content.updatedAt))) {
+                autoPushToGist();
+                return true;
+            }
+
             habits = Array.isArray(content.habits) ? content.habits : habits;
             calendarEvents = Array.isArray(content.calendarEvents) ? content.calendarEvents : calendarEvents;
             timerConfig = content.timerConfig || timerConfig;
-            if (content.sleepJournal && typeof content.sleepJournal === 'object' && Object.keys(content.sleepJournal).length > 0) {
-                sleepJournal = { ...sleepJournal, ...content.sleepJournal };
+            if (content.sleepJournal && typeof content.sleepJournal === 'object') {
+                if (isForced || Object.keys(content.sleepJournal).length > 0) {
+                    sleepJournal = content.sleepJournal;
+                }
             }
-            if (content.atvLogs && typeof content.atvLogs === 'object' && Object.keys(content.atvLogs).length > 0) {
-                let localAtv = {};
-                try {
-                    const rawLocal = SafeStorage.getItem('hq_atv_logs_v1');
-                    if (rawLocal) localAtv = JSON.parse(rawLocal) || {};
-                } catch (e) { localAtv = {}; }
-                const mergedAtv = { ...localAtv, ...content.atvLogs };
-                SafeStorage.setItem('hq_atv_logs_v1', JSON.stringify(mergedAtv));
-                if (typeof loadAtvLogs === 'function') loadAtvLogs();
+            if (content.atvLogs && typeof content.atvLogs === 'object') {
+                if (isForced || Object.keys(content.atvLogs).length > 0) {
+                    SafeStorage.setItem('hq_atv_logs_v1', JSON.stringify(content.atvLogs));
+                    if (typeof loadAtvLogs === 'function') loadAtvLogs();
+                }
             }
             if (content.profile && typeof content.profile === 'object') {
                 SafeStorage.setItem('hq_profile_v1', JSON.stringify(content.profile));
                 if (typeof window.loadProfile === 'function') window.loadProfile();
+            }
+            if (content.updatedAt) {
+                SafeStorage.setItem('hq_last_mutation_at', String(content.updatedAt));
             }
             applyDataMigrations();
             saveData(true);
@@ -238,4 +266,5 @@ async function autoPullFromGist() {
     } catch (e) {}
     return false;
 }
+
 

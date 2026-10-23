@@ -1,106 +1,339 @@
-let timerInterval = null, timerSeconds = 0, timerMode = 'stopwatch', initialCountdownSeconds = 0, isTimerRunning = false;
+// ============================================================================
+// TIMER (CRONÔMETRO & REGRESSIVO — ESTILO RELÓGIO SAMSUNG A34 / ONE UI)
+// ============================================================================
 
-window.onTimerConfigChange = function() {
-    timerConfig.stopwatchStartMin = parseInt(document.getElementById('input-min-stopwatch').value, 10) || 0;
-    timerConfig.countdownMin = parseInt(document.getElementById('input-min-countdown').value, 10) || 30;
-    timerConfig.pomodoroMin = parseInt(document.getElementById('input-min-pomodoro').value, 10) || 25;
-    timerConfig.deepworkMin = parseInt(document.getElementById('input-min-deepwork').value, 10) || 50;
-    saveData();
-    if (!isTimerRunning) selectTimerMode(timerMode);
-};
+let activeTimerSlide = 'stopwatch'; // 'stopwatch' | 'countdown'
 
-window.selectTimerMode = function(mode) {
-    if (isTimerRunning) toggleTimer();
-    timerMode = mode;
-    ['stopwatch', 'countdown', 'pomodoro', 'deepwork'].forEach(m => {
-        const card = document.getElementById('card-tmode-' + m);
-        if (card) {
-            card.className = m === mode
-                ? "cursor-pointer p-3.5 rounded-2xl border-2 border-purple-300 bg-[#ede9fe] transition flex flex-col items-center text-center"
-                : "cursor-pointer p-3.5 rounded-2xl border border-zinc-200 bg-zinc-100/80 transition flex flex-col items-center text-center";
-        }
-    });
+// Estado do Cronômetro (precisão em milissegundos)
+let swInterval = null;
+let swRunning = false;
+let swElapsedMs = 0;
+let swLastStartTs = 0;
+let swLaps = []; // [{ lapNum, lapMs, totalMs }]
 
-    const progContainer = document.getElementById('countdown-progress-container');
-    if (mode === 'stopwatch') {
-        timerSeconds = (parseInt(document.getElementById('input-min-stopwatch').value, 10) || 0) * 60;
-        initialCountdownSeconds = timerSeconds;
-        document.getElementById('timer-mode-badge').textContent = "MODO: CRONÔMETRO";
-        progContainer.classList.add('hidden');
-    } else if (mode === 'countdown') {
-        timerSeconds = (parseInt(document.getElementById('input-min-countdown').value, 10) || 30) * 60;
-        initialCountdownSeconds = timerSeconds;
-        document.getElementById('timer-mode-badge').textContent = `MODO: REGRESSIVO (${timerSeconds / 60}M)`;
-        progContainer.classList.remove('hidden');
-    } else if (mode === 'pomodoro') {
-        timerSeconds = (parseInt(document.getElementById('input-min-pomodoro').value, 10) || 25) * 60;
-        initialCountdownSeconds = timerSeconds;
-        document.getElementById('timer-mode-badge').textContent = `MODO: POMODORO (${timerSeconds / 60}M)`;
-        progContainer.classList.remove('hidden');
+// Estado do Temporizador Regressivo
+let cdInterval = null;
+let cdRunning = false;
+let cdTotalSeconds = 30 * 60;
+let cdRemainingSeconds = 30 * 60;
+
+const RING_CIRCUMFERENCE = 678.58; // 2 * PI * 108
+
+function formatHMS(totalSeconds) {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function formatCentiseconds(ms) {
+    const cs = Math.floor((Math.max(0, ms) % 1000) / 10);
+    return `.${String(cs).padStart(2, '0')}`;
+}
+
+function updateMiniTimerPill() {
+    const pill = document.getElementById('mini-timer-pill');
+    const text = document.getElementById('mini-timer-text');
+    if (!pill || !text) return;
+
+    if (swRunning) {
+        pill.classList.remove('hidden');
+        pill.classList.add('flex');
+        text.textContent = formatHMS(Math.floor(swElapsedMs / 1000));
+    } else if (cdRunning) {
+        pill.classList.remove('hidden');
+        pill.classList.add('flex');
+        text.textContent = formatHMS(cdRemainingSeconds);
     } else {
-        timerSeconds = (parseInt(document.getElementById('input-min-deepwork').value, 10) || 50) * 60;
-        initialCountdownSeconds = timerSeconds;
-        document.getElementById('timer-mode-badge').textContent = `MODO: DEEP WORK (${timerSeconds / 60}M)`;
-        progContainer.classList.remove('hidden');
-    }
-    updateTimerDisplay();
-};
-
-window.adjustTimerMinutes = function(deltaMin) {
-    const deltaSec = deltaMin * 60;
-    timerSeconds = Math.max(0, timerSeconds + deltaSec);
-    if (timerMode !== 'stopwatch') initialCountdownSeconds = Math.max(timerSeconds, initialCountdownSeconds + deltaSec);
-    updateTimerDisplay();
-};
-
-function updateTimerDisplay() {
-    const hrs = Math.floor(timerSeconds / 3600), mins = Math.floor((timerSeconds % 3600) / 60), secs = timerSeconds % 60;
-    const str = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    document.getElementById('timer-display').textContent = str;
-    document.getElementById('mini-timer-text').textContent = str;
-
-    if (timerMode !== 'stopwatch' && initialCountdownSeconds > 0) {
-        const pct = Math.max(0, Math.min(100, (timerSeconds / initialCountdownSeconds) * 100));
-        const bar = document.getElementById('countdown-progress-bar');
-        if (bar) bar.style.width = `${pct}%`;
+        pill.classList.add('hidden');
+        pill.classList.remove('flex');
     }
 }
 
-window.toggleTimer = function() {
-    const btn = document.getElementById('btn-timer-toggle'), pill = document.getElementById('mini-timer-pill');
-    if (isTimerRunning) {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        pill.classList.add('hidden'); pill.classList.remove('flex');
-        btn.textContent = '▷ Iniciar';
-    } else {
-        isTimerRunning = true;
-        pill.classList.remove('hidden'); pill.classList.add('flex');
-        btn.textContent = '⏸ Pausar';
-        timerInterval = setInterval(() => {
-            if (timerMode === 'stopwatch') timerSeconds++;
-            else if (timerSeconds > 0) timerSeconds--;
-            else { clearInterval(timerInterval); isTimerRunning = false; finishAndLogSession(true); }
-            updateTimerDisplay();
-        }, 1000);
+// ----------------------------------------------------------------------------
+// Navegação entre as 2 telas (Cronômetro <-> Regressivo) arrastando para o lado
+// ----------------------------------------------------------------------------
+function updateTimerTabButtons(mode) {
+    activeTimerSlide = mode === 'countdown' ? 'countdown' : 'stopwatch';
+    const tabSw = document.getElementById('tab-timer-stopwatch');
+    const tabCd = document.getElementById('tab-timer-countdown');
+    const activeCls = "px-5 py-2 rounded-full bg-black text-white text-xs sm:text-sm font-bold shadow-xs transition";
+    const inactiveCls = "px-5 py-2 rounded-full text-zinc-600 hover:text-black text-xs sm:text-sm font-bold transition";
+
+    if (tabSw) tabSw.className = activeTimerSlide === 'stopwatch' ? activeCls : inactiveCls;
+    if (tabCd) tabCd.className = activeTimerSlide === 'countdown' ? activeCls : inactiveCls;
+}
+
+window.scrollToTimerSlide = function(mode) {
+    const target = mode === 'countdown' ? 'countdown' : 'stopwatch';
+    updateTimerTabButtons(target);
+    const slide = document.getElementById('timer-slide-' + target);
+    if (slide) {
+        slide.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
     }
 };
 
-window.finishAndLogSession = function(autoTriggered = false) {
-    if (habits.length === 0) return;
-    if (isTimerRunning) toggleTimer();
-    let elapsedSec = timerMode === 'stopwatch' ? timerSeconds : (initialCountdownSeconds - timerSeconds);
-    if (elapsedSec < 30 && !autoTriggered) {
-        const m = prompt("Quantos minutos deseja registrar nesta atividade?", "30");
-        if (m && !isNaN(m)) elapsedSec = parseFloat(m) * 60; else return;
+window.onTimerCarouselScroll = function(trackEl) {
+    if (!trackEl) return;
+    const scrollLeft = trackEl.scrollLeft;
+    const width = trackEl.clientWidth || 1;
+    const idx = Math.round(scrollLeft / width);
+    updateTimerTabButtons(idx >= 1 ? 'countdown' : 'stopwatch');
+};
+
+// ----------------------------------------------------------------------------
+// TELA 1: CRONÔMETRO (ESTILO SAMSUNG CLOCK)
+// ----------------------------------------------------------------------------
+function updateStopwatchDisplay() {
+    const mainEl = document.getElementById('sw-main-display');
+    const msEl = document.getElementById('sw-ms-display');
+    if (mainEl) mainEl.textContent = formatHMS(Math.floor(swElapsedMs / 1000));
+    if (msEl) msEl.textContent = formatCentiseconds(swElapsedMs);
+    updateMiniTimerPill();
+}
+
+function renderStopwatchLaps() {
+    const container = document.getElementById('sw-laps-container');
+    if (!container) return;
+    if (swLaps.length === 0) {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+        return;
     }
-    const hIdx = parseInt(document.getElementById('timer-habit-select').value, 10) || 0;
-    const dIdx = parseInt(document.getElementById('timer-day-select').value, 10) || 0;
-    if (habits[hIdx]) {
-        habits[hIdx].dailyHours[dIdx] = parseFloat(((habits[hIdx].dailyHours[dIdx] || 0) + (elapsedSec / 3600)).toFixed(2));
-        if (document.getElementById('timer-auto-check').checked) habits[hIdx].checks[dIdx] = true;
-        saveData();
-        selectTimerMode(timerMode);
+    container.classList.remove('hidden');
+    container.innerHTML = swLaps.slice().reverse().map(lap => `
+        <div class="flex items-center justify-between py-2 px-2">
+            <span class="text-zinc-400 font-bold">Volta ${String(lap.lapNum).padStart(2, '0')}</span>
+            <span class="text-indigo-300">+${formatHMS(Math.floor(lap.lapMs / 1000))}${formatCentiseconds(lap.lapMs)}</span>
+            <span class="text-white font-semibold">${formatHMS(Math.floor(lap.totalMs / 1000))}${formatCentiseconds(lap.totalMs)}</span>
+        </div>
+    `).join('');
+}
+
+function syncStopwatchButtons() {
+    const toggleBtn = document.getElementById('btn-sw-toggle');
+    const lapResetBtn = document.getElementById('btn-sw-lap-reset');
+    const badge = document.getElementById('sw-status-badge');
+
+    if (swRunning) {
+        if (toggleBtn) {
+            toggleBtn.textContent = 'Pausar';
+            toggleBtn.className = "w-36 sm:w-44 py-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm sm:text-base transition shadow-lg";
+        }
+        if (lapResetBtn) lapResetBtn.textContent = 'Volta';
+        if (badge) {
+            badge.textContent = 'Em andamento';
+            badge.className = "px-3 py-1 rounded-full bg-indigo-950/90 border border-indigo-700 text-[11px] font-mono text-indigo-300";
+        }
+    } else {
+        if (toggleBtn) {
+            toggleBtn.textContent = swElapsedMs > 0 ? 'Continuar' : 'Iniciar';
+            toggleBtn.className = "w-36 sm:w-44 py-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm sm:text-base transition shadow-lg";
+        }
+        if (lapResetBtn) lapResetBtn.textContent = 'Restaurar';
+        if (badge) {
+            badge.textContent = swElapsedMs > 0 ? 'Pausado' : 'Pronto';
+            badge.className = "px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-400";
+        }
+    }
+}
+
+window.toggleStopwatch = function() {
+    if (swRunning) {
+        clearInterval(swInterval);
+        swElapsedMs += Date.now() - swLastStartTs;
+        swRunning = false;
+    } else {
+        swLastStartTs = Date.now();
+        swRunning = true;
+        swInterval = setInterval(() => {
+            const now = Date.now();
+            swElapsedMs += (now - swLastStartTs);
+            swLastStartTs = now;
+            updateStopwatchDisplay();
+        }, 40);
+    }
+    syncStopwatchButtons();
+    updateStopwatchDisplay();
+};
+
+window.lapOrResetStopwatch = function() {
+    if (swRunning) {
+        const prevTotal = swLaps.length > 0 ? swLaps[swLaps.length - 1].totalMs : 0;
+        const lapMs = Math.max(0, swElapsedMs - prevTotal);
+        swLaps.push({
+            lapNum: swLaps.length + 1,
+            lapMs,
+            totalMs: swElapsedMs
+        });
+        renderStopwatchLaps();
+    } else {
+        swElapsedMs = 0;
+        swLaps = [];
+        renderStopwatchLaps();
+        syncStopwatchButtons();
+        updateStopwatchDisplay();
     }
 };
-// FIM DE timer.js
+
+// ----------------------------------------------------------------------------
+// TELA 2: TEMPORIZADOR REGRESSIVO (ESTILO SAMSUNG CLOCK)
+// ----------------------------------------------------------------------------
+function updateCountdownDisplay() {
+    const mainEl = document.getElementById('cd-main-display');
+    if (mainEl) mainEl.textContent = formatHMS(cdRemainingSeconds);
+
+    const ring = document.getElementById('cd-ring-progress');
+    if (ring) {
+        const ratio = cdTotalSeconds > 0 ? Math.max(0, Math.min(1, cdRemainingSeconds / cdTotalSeconds)) : 0;
+        const offset = RING_CIRCUMFERENCE * (1 - ratio);
+        ring.style.strokeDashoffset = String(offset.toFixed(2));
+    }
+
+    const badge = document.getElementById('cd-status-badge');
+    if (badge && !cdRunning) {
+        const mins = Math.round(cdTotalSeconds / 60);
+        badge.textContent = `${mins} min`;
+    }
+    updateMiniTimerPill();
+}
+
+function syncCountdownButtons() {
+    const toggleBtn = document.getElementById('btn-cd-toggle');
+    const subLabel = document.getElementById('cd-sub-label');
+    const badge = document.getElementById('cd-status-badge');
+
+    if (cdRunning) {
+        if (toggleBtn) {
+            toggleBtn.textContent = 'Pausar';
+            toggleBtn.className = "w-36 sm:w-44 py-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm sm:text-base transition shadow-lg";
+        }
+        if (subLabel) subLabel.textContent = 'Contagem regressiva em andamento...';
+        if (badge) {
+            badge.textContent = 'Ativo';
+            badge.className = "px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-700 text-[11px] font-mono text-emerald-300";
+        }
+    } else {
+        const isPausedMidway = cdRemainingSeconds > 0 && cdRemainingSeconds < cdTotalSeconds;
+        if (toggleBtn) {
+            toggleBtn.textContent = isPausedMidway ? 'Continuar' : 'Iniciar';
+            toggleBtn.className = "w-36 sm:w-44 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm sm:text-base transition shadow-lg";
+        }
+        if (subLabel) {
+            subLabel.textContent = isPausedMidway ? 'Temporizador pausado' : 'Toque nos atalhos abaixo para ajustar';
+        }
+        if (badge) {
+            badge.textContent = `${Math.max(1, Math.round(cdTotalSeconds / 60))} min`;
+            badge.className = "px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-400";
+        }
+    }
+}
+
+window.setCountdownPresetMinutes = function(mins) {
+    const cleanMin = Math.max(1, Math.min(360, parseInt(mins, 10) || 30));
+    if (cdRunning) {
+        clearInterval(cdInterval);
+        cdRunning = false;
+    }
+    const inputEl = document.getElementById('input-min-countdown');
+    if (inputEl) inputEl.value = cleanMin;
+    timerConfig.countdownMin = cleanMin;
+    cdTotalSeconds = cleanMin * 60;
+    cdRemainingSeconds = cdTotalSeconds;
+    saveData(false, true);
+    syncCountdownButtons();
+    updateCountdownDisplay();
+};
+
+window.adjustCountdownSeconds = function(deltaSec) {
+    cdRemainingSeconds = Math.max(0, cdRemainingSeconds + deltaSec);
+    if (cdRemainingSeconds > cdTotalSeconds) {
+        cdTotalSeconds = cdRemainingSeconds;
+    } else if (!cdRunning) {
+        cdTotalSeconds = Math.max(15, cdRemainingSeconds);
+    }
+    const inputEl = document.getElementById('input-min-countdown');
+    if (inputEl && cdTotalSeconds >= 60) {
+        inputEl.value = Math.max(1, Math.round(cdTotalSeconds / 60));
+    }
+    syncCountdownButtons();
+    updateCountdownDisplay();
+};
+
+window.onTimerConfigChange = function() {
+    const inputEl = document.getElementById('input-min-countdown');
+    const mins = Math.max(1, Math.min(360, parseInt(inputEl ? inputEl.value : 30, 10) || 30));
+    timerConfig.countdownMin = mins;
+    if (!cdRunning) {
+        cdTotalSeconds = mins * 60;
+        cdRemainingSeconds = cdTotalSeconds;
+    }
+    saveData(false, true);
+    syncCountdownButtons();
+    updateCountdownDisplay();
+};
+
+window.resetCountdown = function() {
+    if (cdRunning) {
+        clearInterval(cdInterval);
+        cdRunning = false;
+    }
+    const inputEl = document.getElementById('input-min-countdown');
+    const mins = Math.max(1, parseInt(inputEl ? inputEl.value : (timerConfig.countdownMin || 30), 10) || 30);
+    cdTotalSeconds = mins * 60;
+    cdRemainingSeconds = cdTotalSeconds;
+    syncCountdownButtons();
+    updateCountdownDisplay();
+};
+
+window.toggleCountdown = function() {
+    if (cdRunning) {
+        clearInterval(cdInterval);
+        cdRunning = false;
+        syncCountdownButtons();
+        updateCountdownDisplay();
+        return;
+    }
+
+    if (cdRemainingSeconds <= 0) {
+        const inputEl = document.getElementById('input-min-countdown');
+        const mins = Math.max(1, parseInt(inputEl ? inputEl.value : (timerConfig.countdownMin || 30), 10) || 30);
+        cdTotalSeconds = mins * 60;
+        cdRemainingSeconds = cdTotalSeconds;
+    }
+
+    cdRunning = true;
+    syncCountdownButtons();
+    updateCountdownDisplay();
+
+    cdInterval = setInterval(() => {
+        if (cdRemainingSeconds > 0) {
+            cdRemainingSeconds--;
+            updateCountdownDisplay();
+        } else {
+            clearInterval(cdInterval);
+            cdRunning = false;
+            syncCountdownButtons();
+            updateCountdownDisplay();
+            const subLabel = document.getElementById('cd-sub-label');
+            if (subLabel) subLabel.textContent = '⏰ Tempo esgotado!';
+        }
+    }, 1000);
+};
+
+// Compatibilidade com a chamada no boot de app.js
+window.selectTimerMode = function(mode) {
+    const savedMin = (timerConfig && timerConfig.countdownMin) ? timerConfig.countdownMin : 30;
+    const inputEl = document.getElementById('input-min-countdown');
+    if (inputEl) inputEl.value = savedMin;
+    cdTotalSeconds = savedMin * 60;
+    cdRemainingSeconds = cdTotalSeconds;
+
+    updateStopwatchDisplay();
+    syncStopwatchButtons();
+    updateCountdownDisplay();
+    syncCountdownButtons();
+    updateTimerTabButtons(mode === 'countdown' ? 'countdown' : 'stopwatch');
+};
+// FIM DE timer.js

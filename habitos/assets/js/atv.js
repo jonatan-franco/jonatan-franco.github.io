@@ -59,6 +59,7 @@ const WORKOUT_PLAN = [
     }
 ];
 const PLAN_SEED_KEY = 'hq_plan_seeded_v1';
+const ATV_UI_STATE_KEY = 'hq_atv_ui_state_v1';
 
 let atvLogs = {}; // { "YYYY-MM-DD": [ { id, habitId, planId, exerciseName, muscle, sets, reps, rest, weight, notes }, ... ] }
 
@@ -67,8 +68,60 @@ function getLocalISODate(date = new Date()) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function getYesterdayISODate() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return getLocalISODate(d);
+}
+
+/* Formata YYYY-MM-DD para DD-MM-AAAA */
+function formatDateDDMMYYYY(isoStr) {
+    if (!isoStr || typeof isoStr !== 'string') return '';
+    const parts = isoStr.split('-');
+    if (parts.length !== 3) return isoStr;
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
 let selectedAtvDate = getLocalISODate();
 let selectedWorkoutPlanId = 'upper_a';
+let atvUiState = {
+    selectedAtvDate: '',
+    selectedWorkoutPlanId: 'upper_a',
+    carouselScrollLeft: 0,
+    cardInputs: {},
+    customInputs: { name: '', muscle: '', weight: '', sets: '3', reps: '10', rest: '90s', notes: '' }
+};
+let isAtvUiStateLoaded = false;
+
+function loadAtvUiState() {
+    if (isAtvUiStateLoaded) return;
+    isAtvUiStateLoaded = true;
+    try {
+        const raw = SafeStorage.getItem(ATV_UI_STATE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                if (parsed.selectedAtvDate) selectedAtvDate = parsed.selectedAtvDate;
+                if (parsed.selectedWorkoutPlanId) selectedWorkoutPlanId = parsed.selectedWorkoutPlanId;
+                atvUiState = {
+                    selectedAtvDate: selectedAtvDate,
+                    selectedWorkoutPlanId: selectedWorkoutPlanId,
+                    carouselScrollLeft: Number(parsed.carouselScrollLeft) || 0,
+                    cardInputs: (parsed.cardInputs && typeof parsed.cardInputs === 'object') ? parsed.cardInputs : {},
+                    customInputs: (parsed.customInputs && typeof parsed.customInputs === 'object')
+                        ? { name: '', muscle: '', weight: '', sets: '3', reps: '10', rest: '90s', notes: '', ...parsed.customInputs }
+                        : { name: '', muscle: '', weight: '', sets: '3', reps: '10', rest: '90s', notes: '' }
+                };
+            }
+        }
+    } catch (e) {}
+}
+
+function saveAtvUiState() {
+    atvUiState.selectedAtvDate = selectedAtvDate;
+    atvUiState.selectedWorkoutPlanId = selectedWorkoutPlanId;
+    SafeStorage.setItem(ATV_UI_STATE_KEY, JSON.stringify(atvUiState));
+}
 
 /* Emoji representativo por grupo muscular */
 function getMuscleEmoji(muscle) {
@@ -123,6 +176,67 @@ function getWeightNumericValue(str) {
     return isNaN(n) ? 0 : n;
 }
 
+/* Extrai o número de repetições de uma string (ex: "8-12" -> 10, "12" -> 12) */
+function parseRepsNumber(repsStr) {
+    if (repsStr === undefined || repsStr === null) return 10;
+    const str = String(repsStr);
+    const matchRange = str.match(/(\d+)\s*[-–]\s*(\d+)/);
+    if (matchRange) {
+        return (parseFloat(matchRange[1]) + parseFloat(matchRange[2])) / 2;
+    }
+    const matchSingle = str.match(/(\d+)/);
+    return matchSingle ? parseFloat(matchSingle[1]) : 10;
+}
+
+/* ------------------------------------------------------------------
+ * Cálculo do peso médio de referência dos últimos treinos para um exercício,
+ * dando peso maior (fator 2.5x vs 1.0x) para cargas feitas com > 2 repetições.
+ * ------------------------------------------------------------------ */
+function calcWeightedExerciseRefLoad(exerciseNames, fallbackLoad) {
+    const namesSet = new Set(
+        (Array.isArray(exerciseNames) ? exerciseNames : [exerciseNames])
+            .filter(Boolean)
+            .map(n => String(n).trim().toLowerCase())
+    );
+
+    const matchedEntries = [];
+    const sortedDates = Object.keys(atvLogs || {}).sort();
+    sortedDates.forEach(dateKey => {
+        const list = atvLogs[dateKey];
+        if (!Array.isArray(list)) return;
+        list.forEach(item => {
+            if (!item || !item.exerciseName) return;
+            const w = parseFloat(item.weight) || 0;
+            if (w <= 0) return;
+            if (namesSet.has(String(item.exerciseName).trim().toLowerCase())) {
+                matchedEntries.push(item);
+            }
+        });
+    });
+
+    // Considera os últimos 12 registros históricos desse exercício
+    const recentEntries = matchedEntries.slice(-12);
+    if (recentEntries.length > 0) {
+        let weightedSum = 0;
+        let totalFactor = 0;
+        recentEntries.forEach(item => {
+            const reps = parseRepsNumber(item.reps);
+            // Peso maior para séries feitas com > 2 repetições
+            const factor = reps > 2 ? 2.5 : 1.0;
+            weightedSum += (parseFloat(item.weight) || 0) * factor;
+            totalFactor += factor;
+        });
+        if (totalFactor > 0) {
+            return parseFloat((weightedSum / totalFactor).toFixed(2));
+        }
+    }
+
+    if (fallbackLoad !== undefined && fallbackLoad !== null && !isNaN(fallbackLoad) && Number(fallbackLoad) > 0) {
+        return parseFloat(Number(fallbackLoad).toFixed(2));
+    }
+    return null;
+}
+
 /* Semeia os hábitos do plano de treino uma única vez por dispositivo (apenas para usuário com identificação e Git Sync ativos) */
 function ensureWorkoutPlanHabits() {
     if (typeof window.isRegisteredSyncUser === 'function' && !window.isRegisteredSyncUser()) return;
@@ -152,9 +266,12 @@ function ensureWorkoutPlanHabits() {
 }
 
 function loadAtvLogs() {
+    loadAtvUiState();
     const raw = SafeStorage.getItem('hq_atv_logs_v1');
     if (raw) {
         try { atvLogs = JSON.parse(raw) || {}; } catch (e) { atvLogs = {}; }
+    } else {
+        atvLogs = {};
     }
     // Corrige registros antigos sem planId ou vinculados por engano ao hábito de sono (h3)
     let migrated = false;
@@ -187,30 +304,95 @@ function loadAtvLogs() {
 }
 
 function saveAtvLogs() {
+    SafeStorage.setItem('hq_last_mutation_at', String(Date.now()));
     SafeStorage.setItem('hq_atv_logs_v1', JSON.stringify(atvLogs));
 }
+
+/* Persistência dos inputs dos cards e scroll do carrossel */
+window.onAtvCarouselScroll = function(trackEl) {
+    if (!trackEl) return;
+    atvUiState.carouselScrollLeft = trackEl.scrollLeft;
+    saveAtvUiState();
+};
+
+window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
+    const key = `${selectedWorkoutPlanId}_${cardIndex}`;
+    const exEl = document.getElementById(`atv-card-ex-${cardIndex}`);
+    const weightEl = document.getElementById(`atv-card-weight-${cardIndex}`);
+    const notesEl = document.getElementById(`atv-card-notes-${cardIndex}`);
+
+    const workout = WORKOUT_PLAN.find(w => w.planId === selectedWorkoutPlanId) || WORKOUT_PLAN[0];
+    const ex = workout && workout.exercises ? workout.exercises[cardIndex] : null;
+    const chosenName = exEl ? exEl.value : (ex ? ex.name : '');
+
+    if (exerciseChanged && ex) {
+        // Atualiza o título e a carga de referência sugerida para a variação escolhida
+        const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name], ex.load);
+        const refFormatted = refVal !== null ? formatWeightNumber(refVal) : '';
+        const titleEl = document.getElementById(`atv-card-title-${cardIndex}`);
+        if (titleEl) {
+            titleEl.textContent = `${workout.name} - ${chosenName}${refFormatted ? ` (ref. ${refFormatted}kg)` : ''}`;
+            titleEl.title = titleEl.textContent;
+        }
+        const refBadgeEl = document.getElementById(`atv-card-ref-badge-${cardIndex}`);
+        if (refBadgeEl) {
+            if (refFormatted) {
+                refBadgeEl.textContent = `ref: ${refFormatted} kg`;
+                refBadgeEl.classList.remove('hidden');
+            } else {
+                refBadgeEl.classList.add('hidden');
+            }
+        }
+        if (weightEl && refFormatted) {
+            weightEl.value = refFormatted;
+        }
+    }
+
+    atvUiState.cardInputs[key] = {
+        exercise: chosenName,
+        weight: weightEl ? weightEl.value : '',
+        notes: notesEl ? notesEl.value : ''
+    };
+    saveAtvUiState();
+};
+
+window.onAtvCustomFieldChange = function() {
+    atvUiState.customInputs = {
+        name: document.getElementById('atv-custom-name')?.value || '',
+        muscle: document.getElementById('atv-custom-muscle')?.value || '',
+        weight: document.getElementById('atv-custom-weight')?.value || '',
+        sets: document.getElementById('atv-custom-sets')?.value || '3',
+        reps: document.getElementById('atv-custom-reps')?.value || '10',
+        rest: document.getElementById('atv-custom-rest')?.value || '90s',
+        notes: document.getElementById('atv-custom-notes')?.value || ''
+    };
+    saveAtvUiState();
+};
 
 /* Navegação e seleção de data */
 window.setAtvDate = function(dateStr) {
     selectedAtvDate = dateStr;
+    saveAtvUiState();
     renderAtvFisicaInteractiveView();
 };
 
 window.setTodayAtvDate = function() {
     selectedAtvDate = getLocalISODate();
+    saveAtvUiState();
     renderAtvFisicaInteractiveView();
 };
 
 window.setYesterdayAtvDate = function() {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    selectedAtvDate = getLocalISODate(d);
+    selectedAtvDate = getYesterdayISODate();
+    saveAtvUiState();
     renderAtvFisicaInteractiveView();
 };
 
 /* Seleção do treino no topo */
 window.selectAtvWorkoutPlan = function(planId) {
     selectedWorkoutPlanId = planId;
+    atvUiState.carouselScrollLeft = 0;
+    saveAtvUiState();
     renderAtvFisicaInteractiveView();
 };
 
@@ -222,6 +404,58 @@ window.scrollAtvCarousel = function(direction) {
         track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
 };
+
+window.scrollAtvCarouselToEdge = function(edge) {
+    const track = document.getElementById('atv-carousel-track');
+    if (!track) return;
+    const targetLeft = edge === 'start' ? 0 : track.scrollWidth;
+    track.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    atvUiState.carouselScrollLeft = targetLeft;
+    saveAtvUiState();
+};
+
+/* Atualiza apenas o histórico e os badges dos cards sem recriar o carrossel (mantém o card atual na tela) */
+function refreshAtvHistoryAndCardBadges() {
+    const historyContainer = document.getElementById('atv-history-section');
+    if (historyContainer) {
+        historyContainer.innerHTML = buildAtvHistorySectionInnerHTML();
+    }
+
+    const workout = WORKOUT_PLAN.find(w => w.planId === selectedWorkoutPlanId) || WORKOUT_PLAN[0];
+    const currentLogs = atvLogs[selectedAtvDate] || [];
+    if (workout && Array.isArray(workout.exercises)) {
+        workout.exercises.forEach((ex, idx) => {
+            const dayLoggedCount = currentLogs.filter(l => l.exerciseName === ex.name || (ex.variations && ex.variations.includes(l.exerciseName))).length;
+            const badgeContainer = document.getElementById(`atv-card-logged-badge-${idx}`);
+            if (badgeContainer) {
+                badgeContainer.innerHTML = dayLoggedCount > 0
+                    ? `<div class="text-[10px] text-center font-mono text-emerald-600 font-semibold">✓ ${dayLoggedCount} registro(s) nesta data</div>`
+                    : '';
+            }
+            const exSelect = document.getElementById(`atv-card-ex-${idx}`);
+            const chosenName = exSelect ? exSelect.value : ex.name;
+            const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name, ...(ex.variations || [])], ex.load);
+            const refFormatted = refVal !== null ? formatWeightNumber(refVal) : '';
+            const titleEl = document.getElementById(`atv-card-title-${idx}`);
+            if (titleEl) {
+                titleEl.textContent = `${workout.name} - ${chosenName}${refFormatted ? ` (ref. ${refFormatted}kg)` : ''}`;
+            }
+            const refBadgeEl = document.getElementById(`atv-card-ref-badge-${idx}`);
+            if (refBadgeEl) {
+                if (refFormatted) {
+                    refBadgeEl.textContent = `ref: ${refFormatted} kg`;
+                    refBadgeEl.classList.remove('hidden');
+                } else {
+                    refBadgeEl.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // Atualiza os indicadores do Dashboard em background sem recriar a view de Atividade Física
+    if (typeof renderDashboardView === 'function') renderDashboardView();
+    if (typeof populateDashLoadChartSelect === 'function') populateDashLoadChartSelect();
+}
 
 /* Registro rápido direto do card no carrossel */
 window.submitAtvCardLog = function(cardIndex) {
@@ -254,9 +488,13 @@ window.submitAtvCardLog = function(cardIndex) {
         notes: notesVal
     });
 
+    const track = document.getElementById('atv-carousel-track');
+    if (track) atvUiState.carouselScrollLeft = track.scrollLeft;
+    window.onAtvCardFieldChange(cardIndex, false);
+
     saveAtvLogs();
-    saveData();
-    renderAtvFisicaInteractiveView();
+    saveData(false, true);
+    refreshAtvHistoryAndCardBadges();
 };
 
 /* Registro de exercício personalizado */
@@ -267,7 +505,7 @@ window.submitCustomAtvLog = function(event) {
     if (!exName) return;
 
     const muscleEl = document.getElementById('atv-custom-muscle');
-    const muscle = muscleEl ? muscleEl.value.trim() : 'Geral';
+    const muscle = muscleEl ? muscleEl.value.trim() || 'Geral' : 'Geral';
 
     const setsEl = document.getElementById('atv-custom-sets');
     const sets = setsEl ? (parseInt(setsEl.value, 10) || 3) : 3;
@@ -301,9 +539,13 @@ window.submitCustomAtvLog = function(event) {
         notes
     });
 
+    const track = document.getElementById('atv-carousel-track');
+    if (track) atvUiState.carouselScrollLeft = track.scrollLeft;
+    window.onAtvCustomFieldChange();
+
     saveAtvLogs();
-    saveData();
-    renderAtvFisicaInteractiveView();
+    saveData(false, true);
+    refreshAtvHistoryAndCardBadges();
 };
 
 /* ------------------------------------------------------------------
@@ -409,20 +651,142 @@ window.saveEditedAtvLog = function(event) {
     if (notesInput) log.notes = notesInput.value.trim();
 
     saveAtvLogs();
-    saveData();
+    saveData(false, true);
     closeAtvEditModal();
-    renderAtvFisicaInteractiveView();
+    refreshAtvHistoryAndCardBadges();
 };
 
 window.deleteAtvLogEntry = function(dateStr, logId) {
     if (!atvLogs[dateStr]) return;
     if (confirm('Remover este registro de exercício?')) {
         atvLogs[dateStr] = atvLogs[dateStr].filter(item => item.id !== logId);
+        if (atvLogs[dateStr].length === 0) {
+            delete atvLogs[dateStr];
+        }
         saveAtvLogs();
-        saveData();
-        renderAtvFisicaInteractiveView();
+        saveData(false, true);
+        refreshAtvHistoryAndCardBadges();
     }
 };
+
+/* Monta uma linha <tr> da tabela de histórico */
+function buildAtvLogRowHTML(dateStr, log) {
+    let wName = 'Personalizado';
+    if (log.planId !== 'custom') {
+        const resolvedPlanId = (typeof resolveLogGroupPlanId === 'function') ? resolveLogGroupPlanId(log) : (log.planId || 'upper_a');
+        const planObj = WORKOUT_PLAN.find(w => w.planId === resolvedPlanId);
+        const hObj = habits.find(h => h.category === 'atv_fisica' && ((log.habitId && h.id === log.habitId) || (resolvedPlanId && h.planId === resolvedPlanId)));
+        wName = planObj ? planObj.name : (hObj ? hObj.name : (resolvedPlanId ? resolvedPlanId.replace('_', ' ').toUpperCase() : 'Personalizado'));
+    }
+    const volumeItem = calcLogEntryVolume(log);
+    const muscleStr = log.muscle || (findExerciseMeta(log.exerciseName, log.habitId) || {}).muscle || 'Geral';
+    const muscleEmoji = getMuscleEmoji(muscleStr);
+    const setsRepsTxt = `${log.sets || 3}× ${log.reps || '10'} ${log.rest ? `(${log.rest})` : ''}`;
+    const formattedDate = formatDateDDMMYYYY(dateStr);
+
+    return `
+        <tr class="hover:bg-zinc-50 transition border-b border-zinc-100">
+            <td class="py-3 px-3 font-mono text-[11px] text-zinc-500 whitespace-nowrap">${formattedDate}</td>
+            <td class="py-3 px-3 font-semibold text-zinc-900 whitespace-nowrap">${wName}</td>
+            <td class="py-3 px-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-zinc-100 text-[11px] font-medium text-zinc-800"><span>${muscleEmoji}</span><span class="truncate max-w-[150px]">${muscleStr}</span></span></td>
+            <td class="py-3 px-3 font-medium text-zinc-800">${log.exerciseName}</td>
+            <td class="py-3 px-3 font-mono text-center text-xs text-zinc-600">${setsRepsTxt}</td>
+            <td class="py-3 px-3 text-center font-mono font-bold text-rose-600">${(parseFloat(log.weight) || 0).toFixed(2).replace('.', ',')} kg</td>
+            <td class="py-3 px-3 text-center font-mono font-bold text-zinc-900">${volumeItem.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</td>
+            <td class="py-3 px-3 text-zinc-500 text-xs italic">${log.notes || '—'}</td>
+            <td class="py-3 px-3 text-right whitespace-nowrap">
+                <button type="button" onclick="openEditAtvLog('${dateStr}', '${log.id}')" title="Editar exercício" class="p-1.5 text-zinc-600 hover:text-black transition">✏️</button>
+                <button type="button" onclick="deleteAtvLogEntry('${dateStr}', '${log.id}')" title="Remover" class="p-1.5 text-rose-500 hover:text-rose-700 transition">🗑️</button>
+            </td>
+        </tr>`;
+}
+
+/* Monta o conteúdo interno da seção de Histórico (#atv-history-section) */
+function buildAtvHistorySectionInnerHTML() {
+    const isSyncUser = typeof window.isRegisteredSyncUser === 'function' && window.isRegisteredSyncUser();
+    const todayIso = getLocalISODate();
+    const isTodaySelected = selectedAtvDate === todayIso;
+    const currentLogs = atvLogs[selectedAtvDate] || [];
+
+    let logsTableHTML = '';
+    let totalDayVolume = 0;
+
+    currentLogs.forEach(log => {
+        totalDayVolume += calcLogEntryVolume(log);
+        logsTableHTML += buildAtvLogRowHTML(selectedAtvDate, log);
+    });
+
+    // Quando "Hoje" estiver selecionado, adiciona também os últimos exercícios feitos em dias anteriores
+    let recentPreviousRowsHTML = '';
+    if (isTodaySelected) {
+        const previousDates = Object.keys(atvLogs || {})
+            .filter(d => d < todayIso && Array.isArray(atvLogs[d]) && atvLogs[d].length > 0)
+            .sort((a, b) => b.localeCompare(a));
+
+        let countAdded = 0;
+        for (const prevDate of previousDates) {
+            if (countAdded >= 12) break;
+            const dayList = atvLogs[prevDate] || [];
+            for (const log of dayList) {
+                if (countAdded >= 12) break;
+                recentPreviousRowsHTML += buildAtvLogRowHTML(prevDate, log);
+                countAdded++;
+            }
+        }
+    }
+
+    if (currentLogs.length === 0 && !recentPreviousRowsHTML) {
+        logsTableHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">Nenhum exercício registrado nesta data.<br>Utilize ${isSyncUser ? 'os cards acima' : 'o card acima'} para registrar suas cargas.</td></tr>`;
+    } else if (currentLogs.length === 0 && recentPreviousRowsHTML) {
+        logsTableHTML = `
+            <tr><td colspan="9" class="py-4 text-center text-zinc-400 text-xs border-b border-zinc-100">Nenhum exercício registrado hoje (${formatDateDDMMYYYY(selectedAtvDate)}). Abaixo estão os últimos exercícios realizados:</td></tr>
+            <tr class="bg-zinc-50/90 border-b border-zinc-200">
+                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">🕒 Últimos Exercícios Realizados (Treinos Anteriores)</td>
+            </tr>
+            ${recentPreviousRowsHTML}`;
+    } else if (recentPreviousRowsHTML) {
+        logsTableHTML += `
+            <tr class="bg-zinc-50/90 border-b border-zinc-200">
+                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">🕒 Últimos Exercícios Realizados (Treinos Anteriores)</td>
+            </tr>
+            ${recentPreviousRowsHTML}`;
+    }
+
+    const formattedSelectedDate = formatDateDDMMYYYY(selectedAtvDate);
+
+    return `
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 pb-4">
+            <div>
+                <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-bold">HISTÓRICO DO DIA</span>
+                <h3 class="text-base font-bold text-zinc-900">Exercícios Registrados (${formattedSelectedDate})</h3>
+            </div>
+            ${currentLogs.length > 0 ? `
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono text-zinc-500">Volume Total (${formattedSelectedDate}):</span>
+                    <span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-950 font-mono font-bold text-xs">${totalDayVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</span>
+                </div>` : ''}
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="border-b border-zinc-200 text-zinc-400 font-mono uppercase text-[10px]">
+                        <th class="py-2.5 px-3">Data</th>
+                        <th class="py-2.5 px-3">Atividade</th>
+                        <th class="py-2.5 px-3">Grupo Muscular</th>
+                        <th class="py-2.5 px-3">Exercício</th>
+                        <th class="py-2.5 px-3 text-center">Séries × Reps</th>
+                        <th class="py-2.5 px-3 text-center">Carga (kg)</th>
+                        <th class="py-2.5 px-3 text-center">Volume Total</th>
+                        <th class="py-2.5 px-3">Observações</th>
+                        <th class="py-2.5 px-3 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>${logsTableHTML}</tbody>
+            </table>
+        </div>
+    `;
+}
 
 /* ------------------------------------------------------------------
  * Renderizador Principal da View de Atividade Física
@@ -434,6 +798,10 @@ function renderAtvFisicaInteractiveView() {
     loadAtvLogs();
 
     const isSyncUser = typeof window.isRegisteredSyncUser === 'function' && window.isRegisteredSyncUser();
+    const todayIso = getLocalISODate();
+    const yesterdayIso = getYesterdayISODate();
+    const isTodaySelected = selectedAtvDate === todayIso;
+    const isYesterdaySelected = selectedAtvDate === yesterdayIso;
 
     // Identificação do dia da semana a partir da data selecionada
     const dow = new Date(selectedAtvDate + 'T12:00:00').getDay(); // 0=Dom..6=Sáb
@@ -479,16 +847,38 @@ function renderAtvFisicaInteractiveView() {
     const carouselCardsHTML = currentWorkout.exercises.map((ex, idx) => {
         const muscleEmoji = getMuscleEmoji(ex.muscle);
         const dayLoggedCount = currentLogs.filter(l => l.exerciseName === ex.name || (ex.variations && ex.variations.includes(l.exerciseName))).length;
-        const suggestedLoad = (ex.load !== undefined && ex.load !== null) ? formatWeightNumber(ex.load) : '';
 
-        // Dropdown com exercício principal e variações equivalentes (↳)
+        const savedCardState = atvUiState.cardInputs[`${currentWorkout.planId}_${idx}`] || {};
+        const selectedExName = savedCardState.exercise && (savedCardState.exercise === ex.name || (ex.variations && ex.variations.includes(savedCardState.exercise)))
+            ? savedCardState.exercise
+            : ex.name;
+
+        // Referência ponderada (>2 reps têm peso maior) para o exercício selecionado e suas variações
+        const weightedRef = calcWeightedExerciseRefLoad([selectedExName, ex.name, ...(ex.variations || [])], ex.load);
+        const suggestedLoad = weightedRef !== null ? formatWeightNumber(weightedRef) : '';
+
+        const weightValueToUse = (savedCardState.weight !== undefined && savedCardState.weight !== '')
+            ? savedCardState.weight
+            : suggestedLoad;
+        const notesValueToUse = savedCardState.notes || '';
+
+        const mainRefVal = calcWeightedExerciseRefLoad([ex.name, ...(ex.variations || [])], ex.load);
+        const mainRefTxt = mainRefVal !== null ? ` (ref. ${formatWeightNumber(mainRefVal)}kg)` : '';
+
+        // Dropdown com exercício principal e variações equivalentes (↳) com referência de peso médio
         const selectOptionsHTML = [
-            `<option value="${ex.name}">${ex.name}</option>`,
-            ...(ex.variations || []).map(v => `<option value="${v}">↳ ${v}</option>`)
+            `<option value="${ex.name}" ${selectedExName === ex.name ? 'selected' : ''}>${currentWorkout.name} - ${ex.name}${mainRefTxt}</option>`,
+            ...(ex.variations || []).map(v => {
+                const varRefVal = calcWeightedExerciseRefLoad([v, ex.name], ex.load);
+                const varRefTxt = varRefVal !== null ? ` (ref. ${formatWeightNumber(varRefVal)}kg)` : '';
+                return `<option value="${v}" ${selectedExName === v ? 'selected' : ''}>↳ ${v}${varRefTxt}</option>`;
+            })
         ].join('');
 
+        const cardTitleText = `${currentWorkout.name} - ${selectedExName}${suggestedLoad ? ` (ref. ${suggestedLoad}kg)` : ''}`;
+
         return `
-            <div class="w-[300px] sm:w-[330px] shrink-0 snap-center bg-white border border-zinc-200/90 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-zinc-300 transition">
+            <div class="w-[300px] sm:w-[335px] shrink-0 snap-center bg-white border border-zinc-200/90 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-zinc-300 transition">
                 <div class="space-y-3">
                     <div class="flex items-start gap-3">
                         <div class="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center text-xl shrink-0">
@@ -496,19 +886,19 @@ function renderAtvFisicaInteractiveView() {
                         </div>
                         <div class="min-w-0 flex-1">
                             <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block truncate" title="${ex.muscle}">${ex.muscle}</span>
-                            <h4 class="text-sm font-bold text-zinc-900 truncate" title="${ex.name}">${ex.name}</h4>
+                            <h4 id="atv-card-title-${idx}" class="text-xs sm:text-sm font-bold text-zinc-900 line-clamp-2 leading-snug" title="${cardTitleText}">${cardTitleText}</h4>
                         </div>
                     </div>
 
                     <div class="flex flex-wrap gap-1.5 text-[11px] font-mono">
                         <span class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">🎯 ${ex.sets}× ${ex.reps}</span>
                         <span class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-700">⏱️ ${ex.rest}</span>
-                        ${suggestedLoad ? `<span class="px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 font-bold">ref: ${suggestedLoad} kg</span>` : ''}
+                        <span id="atv-card-ref-badge-${idx}" class="${suggestedLoad ? '' : 'hidden '}px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 font-bold">ref: ${suggestedLoad} kg</span>
                     </div>
 
                     <div>
                         <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Exercício / Variação</label>
-                        <select id="atv-card-ex-${idx}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white focus:border-black transition">
+                        <select id="atv-card-ex-${idx}" onchange="onAtvCardFieldChange(${idx}, true)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white focus:border-black transition">
                             ${selectOptionsHTML}
                         </select>
                     </div>
@@ -516,11 +906,11 @@ function renderAtvFisicaInteractiveView() {
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Carga (kg)</label>
-                            <input type="text" id="atv-card-weight-${idx}" inputmode="numeric" oninput="handleWeightInputMask(this)" value="${suggestedLoad}" placeholder="0,00" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center focus:bg-white focus:border-rose-500 transition">
+                            <input type="text" id="atv-card-weight-${idx}" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvCardFieldChange(${idx}, false)" value="${weightValueToUse}" placeholder="0,00" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center focus:bg-white focus:border-rose-500 transition">
                         </div>
                         <div>
                             <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Observações</label>
-                            <input type="text" id="atv-card-notes-${idx}" placeholder="Ex: RPE 8" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-800 focus:bg-white transition">
+                            <input type="text" id="atv-card-notes-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${notesValueToUse.replace(/"/g, '&quot;')}" placeholder="Ex: RPE 8" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-800 focus:bg-white transition">
                         </div>
                     </div>
                 </div>
@@ -529,14 +919,18 @@ function renderAtvFisicaInteractiveView() {
                     <button type="button" onclick="submitAtvCardLog(${idx})" class="w-full py-2.5 bg-black hover:bg-zinc-800 text-white rounded-2xl text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5">
                         <span>+ Registrar Exercício</span>
                     </button>
-                    ${dayLoggedCount > 0 ? `<div class="text-[10px] text-center font-mono text-emerald-600 font-semibold">✓ ${dayLoggedCount} registro(s) nesta data</div>` : ''}
+                    <div id="atv-card-logged-badge-${idx}">
+                        ${dayLoggedCount > 0 ? `<div class="text-[10px] text-center font-mono text-emerald-600 font-semibold">✓ ${dayLoggedCount} registro(s) nesta data</div>` : ''}
+                    </div>
                 </div>
             </div>`;
     }).join('');
 
+    const ci = atvUiState.customInputs || {};
+
     // Card para registrar novo exercício personalizado
     const customExerciseCardHTML = `
-        <div class="${isSyncUser ? 'w-[300px] sm:w-[330px] shrink-0 snap-center bg-zinc-50/80 border border-dashed border-zinc-300' : 'w-full max-w-md bg-white border border-zinc-200 shadow-xs'} rounded-3xl p-5 flex flex-col justify-between space-y-4">
+        <div class="${isSyncUser ? 'w-[300px] sm:w-[335px] shrink-0 snap-center bg-zinc-50/80 border border-dashed border-zinc-300' : 'w-full max-w-md bg-white border border-zinc-200 shadow-xs'} rounded-3xl p-5 flex flex-col justify-between space-y-4">
             <form onsubmit="submitCustomAtvLog(event)" class="space-y-3">
                 <div class="flex items-center gap-3">
                     <div class="w-11 h-11 rounded-2xl bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xl shrink-0">
@@ -549,35 +943,35 @@ function renderAtvFisicaInteractiveView() {
                 </div>
                 <div>
                     <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Nome do Movimento</label>
-                    <input type="text" id="atv-custom-name" required placeholder="Ex: Barra Fixa" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-900">
+                    <input type="text" id="atv-custom-name" oninput="onAtvCustomFieldChange()" value="${(ci.name || '').replace(/"/g, '&quot;')}" required placeholder="Ex: Barra Fixa" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-900">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Grupo Muscular</label>
-                        <input type="text" id="atv-custom-muscle" placeholder="Ex: Costas" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-xs text-zinc-900">
+                        <input type="text" id="atv-custom-muscle" oninput="onAtvCustomFieldChange()" value="${(ci.muscle || '').replace(/"/g, '&quot;')}" placeholder="Ex: Costas" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-xs text-zinc-900">
                     </div>
                     <div>
                         <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Carga (kg)</label>
-                        <input type="text" id="atv-custom-weight" inputmode="numeric" oninput="handleWeightInputMask(this)" placeholder="0,00" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono font-bold text-rose-600 text-center">
+                        <input type="text" id="atv-custom-weight" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvCustomFieldChange()" value="${(ci.weight || '').replace(/"/g, '&quot;')}" placeholder="0,00" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono font-bold text-rose-600 text-center">
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5">
                     <div>
                         <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Séries</label>
-                        <input type="number" id="atv-custom-sets" value="3" min="1" max="20" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono text-center">
+                        <input type="number" id="atv-custom-sets" oninput="onAtvCustomFieldChange()" value="${ci.sets || '3'}" min="1" max="20" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono text-center">
                     </div>
                     <div>
                         <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Reps</label>
-                        <input type="text" id="atv-custom-reps" value="10" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono text-center">
+                        <input type="text" id="atv-custom-reps" oninput="onAtvCustomFieldChange()" value="${(ci.reps || '10').replace(/"/g, '&quot;')}" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono text-center">
                     </div>
                     <div>
                         <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Descanso</label>
-                        <input type="text" id="atv-custom-rest" value="90s" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono text-center">
+                        <input type="text" id="atv-custom-rest" oninput="onAtvCustomFieldChange()" value="${(ci.rest || '90s').replace(/"/g, '&quot;')}" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono text-center">
                     </div>
                 </div>
                 <div>
                     <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Observações</label>
-                    <input type="text" id="atv-custom-notes" placeholder="Opcional" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-800">
+                    <input type="text" id="atv-custom-notes" oninput="onAtvCustomFieldChange()" value="${(ci.notes || '').replace(/"/g, '&quot;')}" placeholder="Opcional" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-800">
                 </div>
                 <button type="submit" class="w-full py-2.5 bg-zinc-900 hover:bg-black text-white rounded-2xl text-xs font-bold transition">
                     + Registrar Exercício Personalizado
@@ -585,45 +979,6 @@ function renderAtvFisicaInteractiveView() {
             </form>
         </div>
     `;
-
-    // Tabela de Histórico da data selecionada
-    let logsTableHTML = '';
-    let totalDayVolume = 0;
-
-    if (currentLogs.length === 0) {
-        logsTableHTML = `<tr><td colspan="8" class="py-8 text-center text-zinc-400 text-xs">Nenhum exercício registrado nesta data.<br>Utilize ${isSyncUser ? 'os cards acima' : 'o card acima'} para registrar suas cargas.</td></tr>`;
-    } else {
-        currentLogs.forEach(log => {
-            let wName = 'Personalizado';
-            if (log.planId !== 'custom') {
-                const resolvedPlanId = (typeof resolveLogGroupPlanId === 'function') ? resolveLogGroupPlanId(log) : (log.planId || 'upper_a');
-                const planObj = WORKOUT_PLAN.find(w => w.planId === resolvedPlanId);
-                const hObj = habits.find(h => h.category === 'atv_fisica' && ((log.habitId && h.id === log.habitId) || (resolvedPlanId && h.planId === resolvedPlanId)));
-                wName = planObj ? planObj.name : (hObj ? hObj.name : (resolvedPlanId ? resolvedPlanId.replace('_', ' ').toUpperCase() : 'Personalizado'));
-            }
-            const volumeItem = calcLogEntryVolume(log);
-            totalDayVolume += volumeItem;
-
-            const muscleStr = log.muscle || (findExerciseMeta(log.exerciseName, log.habitId) || {}).muscle || 'Geral';
-            const muscleEmoji = getMuscleEmoji(muscleStr);
-            const setsRepsTxt = `${log.sets || 3}× ${log.reps || '10'} ${log.rest ? `(${log.rest})` : ''}`;
-
-            logsTableHTML += `
-                <tr class="hover:bg-zinc-50 transition border-b border-zinc-100">
-                    <td class="py-3 px-3 font-semibold text-zinc-900 whitespace-nowrap">${wName}</td>
-                    <td class="py-3 px-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-zinc-100 text-[11px] font-medium text-zinc-800"><span>${muscleEmoji}</span><span class="truncate max-w-[150px]">${muscleStr}</span></span></td>
-                    <td class="py-3 px-3 font-medium text-zinc-800">${log.exerciseName}</td>
-                    <td class="py-3 px-3 font-mono text-center text-xs text-zinc-600">${setsRepsTxt}</td>
-                    <td class="py-3 px-3 text-center font-mono font-bold text-rose-600">${log.weight.toFixed(2).replace('.', ',')} kg</td>
-                    <td class="py-3 px-3 text-center font-mono font-bold text-zinc-900">${volumeItem.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</td>
-                    <td class="py-3 px-3 text-zinc-500 text-xs italic">${log.notes || '—'}</td>
-                    <td class="py-3 px-3 text-right whitespace-nowrap">
-                        <button type="button" onclick="openEditAtvLog('${selectedAtvDate}', '${log.id}')" title="Editar exercício" class="p-1 text-zinc-600 hover:text-black transition">✏️</button>
-                        <button type="button" onclick="deleteAtvLogEntry('${selectedAtvDate}', '${log.id}')" title="Remover" class="p-1 text-rose-500 hover:text-rose-700 transition">🗑️</button>
-                    </td>
-                </tr>`;
-        });
-    }
 
     const registrationSectionHTML = isSyncUser ? `
             <!-- 2. SELETOR DE ATIVIDADE (UPPER / LOWER A / B) FORA DO CARD NO TOPO -->
@@ -640,18 +995,20 @@ function renderAtvFisicaInteractiveView() {
 
                 <!-- 3. CARROSSEL DE EXERCÍCIOS (SLIDER E SWIPEABLE CARDS) -->
                 <div class="pt-2">
-                    <div class="flex justify-between items-center mb-3">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold uppercase tracking-wider text-zinc-700">Exercícios • ${currentWorkout.name}</span>
                             <span class="text-[11px] font-mono text-zinc-400">(${currentWorkout.exercises.length} movimentos)</span>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="scrollAtvCarousel(-1)" class="w-8 h-8 rounded-full border border-zinc-200 bg-white hover:bg-zinc-100 flex items-center justify-center text-zinc-700 text-sm font-bold shadow-xs transition" title="Rolar para a esquerda">‹</button>
-                            <button type="button" onclick="scrollAtvCarousel(1)" class="w-8 h-8 rounded-full border border-zinc-200 bg-white hover:bg-zinc-100 flex items-center justify-center text-zinc-700 text-sm font-bold shadow-xs transition" title="Rolar para a direita">›</button>
+                            <button type="button" onclick="scrollAtvCarouselToEdge('start')" class="px-2.5 h-8 rounded-full border border-zinc-200 bg-white hover:bg-zinc-100 flex items-center justify-center text-zinc-700 text-[11px] font-mono font-bold shadow-xs transition" title="Ir para o primeiro card">« Primeiro</button>
+                            <button type="button" onclick="scrollAtvCarousel(-1)" class="w-8 h-8 rounded-full border border-zinc-200 bg-white hover:bg-zinc-100 flex items-center justify-center text-zinc-700 text-sm font-bold shadow-xs transition" title="Card anterior">‹</button>
+                            <button type="button" onclick="scrollAtvCarousel(1)" class="w-8 h-8 rounded-full border border-zinc-200 bg-white hover:bg-zinc-100 flex items-center justify-center text-zinc-700 text-sm font-bold shadow-xs transition" title="Próximo card">›</button>
+                            <button type="button" onclick="scrollAtvCarouselToEdge('end')" class="px-2.5 h-8 rounded-full border border-zinc-200 bg-white hover:bg-zinc-100 flex items-center justify-center text-zinc-700 text-[11px] font-mono font-bold shadow-xs transition" title="Ir para o último card">Último »</button>
                         </div>
                     </div>
 
-                    <div id="atv-carousel-track" class="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory scroll-smooth scrollbar-thin px-1">
+                    <div id="atv-carousel-track" onscroll="onAtvCarouselScroll(this)" class="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory scroll-smooth scrollbar-thin px-1">
                         ${carouselCardsHTML}
                         ${customExerciseCardHTML}
                     </div>
@@ -664,6 +1021,14 @@ function renderAtvFisicaInteractiveView() {
             </div>
     `;
 
+    const todayBtnClass = isTodaySelected
+        ? "px-3 py-1.5 bg-black hover:bg-zinc-800 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+        : "px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition";
+
+    const yesterdayBtnClass = isYesterdaySelected
+        ? "px-3 py-1.5 bg-black hover:bg-zinc-800 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+        : "px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition";
+
     container.innerHTML = `
         <div class="space-y-6">
             <!-- 1. BARRA DE CONTROLE: SELETOR DE DATA E AGENDA -->
@@ -671,8 +1036,8 @@ function renderAtvFisicaInteractiveView() {
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="text-xs font-bold text-zinc-700 uppercase font-mono">Data:</span>
                     <input type="date" id="atv-date-picker" value="${selectedAtvDate}" onchange="setAtvDate(this.value)" class="bg-white border border-zinc-300 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-zinc-900 shadow-xs">
-                    <button type="button" onclick="setTodayAtvDate()" class="px-3 py-1.5 bg-black hover:bg-zinc-800 text-white rounded-xl text-xs font-semibold shadow-xs transition">Hoje</button>
-                    <button type="button" onclick="setYesterdayAtvDate()" class="px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition">Ontem</button>
+                    <button type="button" onclick="setTodayAtvDate()" class="${todayBtnClass}">Hoje</button>
+                    <button type="button" onclick="setYesterdayAtvDate()" class="${yesterdayBtnClass}">Ontem</button>
                 </div>
                 <div class="text-xs font-mono text-zinc-500">
                     ${agendaHintHTML}
@@ -682,39 +1047,21 @@ function renderAtvFisicaInteractiveView() {
             ${registrationSectionHTML}
 
             <!-- 4. HISTÓRICO DE EXERCÍCIOS REGISTRADOS PARA ESTA DATA -->
-            <div class="bg-white border border-zinc-200 rounded-3xl p-5 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 pb-4">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-bold">HISTÓRICO DO DIA</span>
-                        <h3 class="text-base font-bold text-zinc-900">Exercícios Registrados (${selectedAtvDate})</h3>
-                    </div>
-                    ${currentLogs.length > 0 ? `
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-mono text-zinc-500">Volume Total da Sessão:</span>
-                            <span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-950 font-mono font-bold text-xs">${totalDayVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</span>
-                        </div>` : ''}
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead>
-                            <tr class="border-b border-zinc-200 text-zinc-400 font-mono uppercase text-[10px]">
-                                <th class="py-2.5 px-3">Atividade</th>
-                                <th class="py-2.5 px-3">Grupo Muscular</th>
-                                <th class="py-2.5 px-3">Exercício</th>
-                                <th class="py-2.5 px-3 text-center">Séries × Reps</th>
-                                <th class="py-2.5 px-3 text-center">Carga (kg)</th>
-                                <th class="py-2.5 px-3 text-center">Volume Total</th>
-                                <th class="py-2.5 px-3">Observações</th>
-                                <th class="py-2.5 px-3 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>${logsTableHTML}</tbody>
-                    </table>
-                </div>
+            <div id="atv-history-section" class="bg-white border border-zinc-200 rounded-3xl p-5 shadow-sm space-y-4">
+                ${buildAtvHistorySectionInnerHTML()}
             </div>
         </div>
     `;
+
+    // Restaura posição horizontal do carrossel sem animação para evitar salto ao primeiro card
+    const newTrack = document.getElementById('atv-carousel-track');
+    if (newTrack && atvUiState.carouselScrollLeft > 0) {
+        newTrack.style.scrollBehavior = 'auto';
+        newTrack.scrollLeft = atvUiState.carouselScrollLeft;
+        requestAnimationFrame(() => {
+            if (newTrack) newTrack.style.scrollBehavior = '';
+        });
+    }
 
     refreshIcons();
 }
