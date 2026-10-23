@@ -528,15 +528,16 @@ function calcLoadEvolution30d() {
     } catch (e) { logs = {}; }
 
     const groups = {
-        upper_a: { id: 'upper_a', label: 'Upper A', color: '#ec4899', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
-        lower_a: { id: 'lower_a', label: 'Lower A', color: '#8b5cf6', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
-        upper_b: { id: 'upper_b', label: 'Upper B', color: '#f59e0b', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) },
-        lower_b: { id: 'lower_b', label: 'Lower B', color: '#10b981', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null) }
+        total_all: { id: 'total_all', label: 'Volume Total (Geral)', color: '#18181b', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
+        upper_a:   { id: 'upper_a',   label: 'Upper A',              color: '#e11d48', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
+        lower_a:   { id: 'lower_a',   label: 'Lower A',              color: '#1d4ed8', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
+        upper_b:   { id: 'upper_b',   label: 'Upper B',              color: '#f97316', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 },
+        lower_b:   { id: 'lower_b',   label: 'Lower B',              color: '#15803d', volumeSeries: Array(30).fill(null), weightSeries: Array(30).fill(null), syntheticZeroIdx: -1 }
     };
 
     const exercisesMap = new Map();
     // Descobre todos os exercícios já registrados pelo usuário
-    Object.keys(logs).forEach(dateKey => {
+    Object.keys(logs).sort().forEach(dateKey => {
         const list = logs[dateKey];
         if (!Array.isArray(list)) return;
         list.forEach(item => {
@@ -547,7 +548,8 @@ function calcLoadEvolution30d() {
                     name: exName,
                     planId: resolveLogGroupPlanId(item),
                     volumeSeries: Array(30).fill(null),
-                    weightSeries: Array(30).fill(null)
+                    weightSeries: Array(30).fill(null),
+                    syntheticZeroIdx: -1
                 });
             }
         });
@@ -571,6 +573,9 @@ function calcLoadEvolution30d() {
             grp.volumeSeries[dayIdx] = (grp.volumeSeries[dayIdx] || 0) + vol;
             grp.weightSeries[dayIdx] = Math.max(grp.weightSeries[dayIdx] || 0, w);
 
+            groups.total_all.volumeSeries[dayIdx] = (groups.total_all.volumeSeries[dayIdx] || 0) + vol;
+            groups.total_all.weightSeries[dayIdx] = Math.max(groups.total_all.weightSeries[dayIdx] || 0, w);
+
             const exName = item.exerciseName ? String(item.exerciseName).trim() : '';
             if (exName) {
                 if (!exercisesMap.has(exName)) {
@@ -578,7 +583,8 @@ function calcLoadEvolution30d() {
                         name: exName,
                         planId,
                         volumeSeries: Array(30).fill(null),
-                        weightSeries: Array(30).fill(null)
+                        weightSeries: Array(30).fill(null),
+                        syntheticZeroIdx: -1
                     });
                 }
                 const exObj = exercisesMap.get(exName);
@@ -587,6 +593,23 @@ function calcLoadEvolution30d() {
             }
         });
     });
+
+    // Garante que séries com apenas 1 registro nos 30 dias tenham um ponto inicial de tendência para conectar linha
+    function ensureTrendLineConnection(seriesObj) {
+        const nonNullIndices = [];
+        seriesObj.volumeSeries.forEach((v, idx) => {
+            if (v !== null && v !== undefined) nonNullIndices.push(idx);
+        });
+        if (nonNullIndices.length === 1) {
+            const onlyIdx = nonNullIndices[0];
+            const anchorIdx = onlyIdx > 0 ? 0 : 1;
+            seriesObj.volumeSeries[anchorIdx] = 0;
+            seriesObj.syntheticZeroIdx = anchorIdx;
+        }
+    }
+
+    Object.values(groups).forEach(ensureTrendLineConnection);
+    exercisesMap.forEach(ensureTrendLineConnection);
 
     return {
         days,

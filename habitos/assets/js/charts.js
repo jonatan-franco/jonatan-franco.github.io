@@ -460,6 +460,7 @@ function populateDashLoadChartSelect(evoData, forceReset) {
 
         if (dashLoadChartScope === 'group') {
             sel.innerHTML += `<option value="all">📊 Todos os Grupos (Upper / Lower)</option>`;
+            sel.innerHTML += `<option value="total_all">📈 Volume Total (Geral)</option>`;
             sel.innerHTML += `<option value="upper_a">🏋️ Upper A</option>`;
             sel.innerHTML += `<option value="lower_a">🦵 Lower A</option>`;
             sel.innerHTML += `<option value="upper_b">🏋️ Upper B</option>`;
@@ -481,89 +482,64 @@ function populateDashLoadChartSelect(evoData, forceReset) {
     });
 }
 
+function buildLoadDatasetItem(label, seriesObj, color, isSingleView) {
+    const synIdx = typeof seriesObj.syntheticZeroIdx === 'number' ? seriesObj.syntheticZeroIdx : -1;
+    const baseRadius = isSingleView ? 5.5 : 4.5;
+    const hoverRadius = isSingleView ? 7.5 : 6.5;
+    return {
+        type: 'line',
+        label,
+        data: seriesObj.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
+        borderColor: color,
+        backgroundColor: isSingleView ? hexToRgba(color, 0.16) : color,
+        pointBackgroundColor: color,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1.5,
+        borderWidth: isSingleView ? 3 : 2.5,
+        pointRadius: ctx => ctx.dataIndex === synIdx ? 0 : baseRadius,
+        pointHoverRadius: ctx => ctx.dataIndex === synIdx ? 0 : hoverRadius,
+        pointHitRadius: ctx => ctx.dataIndex === synIdx ? 0 : 4,
+        showLine: true,
+        tension: 0.25,
+        spanGaps: true,
+        fill: isSingleView,
+        _weightSeries: seriesObj.weightSeries,
+        _syntheticZeroIdx: synIdx
+    };
+}
+
 function buildLoadEvolutionChartConfig(evo, targetVal) {
     const xLabels = evo.days.map(d => d.label);
     const datasets = [];
 
     if (dashLoadChartScope === 'group') {
-        const groupKeys = ['upper_a', 'lower_a', 'upper_b', 'lower_b'];
+        const groupKeys = ['total_all', 'upper_a', 'lower_a', 'upper_b', 'lower_b'];
         if (targetVal === 'all' || !evo.groups[targetVal]) {
             groupKeys.forEach(gk => {
                 const g = evo.groups[gk];
-                datasets.push({
-                    type: 'line',
-                    label: g.label,
-                    data: g.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
-                    borderColor: g.color,
-                    backgroundColor: hexToRgba(g.color, 0.12),
-                    borderWidth: 2.5,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointHitRadius: 3,
-                    tension: 0.3,
-                    spanGaps: true,
-                    fill: false,
-                    _weightSeries: g.weightSeries
-                });
+                if (!g) return;
+                const hasData = g.volumeSeries.some((v, idx) => v !== null && idx !== g.syntheticZeroIdx);
+                if (!hasData && gk !== 'upper_a' && gk !== 'lower_a') return;
+                datasets.push(buildLoadDatasetItem(g.label, g, g.color, false));
             });
         } else {
             const g = evo.groups[targetVal];
-            datasets.push({
-                type: 'line',
-                label: `${g.label} — Volume (kg)`,
-                data: g.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
-                borderColor: g.color,
-                backgroundColor: hexToRgba(g.color, 0.16),
-                borderWidth: 3,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                pointHitRadius: 3,
-                tension: 0.3,
-                spanGaps: true,
-                fill: true,
-                _weightSeries: g.weightSeries
-            });
+            if (g) {
+                datasets.push(buildLoadDatasetItem(`${g.label} — Volume (kg)`, g, g.color, true));
+            }
         }
     } else {
         if (targetVal === 'all') {
             evo.exercises.forEach((ex, idx) => {
                 const color = getDistinctExerciseColor(idx);
-                datasets.push({
-                    type: 'line',
-                    label: ex.name,
-                    data: ex.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
-                    borderColor: color,
-                    backgroundColor: hexToRgba(color, 0.12),
-                    borderWidth: 2.5,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointHitRadius: 3,
-                    tension: 0.3,
-                    spanGaps: true,
-                    fill: false,
-                    _weightSeries: ex.weightSeries
-                });
+                datasets.push(buildLoadDatasetItem(ex.name, ex, color, false));
             });
         } else {
             const exIdx = evo.exercises.findIndex(e => e.name === targetVal);
             const ex = exIdx >= 0 ? evo.exercises[exIdx] : evo.exercises[0];
             if (ex) {
                 const color = getDistinctExerciseColor(exIdx >= 0 ? exIdx : 0);
-                datasets.push({
-                    type: 'line',
-                    label: `${ex.name} — Volume (kg)`,
-                    data: ex.volumeSeries.map(v => v !== null ? parseFloat(v.toFixed(2)) : null),
-                    borderColor: color,
-                    backgroundColor: hexToRgba(color, 0.16),
-                    borderWidth: 3,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    pointHitRadius: 3,
-                    tension: 0.3,
-                    spanGaps: true,
-                    fill: true,
-                    _weightSeries: ex.weightSeries
-                });
+                datasets.push(buildLoadDatasetItem(`${ex.name} — Volume (kg)`, ex, color, true));
             }
         }
     }
@@ -580,14 +556,18 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
             interaction: { mode: 'nearest', axis: 'xy', intersect: true },
             hover: { mode: 'nearest', axis: 'xy', intersect: true },
             plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                legend: { position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } },
                 tooltip: {
-                    // Garante que apenas o único ponto sob o mouse seja exibido (sem mostrar outros exercícios)
+                    // Garante que apenas o único ponto real sob o mouse seja exibido (sem mostrar outros exercícios nem o ponto de origem 0)
                     filter(tooltipItem, index) {
+                        if (tooltipItem.dataset && tooltipItem.dataIndex === tooltipItem.dataset._syntheticZeroIdx) {
+                            return false;
+                        }
                         return index === 0;
                     },
                     callbacks: {
                         label(context) {
+                            if (context.dataset && context.dataIndex === context.dataset._syntheticZeroIdx) return '';
                             const vol = context.parsed.y;
                             if (vol === null || vol === undefined) return '';
                             const ws = context.dataset._weightSeries;

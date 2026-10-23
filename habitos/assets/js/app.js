@@ -176,46 +176,329 @@ window.handleSleepTimeBlur = function(el) {
     if (norm) el.value = norm;
 };
 
-function buildSleepTableRowsHTML(rowPaddingClass) {
-    let html = '';
-    weekDays.forEach(d => {
-        const hasRecord = Boolean(sleepJournal[d.iso] && sleepJournal[d.iso].bed && sleepJournal[d.iso].bed !== '—');
-        const entry = sleepJournal[d.iso] || { bed: '—', slept: '—', wake: '—', getup: '—' };
-        const { bedH, sleptH, eff } = calcSleepJournalEntry(sleepJournal[d.iso]);
+let selectedSleepRegDate = (typeof getLocalISODate === 'function') ? getLocalISODate() : formatLocalISO(new Date());
+let sleepHistoryFilterMode = 'today'; // 'today' | 'yesterday' | '15d' | '30d' | 'custom'
+let selectedSleepHistoryDate = selectedSleepRegDate;
+let isSleepRegInitialized = false;
 
-        const delBtnHTML = hasRecord
-            ? `<button type="button" onclick="deleteSleepJournalEntry('${d.iso}')" title="Excluir registro" class="p-1.5 text-rose-500 hover:text-rose-700 transition">🗑️</button>`
-            : `<button type="button" disabled title="Sem registro para excluir" class="p-1.5 text-zinc-300 cursor-not-allowed">🗑️</button>`;
+function getWeekdayShortFromIso(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr + 'T12:00:00');
+    if (isNaN(d.getTime())) return '';
+    const names = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    return names[d.getDay()] || '';
+}
 
-        html += `
-            <tr class="hover:bg-zinc-50 transition">
-                <td class="${rowPaddingClass} px-3 font-medium text-zinc-900 whitespace-nowrap">${d.shortName} (${d.dateNum})</td>
-                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.bed}</td>
-                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.slept}</td>
-                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.wake}</td>
-                <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.getup}</td>
-                <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-indigo-600">${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</td>
-                <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
-                <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
-                <td class="${rowPaddingClass} px-3 text-right whitespace-nowrap">
-                    <button type="button" onclick="openSleepJournalModal('${d.iso}')" title="Editar / Registrar horário" class="p-1.5 text-zinc-600 hover:text-black transition">✏️</button>
-                    ${delBtnHTML}
-                </td>
-            </tr>`;
-    });
-    return html;
+function formatSleepDateDisplay(isoStr) {
+    if (!isoStr || typeof isoStr !== 'string') return '';
+    const parts = isoStr.split('-');
+    if (parts.length !== 3) return isoStr;
+    const ddmmyyyy = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    const wd = getWeekdayShortFromIso(isoStr);
+    return wd ? `${ddmmyyyy} (${wd})` : ddmmyyyy;
+}
+
+function syncSleepHabitFromJournal(iso) {
+    const dayIdx = weekDays.findIndex(d => d.iso === iso);
+    const sleepHabit = habits.find(h => h.category === 'sono');
+    if (!sleepHabit || dayIdx === -1) return;
+    const entry = sleepJournal[iso];
+    if (entry && entry.bed && entry.bed !== '—') {
+        const { bedH, sleptH } = calcSleepJournalEntry(entry);
+        if (Array.isArray(sleepHabit.dailyHours)) sleepHabit.dailyHours[dayIdx] = parseFloat(sleptH.toFixed(2));
+        if (Array.isArray(sleepHabit.bedtimeHours)) sleepHabit.bedtimeHours[dayIdx] = parseFloat(bedH.toFixed(2));
+        if (Array.isArray(sleepHabit.checks)) sleepHabit.checks[dayIdx] = sleptH > 0;
+    } else {
+        if (Array.isArray(sleepHabit.dailyHours)) sleepHabit.dailyHours[dayIdx] = 0;
+        if (Array.isArray(sleepHabit.bedtimeHours)) sleepHabit.bedtimeHours[dayIdx] = 0;
+        if (Array.isArray(sleepHabit.checks)) sleepHabit.checks[dayIdx] = false;
+    }
+}
+
+window.updateInlineSleepPreview = function() {
+    const bed = normalizeSleepTimeValue(document.getElementById('sleep-reg-bed')?.value || '');
+    const slept = normalizeSleepTimeValue(document.getElementById('sleep-reg-slept')?.value || '');
+    const wake = normalizeSleepTimeValue(document.getElementById('sleep-reg-wake')?.value || '');
+    const getup = normalizeSleepTimeValue(document.getElementById('sleep-reg-getup')?.value || '');
+    const previewEl = document.getElementById('sleep-reg-preview');
+    if (!previewEl) return;
+
+    if (!bed || !slept || !wake || !getup) {
+        previewEl.innerHTML = `<span class="text-zinc-400">Preencha os 4 horários acima (HH:MM)</span>`;
+        return;
+    }
+    const { bedH, sleptH, eff } = calcSleepJournalEntry({ bed, slept, wake, getup });
+    previewEl.innerHTML = `
+        <span class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-semibold">Cama: ${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</span>
+        <span class="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-semibold">Dormido: ${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</span>
+        <span class="px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 font-semibold">Eficiência: ${eff > 0 ? eff.toFixed(0) + '%' : '—'}</span>
+    `;
+};
+
+function syncSleepRegUI(forceLoadFields = false) {
+    const todayIso = (typeof getLocalISODate === 'function') ? getLocalISODate() : formatLocalISO(new Date());
+    const yesterdayIso = (typeof getYesterdayISODate === 'function') ? getYesterdayISODate() : (() => { const d = new Date(); d.setDate(d.getDate() - 1); return formatLocalISO(d); })();
+
+    const datePicker = document.getElementById('sleep-reg-date');
+    if (datePicker && datePicker.value !== selectedSleepRegDate) {
+        datePicker.value = selectedSleepRegDate;
+    }
+
+    const activeBtnCls = "px-3 py-1.5 bg-black hover:bg-zinc-800 text-white rounded-xl text-xs font-semibold shadow-xs transition";
+    const inactiveBtnCls = "px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition";
+
+    const btnToday = document.getElementById('btn-sleep-reg-today');
+    const btnYesterday = document.getElementById('btn-sleep-reg-yesterday');
+    if (btnToday) btnToday.className = selectedSleepRegDate === todayIso ? activeBtnCls : inactiveBtnCls;
+    if (btnYesterday) btnYesterday.className = selectedSleepRegDate === yesterdayIso ? activeBtnCls : inactiveBtnCls;
+
+    const existing = sleepJournal[selectedSleepRegDate];
+    const hasRecord = Boolean(existing && existing.bed && existing.bed !== '—');
+    const statusBadge = document.getElementById('sleep-reg-status-badge');
+    if (statusBadge) {
+        statusBadge.textContent = hasRecord
+            ? `✓ Registro existente em ${formatSleepDateDisplay(selectedSleepRegDate)}`
+            : `Novo registro para ${formatSleepDateDisplay(selectedSleepRegDate)}`;
+        statusBadge.className = hasRecord
+            ? "text-[11px] font-mono text-emerald-600 font-semibold"
+            : "text-[11px] font-mono text-zinc-500";
+    }
+
+    if (forceLoadFields || !isSleepRegInitialized) {
+        isSleepRegInitialized = true;
+        const bedEl = document.getElementById('sleep-reg-bed');
+        const sleptEl = document.getElementById('sleep-reg-slept');
+        const wakeEl = document.getElementById('sleep-reg-wake');
+        const getupEl = document.getElementById('sleep-reg-getup');
+        if (hasRecord) {
+            if (bedEl) bedEl.value = existing.bed;
+            if (sleptEl) sleptEl.value = existing.slept || '23:30';
+            if (wakeEl) wakeEl.value = existing.wake || '07:00';
+            if (getupEl) getupEl.value = existing.getup || '07:30';
+        } else {
+            if (bedEl) bedEl.value = '23:00';
+            if (sleptEl) sleptEl.value = '23:30';
+            if (wakeEl) wakeEl.value = '07:00';
+            if (getupEl) getupEl.value = '07:30';
+        }
+    }
+    window.updateInlineSleepPreview();
+}
+
+window.setSleepRegDate = function(dateStr) {
+    if (!dateStr) return;
+    selectedSleepRegDate = dateStr;
+    syncSleepRegUI(true);
+};
+
+window.setSleepRegQuickDate = function(which) {
+    const todayIso = (typeof getLocalISODate === 'function') ? getLocalISODate() : formatLocalISO(new Date());
+    const yesterdayIso = (typeof getYesterdayISODate === 'function') ? getYesterdayISODate() : (() => { const d = new Date(); d.setDate(d.getDate() - 1); return formatLocalISO(d); })();
+    selectedSleepRegDate = which === 'yesterday' ? yesterdayIso : todayIso;
+    syncSleepRegUI(true);
+};
+
+window.submitInlineSleepForm = function(ev) {
+    if (ev) ev.preventDefault();
+    const iso = document.getElementById('sleep-reg-date')?.value || selectedSleepRegDate;
+    const bed = normalizeSleepTimeValue(document.getElementById('sleep-reg-bed')?.value || '');
+    const slept = normalizeSleepTimeValue(document.getElementById('sleep-reg-slept')?.value || '');
+    const wake = normalizeSleepTimeValue(document.getElementById('sleep-reg-wake')?.value || '');
+    const getup = normalizeSleepTimeValue(document.getElementById('sleep-reg-getup')?.value || '');
+    if (!iso || !bed || !slept || !wake || !getup) return;
+
+    selectedSleepRegDate = iso;
+    sleepJournal[iso] = { bed, slept, wake, getup };
+    syncSleepHabitFromJournal(iso);
+    saveData();
+    syncSleepRegUI(true);
+};
+
+window.setSleepHistoryFilter = function(mode) {
+    const todayIso = (typeof getLocalISODate === 'function') ? getLocalISODate() : formatLocalISO(new Date());
+    const yesterdayIso = (typeof getYesterdayISODate === 'function') ? getYesterdayISODate() : (() => { const d = new Date(); d.setDate(d.getDate() - 1); return formatLocalISO(d); })();
+    sleepHistoryFilterMode = mode;
+    if (mode === 'today') {
+        selectedSleepHistoryDate = todayIso;
+    } else if (mode === 'yesterday') {
+        selectedSleepHistoryDate = yesterdayIso;
+    }
+    renderDedicatedSleepView();
+};
+
+window.setSleepHistoryCustomDate = function(dateStr) {
+    if (!dateStr) return;
+    const todayIso = (typeof getLocalISODate === 'function') ? getLocalISODate() : formatLocalISO(new Date());
+    const yesterdayIso = (typeof getYesterdayISODate === 'function') ? getYesterdayISODate() : (() => { const d = new Date(); d.setDate(d.getDate() - 1); return formatLocalISO(d); })();
+    selectedSleepHistoryDate = dateStr;
+    if (dateStr === todayIso) {
+        sleepHistoryFilterMode = 'today';
+    } else if (dateStr === yesterdayIso) {
+        sleepHistoryFilterMode = 'yesterday';
+    } else {
+        sleepHistoryFilterMode = 'custom';
+    }
+    renderDedicatedSleepView();
+};
+
+function buildSleepRecordRowHTML(isoStr, rowPaddingClass = 'py-3') {
+    const entry = sleepJournal[isoStr] || { bed: '—', slept: '—', wake: '—', getup: '—' };
+    const hasRecord = Boolean(sleepJournal[isoStr] && sleepJournal[isoStr].bed && sleepJournal[isoStr].bed !== '—');
+    const { bedH, sleptH, eff } = calcSleepJournalEntry(sleepJournal[isoStr]);
+
+    const delBtnHTML = hasRecord
+        ? `<button type="button" onclick="deleteSleepJournalEntry('${isoStr}')" title="Excluir registro" class="p-1.5 text-rose-500 hover:text-rose-700 transition">🗑️</button>`
+        : `<button type="button" disabled title="Sem registro para excluir" class="p-1.5 text-zinc-300 cursor-not-allowed">🗑️</button>`;
+
+    return `
+        <tr class="hover:bg-zinc-50 transition border-b border-zinc-100">
+            <td class="${rowPaddingClass} px-3 font-mono text-[11px] font-semibold text-zinc-800 whitespace-nowrap">${formatSleepDateDisplay(isoStr)}</td>
+            <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.bed}</td>
+            <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.slept}</td>
+            <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.wake}</td>
+            <td class="${rowPaddingClass} px-3 text-center font-mono">${entry.getup}</td>
+            <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-indigo-600">${bedH > 0 ? bedH.toFixed(1) + 'h' : '—'}</td>
+            <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-emerald-600">${sleptH > 0 ? sleptH.toFixed(1) + 'h' : '—'}</td>
+            <td class="${rowPaddingClass} px-3 text-center font-mono font-bold text-purple-600">${eff > 0 ? eff.toFixed(0) + '%' : '—'}</td>
+            <td class="${rowPaddingClass} px-3 text-right whitespace-nowrap">
+                <button type="button" onclick="openSleepJournalModal('${isoStr}')" title="Editar horário" class="p-1.5 text-zinc-600 hover:text-black transition">✏️</button>
+                ${delBtnHTML}
+            </td>
+        </tr>`;
 }
 
 function renderSleepJournalView() {
     const tbody = document.getElementById('sleep-journal-tbody');
     if (!tbody) return;
-    tbody.innerHTML = buildSleepTableRowsHTML('py-2.5');
+    tbody.innerHTML = weekDays.map(d => buildSleepRecordRowHTML(d.iso, 'py-2.5')).join('');
 }
 
 function renderDedicatedSleepView() {
+    syncSleepRegUI(false);
+
     const tbody = document.getElementById('dedicated-sleep-tbody');
     if (!tbody) return;
-    tbody.innerHTML = buildSleepTableRowsHTML('py-3');
+
+    const todayIso = (typeof getLocalISODate === 'function') ? getLocalISODate() : formatLocalISO(new Date());
+    const yesterdayIso = (typeof getYesterdayISODate === 'function') ? getYesterdayISODate() : (() => { const d = new Date(); d.setDate(d.getDate() - 1); return formatLocalISO(d); })();
+
+    const histPicker = document.getElementById('sleep-history-date-picker');
+    if (histPicker && histPicker.value !== selectedSleepHistoryDate) {
+        histPicker.value = selectedSleepHistoryDate;
+    }
+
+    const activeBtnCls = "px-3 py-1.5 bg-black hover:bg-zinc-800 text-white rounded-xl text-xs font-semibold shadow-xs transition";
+    const inactiveBtnCls = "px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition";
+
+    const btnToday = document.getElementById('btn-sleep-hist-today');
+    const btnYesterday = document.getElementById('btn-sleep-hist-yesterday');
+    const btn15d = document.getElementById('btn-sleep-hist-15d');
+    const btn30d = document.getElementById('btn-sleep-hist-30d');
+
+    if (btnToday) btnToday.className = sleepHistoryFilterMode === 'today' ? activeBtnCls : inactiveBtnCls;
+    if (btnYesterday) btnYesterday.className = sleepHistoryFilterMode === 'yesterday' ? activeBtnCls : inactiveBtnCls;
+    if (btn15d) btn15d.className = sleepHistoryFilterMode === '15d' ? activeBtnCls : inactiveBtnCls;
+    if (btn30d) btn30d.className = sleepHistoryFilterMode === '30d' ? activeBtnCls : inactiveBtnCls;
+
+    const titleEl = document.getElementById('sleep-history-title');
+    const summaryEl = document.getElementById('sleep-history-summary');
+
+    const allValidDatesDesc = Object.keys(sleepJournal || {}).filter(k => {
+        const e = sleepJournal[k];
+        if (!e || !e.bed || e.bed === '—') return false;
+        const { sleptH } = calcSleepJournalEntry(e);
+        return sleptH > 0;
+    }).sort((a, b) => b.localeCompare(a));
+
+    if (sleepHistoryFilterMode === '15d' || sleepHistoryFilterMode === '30d') {
+        const daysSpan = sleepHistoryFilterMode === '15d' ? 15 : 30;
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - (daysSpan - 1));
+        const cutoffIso = formatLocalISO(cutoffDate);
+
+        const filteredDates = allValidDatesDesc.filter(d => d >= cutoffIso && d <= todayIso);
+        if (titleEl) titleEl.textContent = `Registros de Sono (Últimos ${daysSpan} dias)`;
+
+        if (summaryEl) {
+            if (filteredDates.length > 0) {
+                let sumBed = 0, sumSlept = 0, sumEff = 0;
+                filteredDates.forEach(d => {
+                    const c = calcSleepJournalEntry(sleepJournal[d]);
+                    sumBed += c.bedH;
+                    sumSlept += c.sleptH;
+                    sumEff += c.eff;
+                });
+                const avgBed = sumBed / filteredDates.length;
+                const avgSlept = sumSlept / filteredDates.length;
+                const avgEff = sumEff / filteredDates.length;
+                summaryEl.classList.remove('hidden');
+                summaryEl.classList.add('flex');
+                summaryEl.innerHTML = `
+                    <span class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">${filteredDates.length} noite(s) registrada(s)</span>
+                    <span class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-semibold">Média Cama: ${avgBed.toFixed(1)}h</span>
+                    <span class="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-semibold">Média Dormida: ${avgSlept.toFixed(1)}h</span>
+                    <span class="px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 font-semibold">Eficiência Média: ${avgEff.toFixed(0)}%</span>
+                `;
+            } else {
+                summaryEl.classList.add('hidden');
+                summaryEl.classList.remove('flex');
+            }
+        }
+
+        if (filteredDates.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">Nenhum registro de sono encontrado nos últimos ${daysSpan} dias.</td></tr>`;
+        } else {
+            tbody.innerHTML = filteredDates.map(iso => buildSleepRecordRowHTML(iso, 'py-3')).join('');
+        }
+    } else {
+        // Modos: 'today' | 'yesterday' | 'custom'
+        const targetDate = sleepHistoryFilterMode === 'today' ? todayIso
+            : sleepHistoryFilterMode === 'yesterday' ? yesterdayIso
+            : selectedSleepHistoryDate;
+
+        if (titleEl) {
+            titleEl.textContent = `Registros de Sono (${formatSleepDateDisplay(targetDate)})`;
+        }
+        if (summaryEl) {
+            summaryEl.classList.add('hidden');
+            summaryEl.classList.remove('flex');
+        }
+
+        const hasTargetRecord = allValidDatesDesc.includes(targetDate);
+        let rowsHTML = '';
+        if (hasTargetRecord) {
+            rowsHTML += buildSleepRecordRowHTML(targetDate, 'py-3');
+        }
+
+        // Quando "Hoje" estiver selecionado, exibe também os últimos registros de sono anteriores
+        let previousRowsHTML = '';
+        if (sleepHistoryFilterMode === 'today') {
+            const prevDates = allValidDatesDesc.filter(d => d < todayIso).slice(0, 10);
+            if (prevDates.length > 0) {
+                previousRowsHTML = prevDates.map(d => buildSleepRecordRowHTML(d, 'py-3')).join('');
+            }
+        }
+
+        if (!hasTargetRecord && !previousRowsHTML) {
+            tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">Nenhum registro de sono nesta data (${formatSleepDateDisplay(targetDate)}).<br>Utilize o registrador acima para lançar os horários deste dia.</td></tr>`;
+        } else if (!hasTargetRecord && previousRowsHTML) {
+            tbody.innerHTML = `
+                <tr><td colspan="9" class="py-4 text-center text-zinc-400 text-xs border-b border-zinc-100">Nenhum registro de sono hoje (${formatSleepDateDisplay(targetDate)}). Abaixo estão os últimos registros anteriores:</td></tr>
+                <tr class="bg-zinc-50/90 border-b border-zinc-200">
+                    <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">🕒 Últimos Registros de Sono (Dias Anteriores)</td>
+                </tr>
+                ${previousRowsHTML}`;
+        } else if (previousRowsHTML) {
+            tbody.innerHTML = `
+                ${rowsHTML}
+                <tr class="bg-zinc-50/90 border-b border-zinc-200">
+                    <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">🕒 Últimos Registros de Sono (Dias Anteriores)</td>
+                </tr>
+                ${previousRowsHTML}`;
+        } else {
+            tbody.innerHTML = rowsHTML;
+        }
+    }
 }
 
 window.onSleepJournalDayChange = function(iso) {
@@ -242,15 +525,10 @@ window.onSleepJournalDayChange = function(iso) {
 };
 
 window.openSleepJournalModal = function(targetIso) {
-    const sel = document.getElementById('sleep-journal-day');
-    const defaultIso = targetIso || (weekDays[todayIndex !== -1 ? todayIndex : 0] || weekDays[0]).iso;
-    if (sel) {
-        sel.innerHTML = '';
-        weekDays.forEach((d) => {
-            const isSel = d.iso === defaultIso ? 'selected' : '';
-            sel.innerHTML += `<option value="${d.iso}" ${isSel}>${d.shortName} (${d.dateNum})</option>`;
-        });
-        sel.value = defaultIso;
+    const dayInput = document.getElementById('sleep-journal-day');
+    const defaultIso = targetIso || selectedSleepHistoryDate || (weekDays[todayIndex !== -1 ? todayIndex : 0] || weekDays[0]).iso;
+    if (dayInput) {
+        dayInput.value = defaultIso;
     }
     window.onSleepJournalDayChange(defaultIso);
     const m = document.getElementById('sleep-journal-modal');
@@ -261,13 +539,7 @@ window.deleteSleepJournalEntry = function(iso) {
     if (!iso || !sleepJournal[iso]) return;
     if (confirm('Deseja excluir o registro de sono deste dia?')) {
         delete sleepJournal[iso];
-        const dayIdx = weekDays.findIndex(d => d.iso === iso);
-        const sleepHabit = habits.find(h => h.category === 'sono');
-        if (sleepHabit && dayIdx !== -1) {
-            if (Array.isArray(sleepHabit.dailyHours)) sleepHabit.dailyHours[dayIdx] = 0;
-            if (Array.isArray(sleepHabit.checks)) sleepHabit.checks[dayIdx] = false;
-            if (Array.isArray(sleepHabit.bedtimeHours)) sleepHabit.bedtimeHours[dayIdx] = 0;
-        }
+        syncSleepHabitFromJournal(iso);
         saveData();
     }
 };
@@ -1100,7 +1372,9 @@ window.addEventListener('DOMContentLoaded', () => {
             if (!bed || !slept || !wake || !getup) return;
 
             sleepJournal[iso] = { bed, slept, wake, getup };
+            syncSleepHabitFromJournal(iso);
             saveData();
+            if (iso === selectedSleepRegDate) syncSleepRegUI(true);
             closeSleepJournalModal();
         });
     }

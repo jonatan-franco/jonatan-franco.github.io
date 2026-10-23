@@ -11,11 +11,26 @@ const CATEGORIES = {
 };
 
 const PALETTE = [
-    '#e11d48', '#2563eb', '#16a34a', '#d97706', '#9333ea', '#0891b2',
-    '#dc2626', '#4f46e5', '#059669', '#ea580c', '#c026d3', '#0284c7',
-    '#65a30d', '#7c3aed', '#0d9488', '#db2777', '#1d4ed8', '#b91c1c',
-    '#15803d', '#b45309', '#6d28d9', '#0e7490', '#a21caf', '#4338ca',
-    '#047857', '#c2410c', '#be185d', '#0369a1', '#4d7c0f', '#0f766e'
+    '#e11d48', // 1. Vermelho Carmesim
+    '#1d4ed8', // 2. Azul Royal
+    '#15803d', // 3. Verde Floresta
+    '#f97316', // 4. Laranja Vibrante
+    '#7e22ce', // 5. Roxo Violeta
+    '#eab308', // 6. Amarelo Ouro
+    '#ec4899', // 7. Rosa Pink
+    '#18181b', // 8. Preto Grafite
+    '#84cc16', // 9. Verde Lima Claro
+    '#78350f', // 10. Marrom Café
+    '#0d9488', // 11. Verde Petróleo (Teal)
+    '#c026d3', // 12. Fúcsia
+    '#991b1b', // 13. Bordô Escuro
+    '#6366f1', // 14. Índigo
+    '#b45309', // 15. Âmbar Queimado
+    '#06b6d4', // 16. Turquesa Claro
+    '#4d7c0f', // 17. Verde Oliva
+    '#4c1d95', // 18. Roxo Noite
+    '#fb7185', // 19. Coral Salmão
+    '#0369a1'  // 20. Azul Petróleo
 ];
 
 function formatLocalISO(d) {

@@ -68,9 +68,11 @@ function updateTimerTabButtons(mode) {
 window.scrollToTimerSlide = function(mode) {
     const target = mode === 'countdown' ? 'countdown' : 'stopwatch';
     updateTimerTabButtons(target);
+    const track = document.getElementById('timer-carousel-track');
     const slide = document.getElementById('timer-slide-' + target);
-    if (slide) {
-        slide.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    if (track && slide) {
+        const targetLeft = target === 'countdown' ? slide.offsetLeft : 0;
+        track.scrollTo({ left: targetLeft, behavior: 'smooth' });
     }
 };
 
@@ -182,7 +184,16 @@ window.lapOrResetStopwatch = function() {
 // ----------------------------------------------------------------------------
 function updateCountdownDisplay() {
     const mainEl = document.getElementById('cd-main-display');
-    if (mainEl) mainEl.textContent = formatHMS(cdRemainingSeconds);
+    if (mainEl) {
+        const formatted = formatHMS(cdRemainingSeconds);
+        if ('value' in mainEl) {
+            if (document.activeElement !== mainEl) {
+                mainEl.value = formatted;
+            }
+        } else {
+            mainEl.textContent = formatted;
+        }
+    }
 
     const ring = document.getElementById('cd-ring-progress');
     if (ring) {
@@ -193,11 +204,79 @@ function updateCountdownDisplay() {
 
     const badge = document.getElementById('cd-status-badge');
     if (badge && !cdRunning) {
-        const mins = Math.round(cdTotalSeconds / 60);
+        const mins = Math.max(1, Math.round(cdTotalSeconds / 60));
         badge.textContent = `${mins} min`;
     }
     updateMiniTimerPill();
 }
+
+window.onCountdownDirectFocus = function(el) {
+    if (!el) return;
+    if (cdRunning) {
+        clearInterval(cdInterval);
+        cdRunning = false;
+        syncCountdownButtons();
+    }
+    setTimeout(() => {
+        try { el.select(); } catch (e) {}
+    }, 10);
+};
+
+window.onCountdownDirectInput = function(el) {
+    if (!el) return;
+    const rawDigits = el.value.replace(/\D/g, '').slice(-6);
+    const padded = rawDigits.padStart(6, '0');
+    const hh = parseInt(padded.slice(0, 2), 10) || 0;
+    const mm = parseInt(padded.slice(2, 4), 10) || 0;
+    const ss = parseInt(padded.slice(4, 6), 10) || 0;
+    el.value = `${padded.slice(0, 2)}:${padded.slice(2, 4)}:${padded.slice(4, 6)}`;
+    try {
+        el.setSelectionRange(el.value.length, el.value.length);
+    } catch (e) {}
+
+    const totalSecs = hh * 3600 + mm * 60 + ss;
+    if (totalSecs > 0) {
+        cdTotalSeconds = totalSecs;
+        cdRemainingSeconds = totalSecs;
+        const inputEl = document.getElementById('input-min-countdown');
+        const approxMin = Math.max(1, Math.round(totalSecs / 60));
+        if (inputEl) inputEl.value = approxMin;
+        if (timerConfig) timerConfig.countdownMin = approxMin;
+    }
+    const ring = document.getElementById('cd-ring-progress');
+    if (ring) ring.style.strokeDashoffset = '0';
+    const badge = document.getElementById('cd-status-badge');
+    if (badge) badge.textContent = formatHMS(totalSecs > 0 ? totalSecs : cdTotalSeconds);
+};
+
+window.onCountdownDirectBlur = function(el) {
+    if (!el) return;
+    const rawDigits = el.value.replace(/\D/g, '').slice(-6);
+    const padded = rawDigits.padStart(6, '0');
+    const hh = parseInt(padded.slice(0, 2), 10) || 0;
+    const mm = parseInt(padded.slice(2, 4), 10) || 0;
+    const ss = parseInt(padded.slice(4, 6), 10) || 0;
+    const totalSecs = hh * 3600 + mm * 60 + ss;
+    if (totalSecs > 0) {
+        cdTotalSeconds = totalSecs;
+        cdRemainingSeconds = totalSecs;
+        const approxMin = Math.max(1, Math.round(totalSecs / 60));
+        const inputEl = document.getElementById('input-min-countdown');
+        if (inputEl) inputEl.value = approxMin;
+        if (timerConfig) timerConfig.countdownMin = approxMin;
+        saveData(false, true);
+    }
+    el.value = formatHMS(cdRemainingSeconds);
+    syncCountdownButtons();
+    updateCountdownDisplay();
+};
+
+window.onCountdownDirectKeydown = function(el, ev) {
+    if (ev && ev.key === 'Enter') {
+        ev.preventDefault();
+        el.blur();
+    }
+};
 
 function syncCountdownButtons() {
     const toggleBtn = document.getElementById('btn-cd-toggle');
@@ -221,7 +300,7 @@ function syncCountdownButtons() {
             toggleBtn.className = "w-36 sm:w-44 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm sm:text-base transition shadow-lg";
         }
         if (subLabel) {
-            subLabel.textContent = isPausedMidway ? 'Temporizador pausado' : 'Toque nos atalhos abaixo para ajustar';
+            subLabel.textContent = isPausedMidway ? 'Temporizador pausado' : 'Toque no tempo acima para digitar ou use os atalhos';
         }
         if (badge) {
             badge.textContent = `${Math.max(1, Math.round(cdTotalSeconds / 60))} min`;

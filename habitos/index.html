@@ -272,21 +272,85 @@
 
         <!-- VIEW: GESTÃO DO SONO -->
         <section id="view-sono" class="hidden space-y-6">
-            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
+            <!-- 1. REGISTRADOR DO SONO -->
+            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-5">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-indigo-600 font-bold">GRUPO</span>
-                        <h2 class="text-xl font-bold text-zinc-900">🌙 Sono</h2>
-                        <p class="text-xs text-zinc-500">Controle o tempo de cama, horários de deitar, adormecer, acordar, levantar e eficiência.</p>
+                        <span class="text-[10px] font-mono uppercase tracking-widest text-indigo-600 font-bold">REGISTRADOR</span>
+                        <h2 class="text-xl font-bold text-zinc-900">🌙 Gestão do Sono</h2>
+                        <p class="text-xs text-zinc-500">Registre horários de deitar, adormecer, acordar e levantar para qualquer data.</p>
                     </div>
-                    <button type="button" onclick="openSleepJournalModal()" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold transition text-center">+ Registrar Diário do Sono</button>
                 </div>
+
+                <!-- Barra de data do registrador -->
+                <div class="bg-zinc-50 p-4 rounded-2xl border border-zinc-200 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-zinc-700 uppercase font-mono">Data do Registro:</span>
+                        <input type="date" id="sleep-reg-date" onchange="setSleepRegDate(this.value)" class="bg-white border border-zinc-300 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-zinc-900 shadow-xs">
+                        <button type="button" id="btn-sleep-reg-today" onclick="setSleepRegQuickDate('today')" class="px-3 py-1.5 bg-black text-white rounded-xl text-xs font-semibold shadow-xs transition">Hoje</button>
+                        <button type="button" id="btn-sleep-reg-yesterday" onclick="setSleepRegQuickDate('yesterday')" class="px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition">Ontem</button>
+                    </div>
+                    <span id="sleep-reg-status-badge" class="text-[11px] font-mono text-zinc-500">Novo registro</span>
+                </div>
+
+                <!-- Formulário inline de registro do sono -->
+                <form id="sleep-inline-form" onsubmit="submitInlineSleepForm(event)" class="space-y-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário de Deitar</label>
+                            <input type="text" id="sleep-reg-bed" inputmode="numeric" maxlength="5" placeholder="23:00" value="23:00" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário que Dormiu</label>
+                            <input type="text" id="sleep-reg-slept" inputmode="numeric" maxlength="5" placeholder="23:30" value="23:30" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário que Acordou</label>
+                            <input type="text" id="sleep-reg-wake" inputmode="numeric" maxlength="5" placeholder="07:00" value="07:00" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário que Levantou</label>
+                            <input type="text" id="sleep-reg-getup" inputmode="numeric" maxlength="5" placeholder="07:30" value="07:30" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-zinc-100">
+                        <div id="sleep-reg-preview" class="flex flex-wrap items-center gap-2 text-xs font-mono">
+                            <span class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-semibold">Cama: 8.5h</span>
+                            <span class="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-semibold">Dormido: 7.5h</span>
+                            <span class="px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 font-semibold">Eficiência: 88%</span>
+                        </div>
+                        <button type="submit" class="w-full sm:w-auto px-5 py-2.5 bg-black hover:bg-zinc-800 text-white rounded-2xl text-xs font-bold transition shadow-xs">
+                            + Registrar Sono
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 2. HISTÓRICO DO SONO (ABAIXO DO REGISTRADOR COM FILTROS DE DATA E CALENDÁRIO) -->
+            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 border-b border-zinc-100 pb-4">
+                    <div>
+                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-bold">HISTÓRICO DO SONO</span>
+                        <h3 id="sleep-history-title" class="text-base font-bold text-zinc-900">Registros de Sono</h3>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-zinc-700 uppercase font-mono">Data:</span>
+                        <input type="date" id="sleep-history-date-picker" onchange="setSleepHistoryCustomDate(this.value)" class="bg-white border border-zinc-300 rounded-xl px-3 py-1.5 text-xs font-mono font-semibold text-zinc-900 shadow-xs">
+                        <button type="button" id="btn-sleep-hist-today" onclick="setSleepHistoryFilter('today')" class="px-3 py-1.5 bg-black text-white rounded-xl text-xs font-semibold shadow-xs transition">Hoje</button>
+                        <button type="button" id="btn-sleep-hist-yesterday" onclick="setSleepHistoryFilter('yesterday')" class="px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition">Ontem</button>
+                        <button type="button" id="btn-sleep-hist-15d" onclick="setSleepHistoryFilter('15d')" class="px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition">Últimos 15d</button>
+                        <button type="button" id="btn-sleep-hist-30d" onclick="setSleepHistoryFilter('30d')" class="px-3 py-1.5 bg-white border border-zinc-200 text-zinc-700 hover:text-black rounded-xl text-xs font-semibold shadow-xs transition">Últimos 30d</button>
+                    </div>
+                </div>
+
+                <div id="sleep-history-summary" class="hidden flex-wrap items-center gap-2 text-xs font-mono pb-1"></div>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
                             <tr class="border-b border-zinc-200 text-zinc-400 font-mono uppercase text-[10px]">
-                                <th class="py-2.5 px-3">Data / Dia</th>
+                                <th class="py-2.5 px-3">Data</th>
                                 <th class="py-2.5 px-3 text-center">Deitou</th>
                                 <th class="py-2.5 px-3 text-center">Dormiu</th>
                                 <th class="py-2.5 px-3 text-center">Acordou</th>
@@ -360,15 +424,15 @@
                         <span id="cd-status-badge" class="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-400">30 min</span>
                     </div>
 
-                    <!-- Anel Circular + Visor Gigante Estilo Samsung Clock -->
-                    <div class="relative w-64 h-64 sm:w-76 sm:h-76 flex items-center justify-center my-4 select-none">
+                    <!-- Anel Circular + Visor Editável Estilo Samsung Clock -->
+                    <div class="relative w-72 h-72 sm:w-80 sm:h-80 md:w-[340px] md:h-[340px] flex items-center justify-center my-4 select-none">
                         <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 240 240">
                             <circle cx="120" cy="120" r="108" stroke="#27272a" stroke-width="8" fill="transparent"></circle>
                             <circle id="cd-ring-progress" cx="120" cy="120" r="108" stroke="#10b981" stroke-width="8" stroke-linecap="round" fill="transparent" stroke-dasharray="678.58" stroke-dashoffset="0" class="transition-all duration-300"></circle>
                         </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                            <div id="cd-main-display" class="text-4xl sm:text-5xl md:text-6xl font-mono font-extrabold tracking-tight text-white">00:30:00</div>
-                            <span id="cd-sub-label" class="text-[11px] font-mono text-zinc-400 mt-2">Toque nos atalhos abaixo para ajustar</span>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-8">
+                            <input type="text" id="cd-main-display" inputmode="numeric" value="00:30:00" onfocus="onCountdownDirectFocus(this)" oninput="onCountdownDirectInput(this)" onblur="onCountdownDirectBlur(this)" onkeydown="onCountdownDirectKeydown(this, event)" title="Clique para digitar o tempo (HH:MM:SS)" class="w-full max-w-[210px] sm:max-w-[240px] md:max-w-[260px] text-3xl sm:text-4xl md:text-[2.65rem] leading-none font-mono font-extrabold tracking-tight text-white text-center bg-transparent border-b-2 border-transparent focus:border-emerald-500 focus:outline-none cursor-text transition">
+                            <span id="cd-sub-label" class="text-[10px] sm:text-[11px] font-mono text-zinc-400 mt-2.5 max-w-[200px] leading-snug">Toque no tempo acima para digitar ou use os atalhos</span>
                         </div>
                     </div>
 
@@ -413,34 +477,6 @@
 
         <!-- MÉTRICAS -->
         <section id="view-metrics" class="hidden space-y-6">
-            <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div>
-                        <span class="text-[10px] font-mono uppercase tracking-widest text-indigo-600 font-bold">DIÁRIO DO SONO</span>
-                        <h2 class="text-lg font-bold text-zinc-900">Registro &amp; Eficiência do Sono</h2>
-                    </div>
-                    <button type="button" onclick="openSleepJournalModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold shadow-sm transition">+ Registrar Diário do Sono</button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead>
-                            <tr class="border-b border-zinc-200 text-zinc-400 font-mono uppercase text-[10px]">
-                                <th class="py-2.5 px-3">Data / Dia</th>
-                                <th class="py-2.5 px-3 text-center">Deitou</th>
-                                <th class="py-2.5 px-3 text-center">Dormiu</th>
-                                <th class="py-2.5 px-3 text-center">Acordou</th>
-                                <th class="py-2.5 px-3 text-center">Levantou</th>
-                                <th class="py-2.5 px-3 text-center text-indigo-600">Tempo de Cama</th>
-                                <th class="py-2.5 px-3 text-center text-emerald-600">Tempo Dormido</th>
-                                <th class="py-2.5 px-3 text-center text-purple-600">Eficiência (%)</th>
-                                <th class="py-2.5 px-3 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sleep-journal-tbody" class="divide-y divide-zinc-100"></tbody>
-                    </table>
-                </div>
-            </div>
-
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
                     <div>
@@ -503,13 +539,13 @@
     <div id="sleep-journal-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                <h3 id="sleep-journal-modal-title" class="text-base font-bold text-zinc-900">Registrar Diário do Sono</h3>
+                <h3 id="sleep-journal-modal-title" class="text-base font-bold text-zinc-900">Editar Registro do Sono</h3>
                 <button type="button" onclick="closeSleepJournalModal()" class="text-zinc-400 hover:text-black p-1">✕</button>
             </div>
             <form id="sleep-journal-form" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Dia da Semana</label>
-                    <select id="sleep-journal-day" onchange="onSleepJournalDayChange(this.value)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm sm:text-xs font-medium text-zinc-900"></select>
+                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Data do Registro</label>
+                    <input type="date" id="sleep-journal-day" onchange="onSleepJournalDayChange(this.value)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm sm:text-xs font-mono font-semibold text-zinc-900">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
