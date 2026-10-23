@@ -55,3 +55,109 @@
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f4f4f5; }
 ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+
+
+/* Animação da Bola Verde "100% Completo" */
+@keyframes popInGreenBall {
+    0% { transform: scale(0.4); opacity: 0; }
+    65% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.animate-green-ball {
+    animation: popInGreenBall 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ===================================================================
+ * TEMAS E CORES PERSONALIZÁVEIS DO SITE (Configurações)
+ * =================================================================== */
+:root {
+    --hq-accent: #18181b;
+    --hq-accent-hover: #27272a;
+    --hq-accent-text: #ffffff;
+}
+
+html[data-accent="indigo"] { --hq-accent: #4f46e5; --hq-accent-hover: #4338ca; }
+html[data-accent="emerald"] { --hq-accent: #059669; --hq-accent-hover: #047857; }
+html[data-accent="rose"] { --hq-accent: #e11d48; --hq-accent-hover: #be123c; }
+html[data-accent="cyan"] { --hq-accent: #0284c7; --hq-accent-hover: #0369a1; }
+html[data-accent="amber"] { --hq-accent: #d97706; --hq-accent-hover: #b45309; }
+
+html[data-accent="indigo"] main .bg-black,
+html[data-accent="emerald"] main .bg-black,
+html[data-accent="rose"] main .bg-black,
+html[data-accent="cyan"] main .bg-black,
+html[data-accent="amber"] main .bg-black {
+    background-color: var(--hq-accent) !important;
+    color: #ffffff !important;
+}
+html[data-accent="indigo"] #desktop-sidebar .nav-item.bg-white,
+html[data-accent="emerald"] #desktop-sidebar .nav-item.bg-white,
+html[data-accent="rose"] #desktop-sidebar .nav-item.bg-white,
+html[data-accent="cyan"] #desktop-sidebar .nav-item.bg-white,
+html[data-accent="amber"] #desktop-sidebar .nav-item.bg-white {
+    background-color: var(--hq-accent) !important;
+    color: #ffffff !important;
+}
+
+/* Modo Escuro (Dark Theme) */
+html[data-theme="dark"] body {
+    background-color: #09090b !important;
+    color: #f4f4f5 !important;
+}
+html[data-theme="dark"] main .bg-white {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+    color: #f4f4f5 !important;
+}
+html[data-theme="dark"] main .bg-zinc-50,
+html[data-theme="dark"] main .bg-zinc-50\/70,
+html[data-theme="dark"] main .bg-zinc-50\/80,
+html[data-theme="dark"] main .bg-zinc-100 {
+    background-color: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #e4e4e7 !important;
+}
+html[data-theme="dark"] main .text-zinc-900,
+html[data-theme="dark"] main .text-zinc-800,
+html[data-theme="dark"] main .text-zinc-700 {
+    color: #f4f4f5 !important;
+}
+html[data-theme="dark"] main .text-zinc-600,
+html[data-theme="dark"] main .text-zinc-500 {
+    color: #a1a1aa !important;
+}
+html[data-theme="dark"] main .border-zinc-200,
+html[data-theme="dark"] main .border-zinc-100,
+html[data-theme="dark"] main .border-zinc-300 {
+    border-color: #27272a !important;
+}
+html[data-theme="dark"] main input,
+html[data-theme="dark"] main select {
+    background-color: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #f4f4f5 !important;
+}
+html[data-theme="dark"] #settings-modal > div,
+html[data-theme="dark"] #sleep-journal-modal > div,
+html[data-theme="dark"] #profile-modal > div,
+html[data-theme="dark"] #habit-modal > div,
+html[data-theme="dark"] #event-modal > div,
+html[data-theme="dark"] #cloud-modal > div,
+html[data-theme="dark"] #atv-edit-log-modal > div,
+html[data-theme="dark"] #dash-load-zoom-modal > div {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+    color: #f4f4f5 !important;
+}
+html[data-theme="dark"] #settings-modal .text-zinc-900,
+html[data-theme="dark"] #sleep-journal-modal .text-zinc-900,
+html[data-theme="dark"] #profile-modal .text-zinc-900,
+html[data-theme="dark"] #habit-modal .text-zinc-900,
+html[data-theme="dark"] #event-modal .text-zinc-900,
+html[data-theme="dark"] #cloud-modal .text-zinc-900,
+html[data-theme="dark"] #atv-edit-log-modal .text-zinc-900,
+html[data-theme="dark"] #dash-load-zoom-modal .text-zinc-900 {
+    color: #f4f4f5 !important;
+}
+html[data-theme="dark"] ::-webkit-scrollbar-track { background: #18181b; }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #3f3f46; }
