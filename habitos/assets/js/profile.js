@@ -55,14 +55,26 @@ function getReadyWordForGender(gender) {
     return gender === 'fem' ? 'Pronta' : 'Pronto';
 }
 
+/* Cumprimento conforme o horário local do dispositivo:
+ *   05:00..11:59 -> Bom dia
+ *   12:00..17:59 -> Boa tarde
+ *   18:00..04:59 -> Boa noite */
+function getDayPeriodGreeting() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Bom dia';
+    if (hour >= 12 && hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+}
+
 window.getUserGreeting = function () {
-    const hasName = currentProfile && currentProfile.name && currentProfile.name !== 'HaQt';
-    const phase   = getWeekPhaseAction();
-    const ready   = getReadyWordForGender(currentProfile.gender);
+    const hasName  = currentProfile && currentProfile.name && currentProfile.name !== 'HaQt';
+    const salutation = getDayPeriodGreeting();
+    const phase    = getWeekPhaseAction();
+    const ready    = getReadyWordForGender(currentProfile.gender);
     if (hasName) {
-        return `Bom dia, ${currentProfile.name}! ${ready} para ${phase} a semana?`;
+        return `${salutation}, ${currentProfile.name}! ${ready} para ${phase} a semana?`;
     }
-    return `Bom dia! ${ready} para ${phase} a semana?`;
+    return `${salutation}! ${ready} para ${phase} a semana?`;
 };
 
 function renderRoleGrid() {
@@ -111,9 +123,10 @@ window.updateAvatarPreview = function () {
 
     const greet = document.getElementById('avatar-greeting-preview');
     if (greet) {
+        const salutation = getDayPeriodGreeting();
         const phase = getWeekPhaseAction();
         const ready = getReadyWordForGender(gender);
-        greet.textContent = `Bom dia, ${name}! ${ready} para ${phase} a semana?`;
+        greet.textContent = `${salutation}, ${name}! ${ready} para ${phase} a semana?`;
     }
 };
 

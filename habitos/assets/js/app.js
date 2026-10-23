@@ -392,6 +392,13 @@ function renderHeatmap(sData, loadData) {
         else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
     } catch (e) { logs = {}; }
 
+    const captionEl = document.getElementById('heatmap-caption');
+    if (captionEl) {
+        captionEl.innerHTML = activeCategoryFilter === 'atv_fisica'
+            ? `Atividade Física baseada no registro de treinos • <span class="font-mono">··</span> = dia ainda não chegou`
+            : `Sono baseado nas horas dormidas registradas • <span class="font-mono">··</span> = dia ainda não chegou`;
+    }
+
     if (activeCategoryFilter === 'atv_fisica') {
         const completedDaysCount = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
         if (loadM.activeDays === 0 && completedDaysCount === 0) {
@@ -617,8 +624,7 @@ function renderHighlights(g, sData, loadData) {
             const bestWeek = qualifiedWeeks[0];
             items.push(['🏋️', 'Melhor semana em Atv Física', `${bestWeek.rangeLabel} (${bestWeek.daysCount}/4 dias)`]);
         } else {
-            const currentRange = `${weekDays[0].dateNum}-${weekDays[6].dateNum}`;
-            items.push(['🏋️', 'Melhor semana em Atv Física', `Nenhuma ≥ 4d (atual ${currentRange}: ${weekWorkoutDays}/4d)`]);
+            items.push(['🏋️', 'Melhor semana em Atv Física', 'N/A']);
         }
     }
 

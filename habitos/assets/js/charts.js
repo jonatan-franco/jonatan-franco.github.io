@@ -250,72 +250,108 @@ function renderDashboardCharts() {
 
     let datasets = [];
     let scales = {};
+    // A faixa de ±DP só é exibida se houver mais de 1 registro nos últimos 7d (desvios da quantidade de sono dormido > 0)
+    const hasSleepSdBand = s.activeDays >= 2 && s.sdSlept > 0;
 
     if (dashSleepChartMode === 'slept') {
-        // Apenas Sono: barra + reta média tracejada com faixa ±DP em torno da média
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
-        const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat((s.meanSlept + s.sdSlept).toFixed(2)) : null);
-        const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)) : null);
+        const meanLabel = hasSleepSdBand
+            ? `Média (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`
+            : `Média (μ=${s.meanSlept.toFixed(1)}h)`;
 
         datasets = [
             { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 8, order: 2 },
-            { type: 'line', label: `Média (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
-            { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-            { type: 'line', label: `Faixa ±DP (±${s.sdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', order: 1 }
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 }
         ];
+
+        if (hasSleepSdBand) {
+            const plusSdLine = Array(7).fill(parseFloat((s.meanSlept + s.sdSlept).toFixed(2)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)));
+            datasets.push(
+                { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${s.sdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', order: 1 }
+            );
+        }
 
         scales = {
             x: { grid: { display: false } },
             y: { min: 0, suggestedMax: Math.max(10, s.meanSlept + s.sdSlept + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Horas dormidas (h)' } }
         };
     } else if (dashSleepChartMode === 'bed') {
-        // Apenas Cama: barra + reta média tracejada com faixa ±DP em torno da média
+        const hasBedSdBand = s.activeDays >= 2 && s.sdBed > 0;
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanBed.toFixed(2)) : null);
-        const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat((s.meanBed + s.sdBed).toFixed(2)) : null);
-        const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanBed - s.sdBed).toFixed(2)) : null);
+        const meanLabel = hasBedSdBand
+            ? `Média Cama (μ=${s.meanBed.toFixed(1)}h, σ=±${s.sdBed.toFixed(2)}h)`
+            : `Média Cama (μ=${s.meanBed.toFixed(1)}h)`;
 
         datasets = [
             { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: 8, order: 2 },
-            { type: 'line', label: `Média Cama (μ=${s.meanBed.toFixed(1)}h, σ=±${s.sdBed.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
-            { type: 'line', label: `+1 DP (+${s.sdBed.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-            { type: 'line', label: `Faixa ±DP (±${s.sdBed.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.14)', order: 1 }
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 }
         ];
+
+        if (hasBedSdBand) {
+            const plusSdLine = Array(7).fill(parseFloat((s.meanBed + s.sdBed).toFixed(2)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanBed - s.sdBed).toFixed(2)));
+            datasets.push(
+                { type: 'line', label: `+1 DP (+${s.sdBed.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${s.sdBed.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.14)', order: 1 }
+            );
+        }
 
         scales = {
             x: { grid: { display: false } },
             y: { min: 0, suggestedMax: Math.max(10, s.meanBed + s.sdBed + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Tempo de cama (h)' } }
         };
     } else if (dashSleepChartMode === 'eff') {
-        // Eficiência: barra + reta média tracejada com faixa ±DP em torno da média
+        const hasEffSdBand = s.activeDays >= 2 && s.sdDailyEff > 0;
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanDailyEfficiency.toFixed(1)) : null);
-        const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.min(100, s.meanDailyEfficiency + s.sdDailyEff).toFixed(1)) : null);
-        const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanDailyEfficiency - s.sdDailyEff).toFixed(1)) : null);
+        const meanLabel = hasEffSdBand
+            ? `μ(E) = ${s.meanDailyEfficiency.toFixed(1)}% (σ=±${s.sdDailyEff.toFixed(1)}%)`
+            : `μ(E) = ${s.meanDailyEfficiency.toFixed(1)}%`;
 
         datasets = [
             { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: 8, order: 2 },
-            { type: 'line', label: `μ(E) = ${s.meanDailyEfficiency.toFixed(1)}% (σ=±${s.sdDailyEff.toFixed(1)}%)`, data: meanLine, borderColor: '#6b21a8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 },
-            { type: 'line', label: `+1 DP (+${s.sdDailyEff.toFixed(1)}%)`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-            { type: 'line', label: `Faixa ±DP (±${s.sdDailyEff.toFixed(1)}%)`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.14)', order: 1 }
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#6b21a8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 0 }
         ];
+
+        if (hasEffSdBand) {
+            const plusSdLine = Array(7).fill(parseFloat(Math.min(100, s.meanDailyEfficiency + s.sdDailyEff).toFixed(1)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanDailyEfficiency - s.sdDailyEff).toFixed(1)));
+            datasets.push(
+                { type: 'line', label: `+1 DP (+${s.sdDailyEff.toFixed(1)}%)`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${s.sdDailyEff.toFixed(1)}%)`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.14)', order: 1 }
+            );
+        }
 
         scales = {
             x: { grid: { display: false } },
             y: { min: 0, max: 100, grid: { color: '#f4f4f5' }, title: { display: true, text: 'Eficiência (%)' }, ticks: { callback: v => v + '%' } }
         };
     } else {
-        // Modo 'all': Cama vs Dormido com Eficiência e faixa ±DP em torno da reta média tracejada
+        // Modo 'all': Cama vs Dormido com Eficiência e faixa ±DP (apenas quando houver >= 2 registros nos últimos 7d)
         const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
-        const plusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat((s.meanSlept + s.sdSlept).toFixed(2)) : null);
-        const minusSdLine = Array(7).fill(s.activeDays > 0 ? parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)) : null);
+        const meanLabel = hasSleepSdBand
+            ? `Média Sono (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`
+            : `Média Sono (μ=${s.meanSlept.toFixed(1)}h)`;
 
         datasets = [
             { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
-            { type: 'line', label: `Média Sono (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
-            { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
-            { type: 'line', label: `Faixa ±DP (±${s.sdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', yAxisID: 'y', order: 1 },
+            { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 }
+        ];
+
+        if (hasSleepSdBand) {
+            const plusSdLine = Array(7).fill(parseFloat((s.meanSlept + s.sdSlept).toFixed(2)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)));
+            datasets.push(
+                { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${s.sdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', yAxisID: 'y', order: 1 }
+            );
+        }
+
+        datasets.push(
             { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: 6, yAxisID: 'y', order: 2 },
             { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y', order: 2 }
-        ];
+        );
 
         scales = {
             x: { grid: { display: false } },
@@ -346,83 +382,82 @@ function renderDashboardCharts() {
 
 /* ===== Gráfico de Evolução de Volume de Carga (Últimos 30 dias) ===== */
 let dashLoadChartInstance = null;
+let dashLoadZoomChartInstance = null;
 let dashLoadChartScope = 'group'; // 'group' | 'exercise'
+
+function syncLoadScopeButtons(scope) {
+    ['btn-load-scope-group', 'btn-load-zoom-scope-group'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.className = scope === 'group'
+                ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
+                : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
+        }
+    });
+    ['btn-load-scope-exercise', 'btn-load-zoom-scope-exercise'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.className = scope === 'exercise'
+                ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
+                : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
+        }
+    });
+}
 
 window.setDashLoadChartScope = function(scope) {
     dashLoadChartScope = scope;
-    const btnG = document.getElementById('btn-load-scope-group');
-    const btnE = document.getElementById('btn-load-scope-exercise');
-    if (btnG) {
-        btnG.className = scope === 'group'
-            ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
-            : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
-    }
-    if (btnE) {
-        btnE.className = scope === 'exercise'
-            ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
-            : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
-    }
+    syncLoadScopeButtons(scope);
     const evo = calcLoadEvolution30d();
     populateDashLoadChartSelect(evo, true);
     renderDashLoadEvolutionChart(evo);
+    renderDashLoadZoomChart(evo);
+};
+
+window.setDashLoadZoomScope = function(scope) {
+    window.setDashLoadChartScope(scope);
+};
+
+window.onDashLoadZoomTargetChange = function(val) {
+    const mainSel = document.getElementById('dash-load-chart-target');
+    if (mainSel) mainSel.value = val;
+    const evo = calcLoadEvolution30d();
+    renderDashLoadEvolutionChart(evo);
+    renderDashLoadZoomChart(evo);
 };
 
 function populateDashLoadChartSelect(evoData, forceReset) {
-    const sel = document.getElementById('dash-load-chart-target');
-    if (!sel) return;
-    const prev = forceReset ? '' : sel.value;
-    sel.innerHTML = '';
-
     const evo = evoData || calcLoadEvolution30d();
+    ['dash-load-chart-target', 'dash-load-zoom-target'].forEach(selId => {
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        const prev = forceReset ? '' : sel.value;
+        sel.innerHTML = '';
 
-    if (dashLoadChartScope === 'group') {
-        sel.innerHTML += `<option value="all">📊 Todos os Grupos (Upper / Lower)</option>`;
-        sel.innerHTML += `<option value="upper_a">🏋️ Upper A</option>`;
-        sel.innerHTML += `<option value="lower_a">🦵 Lower A</option>`;
-        sel.innerHTML += `<option value="upper_b">🏋️ Upper B</option>`;
-        sel.innerHTML += `<option value="lower_b">🦵 Lower B</option>`;
-    } else {
-        if (evo.exercises.length === 0) {
-            sel.innerHTML += `<option value="none">Sem exercícios registrados</option>`;
+        if (dashLoadChartScope === 'group') {
+            sel.innerHTML += `<option value="all">📊 Todos os Grupos (Upper / Lower)</option>`;
+            sel.innerHTML += `<option value="upper_a">🏋️ Upper A</option>`;
+            sel.innerHTML += `<option value="lower_a">🦵 Lower A</option>`;
+            sel.innerHTML += `<option value="upper_b">🏋️ Upper B</option>`;
+            sel.innerHTML += `<option value="lower_b">🦵 Lower B</option>`;
         } else {
-            sel.innerHTML += `<option value="all">📊 Todos os Exercícios Registrados (${evo.exercises.length})</option>`;
-            evo.exercises.forEach(ex => {
-                sel.innerHTML += `<option value="${ex.name}">💪 ${ex.name}</option>`;
-            });
+            if (evo.exercises.length === 0) {
+                sel.innerHTML += `<option value="none">Sem exercícios registrados</option>`;
+            } else {
+                sel.innerHTML += `<option value="all">📊 Todos os Exercícios Registrados (${evo.exercises.length})</option>`;
+                evo.exercises.forEach(ex => {
+                    sel.innerHTML += `<option value="${ex.name}">💪 ${ex.name}</option>`;
+                });
+            }
         }
-    }
 
-    if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-        sel.value = prev;
-    }
+        if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+            sel.value = prev;
+        }
+    });
 }
 
-window.renderDashLoadEvolutionChart = function(evoData) {
-    if (typeof Chart === 'undefined') return;
-    const canvas = document.getElementById('dashLoadEvolutionChart');
-    if (!canvas) return;
-
-    const evo = evoData || calcLoadEvolution30d();
-    const sel = document.getElementById('dash-load-chart-target');
-    if (sel && sel.options.length === 0) {
-        populateDashLoadChartSelect(evo, false);
-    }
-
-    const empty = document.getElementById('dash-load-empty');
-    if (empty) {
-        empty.classList.toggle('hidden', evo.hasAnyLog);
-        empty.classList.toggle('flex', !evo.hasAnyLog);
-    }
-
-    if (dashLoadChartInstance) {
-        dashLoadChartInstance.destroy();
-        dashLoadChartInstance = null;
-    }
-
-    if (!evo.hasAnyLog) return;
-
+function buildLoadEvolutionChartConfig(evo, targetVal) {
     const xLabels = evo.days.map(d => d.label);
-    const targetVal = sel ? sel.value : 'all';
     const datasets = [];
 
     if (dashLoadChartScope === 'group') {
@@ -439,7 +474,7 @@ window.renderDashLoadEvolutionChart = function(evoData) {
                     borderWidth: 2.5,
                     pointRadius: 4,
                     pointHoverRadius: 6,
-                    pointHitRadius: 8,
+                    pointHitRadius: 3,
                     tension: 0.3,
                     spanGaps: true,
                     fill: false,
@@ -457,7 +492,7 @@ window.renderDashLoadEvolutionChart = function(evoData) {
                 borderWidth: 3,
                 pointRadius: 5,
                 pointHoverRadius: 7,
-                pointHitRadius: 8,
+                pointHitRadius: 3,
                 tension: 0.3,
                 spanGaps: true,
                 fill: true,
@@ -477,7 +512,7 @@ window.renderDashLoadEvolutionChart = function(evoData) {
                     borderWidth: 2.5,
                     pointRadius: 4,
                     pointHoverRadius: 6,
-                    pointHitRadius: 8,
+                    pointHitRadius: 3,
                     tension: 0.3,
                     spanGaps: true,
                     fill: false,
@@ -497,7 +532,7 @@ window.renderDashLoadEvolutionChart = function(evoData) {
                     borderWidth: 3,
                     pointRadius: 5,
                     pointHoverRadius: 7,
-                    pointHitRadius: 8,
+                    pointHitRadius: 3,
                     tension: 0.3,
                     spanGaps: true,
                     fill: true,
@@ -507,7 +542,7 @@ window.renderDashLoadEvolutionChart = function(evoData) {
         }
     }
 
-    dashLoadChartInstance = new Chart(canvas.getContext('2d'), {
+    return {
         type: 'line',
         data: { labels: xLabels, datasets },
         options: {
@@ -516,11 +551,15 @@ window.renderDashLoadEvolutionChart = function(evoData) {
             animation: false,
             animations: { colors: false, x: false, y: false },
             transitions: { active: { animation: { duration: 0 } } },
-            interaction: { mode: 'point', intersect: true },
-            hover: { mode: 'point', intersect: true },
+            interaction: { mode: 'nearest', axis: 'xy', intersect: true },
+            hover: { mode: 'nearest', axis: 'xy', intersect: true },
             plugins: {
                 legend: { position: 'bottom', labels: { font: { size: 11 } } },
                 tooltip: {
+                    // Garante que apenas o único ponto sob o mouse seja exibido (sem mostrar outros exercícios)
+                    filter(tooltipItem, index) {
+                        return index === 0;
+                    },
                     callbacks: {
                         label(context) {
                             const vol = context.parsed.y;
@@ -551,5 +590,83 @@ window.renderDashLoadEvolutionChart = function(evoData) {
                 }
             }
         }
-    });
+    };
+}
+
+window.renderDashLoadEvolutionChart = function(evoData) {
+    if (typeof Chart === 'undefined') return;
+    const canvas = document.getElementById('dashLoadEvolutionChart');
+    if (!canvas) return;
+
+    const evo = evoData || calcLoadEvolution30d();
+    const sel = document.getElementById('dash-load-chart-target');
+    if (sel && sel.options.length === 0) {
+        populateDashLoadChartSelect(evo, false);
+    }
+
+    const zoomSel = document.getElementById('dash-load-zoom-target');
+    if (sel && zoomSel && zoomSel.options.length > 0) {
+        zoomSel.value = sel.value;
+    }
+
+    const empty = document.getElementById('dash-load-empty');
+    if (empty) {
+        empty.classList.toggle('hidden', evo.hasAnyLog);
+        empty.classList.toggle('flex', !evo.hasAnyLog);
+    }
+
+    if (dashLoadChartInstance) {
+        dashLoadChartInstance.destroy();
+        dashLoadChartInstance = null;
+    }
+
+    if (!evo.hasAnyLog) return;
+
+    const targetVal = sel ? sel.value : 'all';
+    dashLoadChartInstance = new Chart(canvas.getContext('2d'), buildLoadEvolutionChartConfig(evo, targetVal));
+};
+
+function renderDashLoadZoomChart(evoData) {
+    if (typeof Chart === 'undefined') return;
+    const modal = document.getElementById('dash-load-zoom-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    const canvas = document.getElementById('dashLoadZoomChart');
+    if (!canvas) return;
+
+    const evo = evoData || calcLoadEvolution30d();
+    if (dashLoadZoomChartInstance) {
+        dashLoadZoomChartInstance.destroy();
+        dashLoadZoomChartInstance = null;
+    }
+    if (!evo.hasAnyLog) return;
+
+    const sel = document.getElementById('dash-load-zoom-target') || document.getElementById('dash-load-chart-target');
+    const targetVal = sel ? sel.value : 'all';
+    dashLoadZoomChartInstance = new Chart(canvas.getContext('2d'), buildLoadEvolutionChartConfig(evo, targetVal));
+}
+
+window.openLoadChartZoomModal = function() {
+    const modal = document.getElementById('dash-load-zoom-modal');
+    if (!modal) return;
+    const evo = calcLoadEvolution30d();
+    populateDashLoadChartSelect(evo, false);
+    const mainSel = document.getElementById('dash-load-chart-target');
+    const zoomSel = document.getElementById('dash-load-zoom-target');
+    if (mainSel && zoomSel) zoomSel.value = mainSel.value;
+    syncLoadScopeButtons(dashLoadChartScope);
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    renderDashLoadZoomChart(evo);
+};
+
+window.closeLoadChartZoomModal = function() {
+    const modal = document.getElementById('dash-load-zoom-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (dashLoadZoomChartInstance) {
+        dashLoadZoomChartInstance.destroy();
+        dashLoadZoomChartInstance = null;
+    }
 };
