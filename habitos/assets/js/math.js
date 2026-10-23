@@ -200,6 +200,35 @@ function calcSleepWeekSeries() {
 
     const eff = bed.map((b, i) => b > 0 ? (slept[i] / b) * 100 : 0);
 
+    // Estatísticas exclusivas da semana analisada (usadas no gráfico de Análise de Sono da semana)
+    const weekValidEntries = journal.filter(e => e.bedH > 0 && e.sleptH > 0);
+    const weekActiveDays = weekValidEntries.length;
+    let weekSumBed = 0, weekSumSlept = 0, weekSumEff = 0;
+    weekValidEntries.forEach(e => {
+        weekSumBed += e.bedH;
+        weekSumSlept += e.sleptH;
+        weekSumEff += (e.sleptH / e.bedH) * 100;
+    });
+    const weekMeanBed = weekActiveDays > 0 ? weekSumBed / weekActiveDays : 0;
+    const weekMeanSlept = weekActiveDays > 0 ? weekSumSlept / weekActiveDays : 0;
+    const weekMeanEff = weekActiveDays > 0 ? weekSumEff / weekActiveDays : 0;
+
+    let weekVarSlept = 0, weekVarBed = 0, weekVarEff = 0;
+    if (weekActiveDays > 0) {
+        weekValidEntries.forEach(e => {
+            weekVarSlept += Math.pow(e.sleptH - weekMeanSlept, 2);
+            weekVarBed += Math.pow(e.bedH - weekMeanBed, 2);
+            const effVal = (e.sleptH / e.bedH) * 100;
+            weekVarEff += Math.pow(effVal - weekMeanEff, 2);
+        });
+        weekVarSlept /= weekActiveDays;
+        weekVarBed /= weekActiveDays;
+        weekVarEff /= weekActiveDays;
+    }
+    const weekSdSlept = Math.sqrt(weekVarSlept);
+    const weekSdBed = Math.sqrt(weekVarBed);
+    const weekSdEff = Math.sqrt(weekVarEff);
+
     // Média e agregados dos últimos 7 dias registrados
     const recent = getRecentRegisteredSleepEntries(7);
     const activeDays = recent.length;
@@ -242,7 +271,12 @@ function calcSleepWeekSeries() {
         ? calcSleepElasticity(recent.map(r => r.sleptH), recent.map(r => r.bedH))
         : calcSleepElasticity(slept, bed);
 
-    return { bed, slept, eff, meanBed, meanSlept, sdSlept, sdBed, efficiency, meanDailyEfficiency, sdDailyEff, activeDays, elasticity, source };
+    return {
+        bed, slept, eff,
+        meanBed, meanSlept, sdSlept, sdBed, efficiency, meanDailyEfficiency, sdDailyEff, activeDays,
+        weekActiveDays, weekMeanBed, weekMeanSlept, weekMeanEff, weekSdSlept, weekSdBed, weekSdEff,
+        elasticity, source
+    };
 }
 
 /* Formata horas decimais para [Valor_Horas][hminutos] com duas casas de minutos (ex: 7h30, 8h05) */

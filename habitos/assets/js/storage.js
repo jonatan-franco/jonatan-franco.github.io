@@ -10,7 +10,13 @@ const CATEGORIES = {
     sono:       { label: 'Sono',             emoji: '🌙', cardBg: 'bg-[#e0e7ff]', pillBg: 'bg-[#a5b4fc]', hex: '#6366f1' }
 };
 
-const PALETTE = ['#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1'];
+const PALETTE = [
+    '#e11d48', '#2563eb', '#16a34a', '#d97706', '#9333ea', '#0891b2',
+    '#dc2626', '#4f46e5', '#059669', '#ea580c', '#c026d3', '#0284c7',
+    '#65a30d', '#7c3aed', '#0d9488', '#db2777', '#1d4ed8', '#b91c1c',
+    '#15803d', '#b45309', '#6d28d9', '#0e7490', '#a21caf', '#4338ca',
+    '#047857', '#c2410c', '#be185d', '#0369a1', '#4d7c0f', '#0f766e'
+];
 
 function formatLocalISO(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

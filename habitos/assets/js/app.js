@@ -1,5 +1,5 @@
 let activeCategoryFilter = 'atv_fisica';
-let isSidebarCollapsed = false;
+let isSidebarCollapsed = (typeof SafeStorage !== 'undefined' && SafeStorage.getItem('hq_sidebar_collapsed_v1') === '1');
 
 function refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -7,11 +7,10 @@ function refreshIcons() {
     }
 }
 
-window.toggleDesktopSidebar = function() {
+function applyDesktopSidebarState() {
     const sb = document.getElementById('desktop-sidebar');
     const toggleBtn = document.getElementById('sidebar-toggle-btn');
     if (!sb) return;
-    isSidebarCollapsed = !isSidebarCollapsed;
     sb.classList.toggle('sidebar-expanded', !isSidebarCollapsed);
     sb.classList.toggle('sidebar-collapsed', isSidebarCollapsed);
     if (toggleBtn) {
@@ -19,6 +18,14 @@ window.toggleDesktopSidebar = function() {
         toggleBtn.innerHTML = `<i data-lucide="${iconName}" id="sidebar-toggle-icon" class="w-4 h-4"></i>`;
     }
     refreshIcons();
+}
+
+window.toggleDesktopSidebar = function() {
+    isSidebarCollapsed = !isSidebarCollapsed;
+    if (typeof SafeStorage !== 'undefined') {
+        SafeStorage.setItem('hq_sidebar_collapsed_v1', isSidebarCollapsed ? '1' : '0');
+    }
+    applyDesktopSidebarState();
 };
 
 window.toggleMobileDrawer = function() {
@@ -394,9 +401,9 @@ function renderHeatmap(sData, loadData) {
 
     const captionEl = document.getElementById('heatmap-caption');
     if (captionEl) {
-        captionEl.innerHTML = activeCategoryFilter === 'atv_fisica'
-            ? `Atividade Física baseada no registro de treinos • <span class="font-mono">··</span> = dia ainda não chegou`
-            : `Sono baseado nas horas dormidas registradas • <span class="font-mono">··</span> = dia ainda não chegou`;
+        captionEl.textContent = activeCategoryFilter === 'atv_fisica'
+            ? 'Atividade Física baseada no registro de treinos'
+            : 'Sono baseado nas horas dormidas registradas';
     }
 
     if (activeCategoryFilter === 'atv_fisica') {
@@ -1001,6 +1008,8 @@ function renderAll(activeRoute) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+    isSidebarCollapsed = (typeof SafeStorage !== 'undefined' && SafeStorage.getItem('hq_sidebar_collapsed_v1') === '1');
+    applyDesktopSidebarState();
     if (typeof window.loadProfile === 'function') window.loadProfile();
     loadData();
     if (typeof ensureWorkoutPlanHabits === 'function') ensureWorkoutPlanHabits();

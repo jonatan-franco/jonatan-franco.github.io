@@ -223,10 +223,18 @@ function renderDashboardCharts() {
     if (!sleepCanvas) return;
 
     const s = calcSleepWeekSeries();
+    const weekActive = typeof s.weekActiveDays === 'number' ? s.weekActiveDays : s.activeDays;
+    const wMeanSlept = typeof s.weekMeanSlept === 'number' ? s.weekMeanSlept : s.meanSlept;
+    const wSdSlept = typeof s.weekSdSlept === 'number' ? s.weekSdSlept : s.sdSlept;
+    const wMeanBed = typeof s.weekMeanBed === 'number' ? s.weekMeanBed : s.meanBed;
+    const wSdBed = typeof s.weekSdBed === 'number' ? s.weekSdBed : s.sdBed;
+    const wMeanEff = typeof s.weekMeanEff === 'number' ? s.weekMeanEff : s.meanDailyEfficiency;
+    const wSdEff = typeof s.weekSdEff === 'number' ? s.weekSdEff : s.sdDailyEff;
+
     const empty = document.getElementById('dash-sleep-empty');
     if (empty) {
-        empty.classList.toggle('hidden', s.activeDays > 0);
-        empty.classList.toggle('flex', s.activeDays === 0);
+        empty.classList.toggle('hidden', weekActive > 0);
+        empty.classList.toggle('flex', weekActive === 0);
     }
 
     const src = document.getElementById('dash-sleep-source');
@@ -243,21 +251,21 @@ function renderDashboardCharts() {
         dashSleepChartInstance = null;
     }
 
-    if (s.activeDays === 0) {
+    if (weekActive === 0) {
         if (typeof renderDashLoadEvolutionChart === 'function') renderDashLoadEvolutionChart();
         return;
     }
 
     let datasets = [];
     let scales = {};
-    // A faixa de ±DP só é exibida se houver mais de 1 registro nos últimos 7d (desvios da quantidade de sono dormido > 0)
-    const hasSleepSdBand = s.activeDays >= 2 && s.sdSlept > 0;
+    // O desvio-padrão do gráfico de análise de sono é calculado com base na semana analisada (weekDays)
+    const hasSleepSdBand = weekActive >= 2 && wSdSlept > 0;
 
     if (dashSleepChartMode === 'slept') {
-        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
+        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
         const meanLabel = hasSleepSdBand
-            ? `Média (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`
-            : `Média (μ=${s.meanSlept.toFixed(1)}h)`;
+            ? `Média (μ=${wMeanSlept.toFixed(1)}h, σ=±${wSdSlept.toFixed(2)}h)`
+            : `Média (μ=${wMeanSlept.toFixed(1)}h)`;
 
         datasets = [
             { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 8, order: 2 },
@@ -265,24 +273,24 @@ function renderDashboardCharts() {
         ];
 
         if (hasSleepSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat((s.meanSlept + s.sdSlept).toFixed(2)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)));
+            const plusSdLine = Array(7).fill(parseFloat((wMeanSlept + wSdSlept).toFixed(2)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2)));
             datasets.push(
-                { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${s.sdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', order: 1 }
+                { type: 'line', label: `+1 DP (+${wSdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', order: 1 }
             );
         }
 
         scales = {
             x: { grid: { display: false } },
-            y: { min: 0, suggestedMax: Math.max(10, s.meanSlept + s.sdSlept + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Horas dormidas (h)' } }
+            y: { min: 0, suggestedMax: Math.max(10, wMeanSlept + wSdSlept + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Horas dormidas (h)' } }
         };
     } else if (dashSleepChartMode === 'bed') {
-        const hasBedSdBand = s.activeDays >= 2 && s.sdBed > 0;
-        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanBed.toFixed(2)) : null);
+        const hasBedSdBand = weekActive >= 2 && wSdBed > 0;
+        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanBed.toFixed(2)) : null);
         const meanLabel = hasBedSdBand
-            ? `Média Cama (μ=${s.meanBed.toFixed(1)}h, σ=±${s.sdBed.toFixed(2)}h)`
-            : `Média Cama (μ=${s.meanBed.toFixed(1)}h)`;
+            ? `Média Cama (μ=${wMeanBed.toFixed(1)}h, σ=±${wSdBed.toFixed(2)}h)`
+            : `Média Cama (μ=${wMeanBed.toFixed(1)}h)`;
 
         datasets = [
             { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: 8, order: 2 },
@@ -290,24 +298,24 @@ function renderDashboardCharts() {
         ];
 
         if (hasBedSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat((s.meanBed + s.sdBed).toFixed(2)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanBed - s.sdBed).toFixed(2)));
+            const plusSdLine = Array(7).fill(parseFloat((wMeanBed + wSdBed).toFixed(2)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanBed - wSdBed).toFixed(2)));
             datasets.push(
-                { type: 'line', label: `+1 DP (+${s.sdBed.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${s.sdBed.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.14)', order: 1 }
+                { type: 'line', label: `+1 DP (+${wSdBed.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${wSdBed.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.14)', order: 1 }
             );
         }
 
         scales = {
             x: { grid: { display: false } },
-            y: { min: 0, suggestedMax: Math.max(10, s.meanBed + s.sdBed + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Tempo de cama (h)' } }
+            y: { min: 0, suggestedMax: Math.max(10, wMeanBed + wSdBed + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Tempo de cama (h)' } }
         };
     } else if (dashSleepChartMode === 'eff') {
-        const hasEffSdBand = s.activeDays >= 2 && s.sdDailyEff > 0;
-        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanDailyEfficiency.toFixed(1)) : null);
+        const hasEffSdBand = weekActive >= 2 && wSdEff > 0;
+        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanEff.toFixed(1)) : null);
         const meanLabel = hasEffSdBand
-            ? `μ(E) = ${s.meanDailyEfficiency.toFixed(1)}% (σ=±${s.sdDailyEff.toFixed(1)}%)`
-            : `μ(E) = ${s.meanDailyEfficiency.toFixed(1)}%`;
+            ? `μ(E) = ${wMeanEff.toFixed(1)}% (σ=±${wSdEff.toFixed(1)}%)`
+            : `μ(E) = ${wMeanEff.toFixed(1)}%`;
 
         datasets = [
             { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: 8, order: 2 },
@@ -315,11 +323,11 @@ function renderDashboardCharts() {
         ];
 
         if (hasEffSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat(Math.min(100, s.meanDailyEfficiency + s.sdDailyEff).toFixed(1)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanDailyEfficiency - s.sdDailyEff).toFixed(1)));
+            const plusSdLine = Array(7).fill(parseFloat(Math.min(100, wMeanEff + wSdEff).toFixed(1)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanEff - wSdEff).toFixed(1)));
             datasets.push(
-                { type: 'line', label: `+1 DP (+${s.sdDailyEff.toFixed(1)}%)`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${s.sdDailyEff.toFixed(1)}%)`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.14)', order: 1 }
+                { type: 'line', label: `+1 DP (+${wSdEff.toFixed(1)}%)`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${wSdEff.toFixed(1)}%)`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.14)', order: 1 }
             );
         }
 
@@ -328,11 +336,11 @@ function renderDashboardCharts() {
             y: { min: 0, max: 100, grid: { color: '#f4f4f5' }, title: { display: true, text: 'Eficiência (%)' }, ticks: { callback: v => v + '%' } }
         };
     } else {
-        // Modo 'all': Cama vs Dormido com Eficiência e faixa ±DP (apenas quando houver >= 2 registros nos últimos 7d)
-        const meanLine = Array(7).fill(s.activeDays > 0 ? parseFloat(s.meanSlept.toFixed(2)) : null);
+        // Modo 'all': Cama vs Dormido com Eficiência e faixa ±DP baseada na semana analisada
+        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
         const meanLabel = hasSleepSdBand
-            ? `Média Sono (μ=${s.meanSlept.toFixed(1)}h, σ=±${s.sdSlept.toFixed(2)}h)`
-            : `Média Sono (μ=${s.meanSlept.toFixed(1)}h)`;
+            ? `Média Sono (μ=${wMeanSlept.toFixed(1)}h, σ=±${wSdSlept.toFixed(2)}h)`
+            : `Média Sono (μ=${wMeanSlept.toFixed(1)}h)`;
 
         datasets = [
             { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
@@ -340,11 +348,11 @@ function renderDashboardCharts() {
         ];
 
         if (hasSleepSdBand) {
-            const plusSdLine = Array(7).fill(parseFloat((s.meanSlept + s.sdSlept).toFixed(2)));
-            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, s.meanSlept - s.sdSlept).toFixed(2)));
+            const plusSdLine = Array(7).fill(parseFloat((wMeanSlept + wSdSlept).toFixed(2)));
+            const minusSdLine = Array(7).fill(parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2)));
             datasets.push(
-                { type: 'line', label: `+1 DP (+${s.sdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
-                { type: 'line', label: `Faixa ±DP (±${s.sdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', yAxisID: 'y', order: 1 }
+                { type: 'line', label: `+1 DP (+${wSdSlept.toFixed(2)}h)`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, yAxisID: 'y', order: 1 },
+                { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', yAxisID: 'y', order: 1 }
             );
         }
 
@@ -355,7 +363,7 @@ function renderDashboardCharts() {
 
         scales = {
             x: { grid: { display: false } },
-            y: { position: 'left', min: 0, suggestedMax: Math.max(10, s.meanBed + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Horas (h)' } },
+            y: { position: 'left', min: 0, suggestedMax: Math.max(10, wMeanBed + 1), grid: { color: '#f4f4f5' }, title: { display: true, text: 'Horas (h)' } },
             y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Eficiência (%)' }, ticks: { callback: v => v + '%' } }
         };
     }
@@ -384,6 +392,23 @@ function renderDashboardCharts() {
 let dashLoadChartInstance = null;
 let dashLoadZoomChartInstance = null;
 let dashLoadChartScope = 'group'; // 'group' | 'exercise'
+
+function getDistinctExerciseColor(idx) {
+    if (Array.isArray(PALETTE) && idx >= 0 && idx < PALETTE.length) {
+        return PALETTE[idx];
+    }
+    // Gera cores fortes e distintas por ângulo áureo caso ultrapasse o tamanho da paleta
+    const hue = Math.round((idx * 137.508) % 360);
+    const sat = 78;
+    const light = 45;
+    const s = sat / 100;
+    const l = light / 100;
+    const k = n => (n + hue / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = x => Math.round(255 * x).toString(16).padStart(2, '0');
+    return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+}
 
 function syncLoadScopeButtons(scope) {
     ['btn-load-scope-group', 'btn-load-zoom-scope-group'].forEach(id => {
@@ -502,7 +527,7 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
     } else {
         if (targetVal === 'all') {
             evo.exercises.forEach((ex, idx) => {
-                const color = PALETTE[idx % PALETTE.length];
+                const color = getDistinctExerciseColor(idx);
                 datasets.push({
                     type: 'line',
                     label: ex.name,
@@ -520,9 +545,10 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
                 });
             });
         } else {
-            const ex = evo.exercises.find(e => e.name === targetVal) || evo.exercises[0];
+            const exIdx = evo.exercises.findIndex(e => e.name === targetVal);
+            const ex = exIdx >= 0 ? evo.exercises[exIdx] : evo.exercises[0];
             if (ex) {
-                const color = '#ec4899';
+                const color = getDistinctExerciseColor(exIdx >= 0 ? exIdx : 0);
                 datasets.push({
                     type: 'line',
                     label: `${ex.name} — Volume (kg)`,
@@ -655,6 +681,12 @@ window.openLoadChartZoomModal = function() {
     if (mainSel && zoomSel) zoomSel.value = mainSel.value;
     syncLoadScopeButtons(dashLoadChartScope);
 
+    const zoomBtn = document.getElementById('btn-load-chart-zoom');
+    if (zoomBtn) {
+        zoomBtn.classList.remove('bg-white', 'text-zinc-900', 'border-zinc-200');
+        zoomBtn.classList.add('bg-black', 'text-white', 'border-black');
+    }
+
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     renderDashLoadZoomChart(evo);
@@ -665,6 +697,13 @@ window.closeLoadChartZoomModal = function() {
     if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+
+    const zoomBtn = document.getElementById('btn-load-chart-zoom');
+    if (zoomBtn) {
+        zoomBtn.classList.remove('bg-black', 'text-white', 'border-black');
+        zoomBtn.classList.add('bg-white', 'text-zinc-900', 'border-zinc-200');
+    }
+
     if (dashLoadZoomChartInstance) {
         dashLoadZoomChartInstance.destroy();
         dashLoadZoomChartInstance = null;
