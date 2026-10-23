@@ -137,7 +137,7 @@
                     </div>
                 </div>
 
-                <div class="bg-[#ffedd5] p-5 rounded-3xl flex flex-col justify-between min-h-[170px]">
+                <div class="bg-[#ffedd5] p-5 rounded-3xl flex flex-col justify-between min-h-[170px] relative">
                     <div class="flex justify-between items-start">
                         <div>
                             <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">MAIOR STREAK</span>
@@ -145,7 +145,16 @@
                                 <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-streak">🔥 0d</span>
                             </div>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="flame" class="w-5 h-5"></i></div>
+                        <div class="relative group cursor-help">
+                            <div class="w-10 h-10 rounded-full bg-white/60 hover:bg-white/90 flex items-center justify-center text-zinc-900 transition shadow-2xs">
+                                <i data-lucide="flame" class="w-5 h-5 text-orange-600"></i>
+                            </div>
+                            <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute right-0 top-12 w-64 sm:w-72 p-3.5 rounded-2xl bg-zinc-900 text-white text-[11px] leading-relaxed shadow-xl z-30 border border-zinc-700">
+                                <div class="font-bold text-orange-400 mb-1">🔥 O que é o Maior Streak?</div>
+                                <p class="text-zinc-200">É a sua maior sequência de <strong>dias consecutivos</strong> cumprindo <strong>100% das atividades</strong>.</p>
+                                <p class="text-zinc-400 mt-1.5 pt-1.5 border-t border-zinc-800"><strong>Como é calculado:</strong> o dia fecha em 100% quando há registro de <strong>Sono</strong> e de <strong>Atividade Física</strong> (em dias livres na Agenda, o registro de Sono garante os 100%).</p>
+                            </div>
+                        </div>
                     </div>
                     <div id="kpi-streak-dots" class="grid grid-cols-7 gap-1 mt-3"></div>
                     <div class="mt-3 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between font-mono">

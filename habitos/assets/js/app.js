@@ -530,6 +530,22 @@ function renderProgressList(sData, loadData) {
     list.innerHTML = html;
 }
 
+/* Calcula o intervalo Seg-Dom (DD/MM-DD/MM) a partir de uma data ISO YYYY-MM-DD */
+function getWeekRangeFromIsoDate(isoStr) {
+    const [y, m, d] = String(isoStr).split('-').map(Number);
+    const dt = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+    const dow = dt.getDay();
+    const diffToMonday = dow === 0 ? -6 : 1 - dow;
+    const mon = new Date(dt);
+    mon.setDate(dt.getDate() + diffToMonday);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const pad = n => String(n).padStart(2, '0');
+    const weekKey = `${mon.getFullYear()}-${pad(mon.getMonth() + 1)}-${pad(mon.getDate())}`;
+    const rangeLabel = `${pad(mon.getDate())}/${pad(mon.getMonth() + 1)}-${pad(sun.getDate())}/${pad(sun.getMonth() + 1)}`;
+    return { weekKey, rangeLabel };
+}
+
 /* E) Destaques calculados da semana */
 function renderHighlights(g, sData, loadData) {
     const ul = document.getElementById('dash-highlights');
@@ -576,10 +592,33 @@ function renderHighlights(g, sData, loadData) {
     }
 
     if (hasAtv) {
-        if (weekWorkoutDays >= 4) {
-            items.push(['🏋️', 'Semana de Atividade Física', `Meta cumprida! 🎉 (${weekWorkoutDays}/4 dias)`]);
+        // Agrupa os registros de atividade física por semana (Seg-Dom) para encontrar a melhor semana (critério: >= 4 dias de treino, consecutivos ou não)
+        const weeksMap = new Map();
+        Object.keys(logs).forEach(dateIso => {
+            const dayList = logs[dateIso];
+            if (!Array.isArray(dayList) || dayList.length === 0) return;
+            const { weekKey, rangeLabel } = getWeekRangeFromIsoDate(dateIso);
+            if (!weeksMap.has(weekKey)) {
+                weeksMap.set(weekKey, { weekKey, rangeLabel, daysCount: 0, totalVolume: 0 });
+            }
+            const wObj = weeksMap.get(weekKey);
+            wObj.daysCount += 1;
+            wObj.totalVolume += dayList.reduce((acc, item) => acc + calcLogEntryVolume(item), 0);
+        });
+
+        const allWeeks = Array.from(weeksMap.values());
+        const qualifiedWeeks = allWeeks.filter(w => w.daysCount >= 4).sort((a, b) => {
+            if (b.daysCount !== a.daysCount) return b.daysCount - a.daysCount;
+            if (b.totalVolume !== a.totalVolume) return b.totalVolume - a.totalVolume;
+            return b.weekKey.localeCompare(a.weekKey);
+        });
+
+        if (qualifiedWeeks.length > 0) {
+            const bestWeek = qualifiedWeeks[0];
+            items.push(['🏋️', 'Melhor semana em Atv Física', `${bestWeek.rangeLabel} (${bestWeek.daysCount}/4 dias)`]);
         } else {
-            items.push(['🏋️', 'Atividade Física na semana', `${weekWorkoutDays}/4 dias cumpridos`]);
+            const currentRange = `${weekDays[0].dateNum}-${weekDays[6].dateNum}`;
+            items.push(['🏋️', 'Melhor semana em Atv Física', `Nenhuma ≥ 4d (atual ${currentRange}: ${weekWorkoutDays}/4d)`]);
         }
     }
 

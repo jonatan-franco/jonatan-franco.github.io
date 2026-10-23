@@ -12,22 +12,29 @@ const CATEGORIES = {
 
 const PALETTE = ['#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1'];
 
+function formatLocalISO(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getCurrentWeekDays() {
     const today = new Date();
-    const dow = today.getDay();
+    const todayStr = formatLocalISO(today);
+    const base = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
+    const dow = base.getDay();
     const diffToMonday = dow === 0 ? -6 : 1 - dow;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diffToMonday);
+    const monday = new Date(base);
+    monday.setDate(base.getDate() + diffToMonday);
     const shortNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
     return Array.from({ length: 7 }, (_, i) => {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
+        const iso = formatLocalISO(d);
         return {
             index: i,
             shortName: shortNames[i],
             dateNum: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'),
-            iso: d.toISOString().split('T')[0],
-            isToday: d.toDateString() === today.toDateString(),
+            iso,
+            isToday: iso === todayStr,
             rawDate: d
         };
     });
@@ -90,6 +97,23 @@ function applyDataMigrations() {
         if (habits.length === 0) {
             habits = JSON.parse(JSON.stringify(defaultHabits));
         }
+    }
+    // Corrige eventual registro de sono salvo com data do dia seguinte devido ao antigo toISOString() UTC após 21h
+    if (sleepJournal && typeof sleepJournal === 'object') {
+        const todayStr = formatLocalISO(new Date());
+        const sortedKeys = Object.keys(sleepJournal).sort();
+        sortedKeys.forEach(k => {
+            if (k > todayStr && sleepJournal[k]) {
+                const [y, m, d] = k.split('-').map(Number);
+                const prevDate = new Date(y, m - 1, d, 12, 0, 0, 0);
+                prevDate.setDate(prevDate.getDate() - 1);
+                const prevIso = formatLocalISO(prevDate);
+                if (!sleepJournal[prevIso]) {
+                    sleepJournal[prevIso] = sleepJournal[k];
+                }
+                delete sleepJournal[k];
+            }
+        });
     }
     if (habits.length !== before) {
         const validIds = new Set(habits.map(h => h.id));
