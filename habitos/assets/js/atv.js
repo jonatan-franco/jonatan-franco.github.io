@@ -7,6 +7,19 @@
  * Banco de dados do plano de treino pré-cadastrado:
  * Upper A, Lower A, Upper B e Lower B com variações equivalentes.
  * ------------------------------------------------------------------ */
+const CARDIO_Z2_PLAN_ID = 'cardio_z2';
+const CARDIO_Z2_HABIT_ID = 'h_cardio_z2';
+const CARDIO_Z2_NAME = 'Cardio Zona 2';
+
+const DEFAULT_CARDIO_Z2_EXERCISE = {
+    name: 'Cardio Zona 2',
+    muscle: 'Sistema Cardiovascular / Resistência',
+    variations: ['Corrida', 'Caminhada', 'Misto (Caminhada + Corrida)', 'Bike / Ciclismo', 'Esteira Inclinada', 'Escada / Elíptico', 'Transport / Remo ergômetro'],
+    sets: 1,
+    reps: '20 min',
+    rest: '-'
+};
+
 const WORKOUT_PLAN = [
     {
         planId: 'upper_a',
@@ -18,7 +31,7 @@ const WORKOUT_PLAN = [
             { name: 'Elevação Lateral', muscle: 'Deltoide Lateral', variations: ['Elevação lateral na polia/cabo', 'Elevação lateral máquina'], sets: 3, reps: '10-15', rest: '60-90s', load: 5.00 },
             { name: 'Tríceps Corda', muscle: 'Tríceps braquial', variations: ['Tríceps testa com halteres', 'Tríceps francês na polia'], sets: 3, reps: '10-15', rest: '60-90s' },
             { name: 'Bíceps Martelo', muscle: 'Bíceps e Braquiorradial', variations: ['Rosca martelo na corda (polia)', 'Rosca Scott máquina/barra W'], sets: 3, reps: '10-15', rest: '60-90s' },
-            { name: 'Cardio Zona 2 (Esteira inclinada / Bike)', muscle: 'Sistema Cardiovascular / Resistência', variations: ['Transport / Remo ergômetro', 'Corrida na Esteira', 'Caminhada Inclinada'], sets: 1, reps: '15-20 min', rest: '-' }
+            { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
         ]
     },
     {
@@ -30,7 +43,8 @@ const WORKOUT_PLAN = [
             { name: 'RDL', muscle: 'Isquiotibiais e Glúteos', variations: ['Stiff com barra', 'Mesa flexora (foco em isquiotibiais)'], sets: 3, reps: '8-12', rest: '2 min' },
             { name: 'Panturrilha em Pé', muscle: 'Panturrilha (Gastrocnêmio)', variations: ['Panturrilha no Leg Press', 'Panturrilha unilateral com halter'], sets: 3, reps: '12-15', rest: '60-90s' },
             { name: 'Cadeira Extensora', muscle: 'Quadríceps (ênfase reto femoral)', variations: ['Afundo com halteres', 'Sissy squat'], sets: 3, reps: '12-15', rest: '60-90s' },
-            { name: 'Abdominal na Polia Alta (Cable Crunch)', muscle: 'Reto Abdominal (ênfase superior e média)', variations: ['Crunch no solo com carga', 'Abdominal na máquina'], sets: 3, reps: '12-15', rest: '60-90s' }
+            { name: 'Abdominal na Polia Alta (Cable Crunch)', muscle: 'Reto Abdominal (ênfase superior e média)', variations: ['Crunch no solo com carga', 'Abdominal na máquina'], sets: 3, reps: '12-15', rest: '60-90s' },
+            { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
         ]
     },
     {
@@ -42,7 +56,7 @@ const WORKOUT_PLAN = [
             { name: 'Desenvolvimento Halteres', muscle: 'Deltoide Anterior e Tríceps', variations: ['Desenvolvimento máquina articulada', 'Desenvolvimento no Smith'], sets: 3, reps: '8-12', rest: '90-120s' },
             { name: 'Remada Baixa', muscle: 'Costas (Espessura / Meio das costas)', variations: ['Remada curvada com pegada pronada', 'Remada articulada'], sets: 3, reps: '8-12', rest: '90-120s' },
             { name: 'Elevação Lateral', muscle: 'Deltoide Lateral', variations: ['Elevação lateral na polia/cabo', 'Elevação lateral máquina'], sets: 3, reps: '10-15', rest: '60-90s' },
-            { name: 'Cardio Zona 2 (Esteira / Bike ergométrica)', muscle: 'Sistema Cardiovascular / Resistência', variations: ['Caminhada ao ar livre', 'Corrida Leve', 'Escada'], sets: 1, reps: '20 min', rest: '-' }
+            { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
         ]
     },
     {
@@ -54,7 +68,8 @@ const WORKOUT_PLAN = [
             { name: 'Cadeira Flexora', muscle: 'Isquiotibiais (flexores de joelho)', variations: ['Mesa flexora deitada', 'Flexora unilateral em pé'], sets: 3, reps: '10-15', rest: '60-90s' },
             { name: 'Agachamento Búlgaro', muscle: 'Quadríceps e Glúteo Máximo', variations: ['Passada/Avanço com halteres', 'Afundo no Smith'], sets: 3, reps: '8-12', rest: '2 min' },
             { name: 'Panturrilha', muscle: 'Panturrilha', variations: ['Panturrilha sentado (Sóleo)', 'Panturrilha no Smith'], sets: 3, reps: '12-15', rest: '60-90s' },
-            { name: 'Elevação de Pernas na Barra Fixa / Paralelas (Hanging Leg Raise)', muscle: 'Reto Abdominal (ênfase infra-umbilical)', variations: ['Elevação de pernas no solo com elevação pélvica', 'Abdominal canivete'], sets: 3, reps: '12-15', rest: '60-90s' }
+            { name: 'Elevação de Pernas na Barra Fixa / Paralelas (Hanging Leg Raise)', muscle: 'Reto Abdominal (ênfase infra-umbilical)', variations: ['Elevação de pernas no solo com elevação pélvica', 'Abdominal canivete'], sets: 3, reps: '12-15', rest: '60-90s' },
+            { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
         ]
     }
 ];
@@ -179,11 +194,34 @@ function loadWorkoutCatalogCustomizations() {
         if (!raw) return;
         const savedCatalog = JSON.parse(raw);
         if (!savedCatalog || typeof savedCatalog !== 'object') return;
+        let catMigrated = false;
         WORKOUT_PLAN.forEach(w => {
             if (Array.isArray(savedCatalog[w.planId]) && savedCatalog[w.planId].length > 0) {
                 w.exercises = savedCatalog[w.planId];
             }
+            let hasCardio = false;
+            w.exercises.forEach(ex => {
+                if (isCardioExercise(ex.name, ex.muscle)) {
+                    hasCardio = true;
+                    if (ex.name.startsWith('Cardio Zona 2 (')) {
+                        ex.name = CARDIO_Z2_NAME;
+                        catMigrated = true;
+                    }
+                    if (!Array.isArray(ex.variations)) ex.variations = [];
+                    DEFAULT_CARDIO_Z2_EXERCISE.variations.forEach(v => {
+                        if (!ex.variations.some(ev => ev.toLowerCase() === v.toLowerCase())) {
+                            ex.variations.push(v);
+                            catMigrated = true;
+                        }
+                    });
+                }
+            });
+            if (!hasCardio) {
+                w.exercises.push({ ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] });
+                catMigrated = true;
+            }
         });
+        if (catMigrated) saveWorkoutCatalogCustomizations();
     } catch (e) {}
 }
 
@@ -425,23 +463,20 @@ function getWorkoutDayCompletionStatus(workout, dateIso) {
     if (!workout || !Array.isArray(workout.exercises) || workout.exercises.length === 0) {
         return { completedCards: 0, totalCards: 0, is100Percent: false };
     }
+    const strengthExercises = workout.exercises.filter(ex => !isCardioExercise(ex.name, ex.muscle));
     const dayLogs = atvLogs[dateIso] || [];
     let completedCards = 0;
-    workout.exercises.forEach(ex => {
-        const cardIsCardio = isCardioExercise(ex.name, ex.muscle);
+    strengthExercises.forEach(ex => {
         const isDone = dayLogs.some(l => {
             if (!l) return false;
             if (l.exerciseName === ex.name || (Array.isArray(ex.variations) && ex.variations.includes(l.exerciseName))) {
-                return true;
-            }
-            if (cardIsCardio && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle))) {
                 return true;
             }
             return false;
         });
         if (isDone) completedCards++;
     });
-    const totalCards = workout.exercises.length;
+    const totalCards = strengthExercises.length;
     return {
         completedCards,
         totalCards,
@@ -513,6 +548,24 @@ function ensureWorkoutPlanHabits() {
         }
         seeded.push(workout.planId);
     });
+    // Semeia a atividade aeróbica independente 'Cardio Zona 2' para permitir agendamento em qualquer dia (inclusive junto com Upper/Lower)
+    if (!seeded.includes(CARDIO_Z2_PLAN_ID)) {
+        const cardioExists = habits.some(h => h.planId === CARDIO_Z2_PLAN_ID || h.id === CARDIO_Z2_HABIT_ID || h.name === CARDIO_Z2_NAME);
+        if (!cardioExists) {
+            habits.push({
+                id: CARDIO_Z2_HABIT_ID,
+                planId: CARDIO_Z2_PLAN_ID,
+                name: CARDIO_Z2_NAME,
+                category: 'atv_fisica',
+                targetHours: 2.5,
+                checks: [false, false, false, false, false, false, false],
+                dailyHours: [0, 0, 0, 0, 0, 0, 0],
+                exercises: [{ ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }]
+            });
+            changed = true;
+        }
+        seeded.push(CARDIO_Z2_PLAN_ID);
+    }
     SafeStorage.setItem(PLAN_SEED_KEY, JSON.stringify(seeded));
     if (changed) saveData();
 }
@@ -526,12 +579,32 @@ function loadAtvLogs() {
         atvLogs = {};
     }
     let migrated = false;
-    const validPlans = ['upper_a', 'lower_a', 'upper_b', 'lower_b', 'custom'];
+    const validPlans = ['upper_a', 'lower_a', 'upper_b', 'lower_b', 'cardio_z2', 'custom'];
     Object.keys(atvLogs).forEach(dateKey => {
         const list = atvLogs[dateKey];
         if (!Array.isArray(list)) return;
         list.forEach(item => {
             if (!item) return;
+            const isCardio = item.unit === 'km/h' || isCardioExercise(item.exerciseName, item.muscle);
+            if (isCardio) {
+                if (item.planId !== CARDIO_Z2_PLAN_ID) {
+                    item.planId = CARDIO_Z2_PLAN_ID;
+                    migrated = true;
+                }
+                if (item.habitId !== CARDIO_Z2_HABIT_ID) {
+                    item.habitId = CARDIO_Z2_HABIT_ID;
+                    migrated = true;
+                }
+                if (item.exerciseName && item.exerciseName.startsWith('Cardio Zona 2 (')) {
+                    const cpIdx = item.exerciseName.indexOf(')'); item.exerciseName = cpIdx !== -1 ? (CARDIO_Z2_NAME + item.exerciseName.slice(cpIdx + 1)) : CARDIO_Z2_NAME;
+                    migrated = true;
+                }
+                if (item.cardExerciseName && item.cardExerciseName.startsWith('Cardio Zona 2 (')) {
+                    item.cardExerciseName = CARDIO_Z2_NAME;
+                    migrated = true;
+                }
+                return;
+            }
             const hasValidPlan = item.planId && validPlans.includes(item.planId);
             const isWrongHabit = !item.habitId || item.habitId === 'h3';
             if (!hasValidPlan || isWrongHabit) {
@@ -586,7 +659,10 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
             // A ref da carga fica oculta no dropdown e aparece só no título (e badge) quando selecionado
             const titleEl = document.getElementById(`atv-card-title-${cardIndex}`);
             if (titleEl) {
-                titleEl.textContent = `${workout.name} - ${chosenName}${refFormatted ? ` (ref. ${refFormatted} ${unitShort})` : ''}`;
+                const baseCardTitle = isCardio
+                    ? (chosenName === CARDIO_Z2_NAME ? CARDIO_Z2_NAME : `${CARDIO_Z2_NAME} - ${chosenName}`)
+                    : `${workout.name} - ${chosenName}`;
+                titleEl.textContent = `${baseCardTitle}${refFormatted ? ` (ref. ${refFormatted} ${unitShort})` : ''}`;
                 titleEl.title = titleEl.textContent;
             }
             const refBadgeEl = document.getElementById(`atv-card-ref-badge-${cardIndex}`);
@@ -829,7 +905,10 @@ function refreshAtvHistoryAndCardBadges() {
             const refFormatted = refVal !== null ? formatWeightNumber(refVal) : '';
             const titleEl = document.getElementById(`atv-card-title-${idx}`);
             if (titleEl) {
-                titleEl.textContent = `${workout.name} - ${chosenName}${refFormatted ? ` (ref. ${refFormatted} ${unitShort})` : ''}`;
+                const baseCardTitle = chosenIsCardio
+                    ? (chosenName === CARDIO_Z2_NAME ? CARDIO_Z2_NAME : `${CARDIO_Z2_NAME} - ${chosenName}`)
+                    : `${workout.name} - ${chosenName}`;
+                titleEl.textContent = `${baseCardTitle}${refFormatted ? ` (ref. ${refFormatted} ${unitShort})` : ''}`;
             }
             const refBadgeEl = document.getElementById(`atv-card-ref-badge-${idx}`);
             if (refBadgeEl) {
@@ -883,17 +962,19 @@ window.submitAtvCardLog = function(cardIndex) {
 
         const existingCardio = findExistingCardioLogForDate(selectedAtvDate);
         if (existingCardio) {
-            // Unifica na mesma linha do histórico com o registro vindo do Timer!
-            existingCardio.habitId = habit ? habit.id : ('h_' + selectedWorkoutPlanId);
-            existingCardio.planId = selectedWorkoutPlanId;
+            // Unifica na mesma linha do histórico com o registro vindo do Timer (sempre associado a Cardio Zona 2, independente de Upper/Lower)
+            existingCardio.habitId = CARDIO_Z2_HABIT_ID;
+            existingCardio.planId = CARDIO_Z2_PLAN_ID;
             existingCardio.muscle = ex.muscle || 'Sistema Cardiovascular / Resistência';
-            existingCardio.cardExerciseName = chosenName;
+            existingCardio.cardExerciseName = CARDIO_Z2_NAME;
             existingCardio.fromCardioCard = true;
             existingCardio.unit = 'km/h';
             existingCardio.sets = 1;
 
             if (existingCardio.timerModality && !chosenName.toLowerCase().includes(existingCardio.timerModality.toLowerCase())) {
-                existingCardio.exerciseName = `${chosenName} • ${existingCardio.timerModality}`;
+                existingCardio.exerciseName = chosenName === CARDIO_Z2_NAME
+                    ? `${CARDIO_Z2_NAME} • ${existingCardio.timerModality}`
+                    : `${chosenName} • ${existingCardio.timerModality}`;
             } else {
                 existingCardio.exerciseName = chosenName;
             }
@@ -918,10 +999,10 @@ window.submitAtvCardLog = function(cardIndex) {
             const durMin = activeTimerMin > 0 ? activeTimerMin : parseRepsNumber(repDuration);
             atvLogs[selectedAtvDate].push({
                 id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                habitId: habit ? habit.id : ('h_' + selectedWorkoutPlanId),
-                planId: selectedWorkoutPlanId,
+                habitId: CARDIO_Z2_HABIT_ID,
+                planId: CARDIO_Z2_PLAN_ID,
                 exerciseName: chosenName,
-                cardExerciseName: chosenName,
+                cardExerciseName: CARDIO_Z2_NAME,
                 fromCardioCard: true,
                 muscle: ex.muscle || 'Sistema Cardiovascular / Resistência',
                 sets: 1,
@@ -1658,7 +1739,9 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, duratio
 
     const existingCardio = findExistingCardioLogForDate(targetDate);
     if (existingCardio) {
-        // Atualiza na MESMA linha do registro feito utilizando o card de Sistema Cardiovascular!
+        // Atualiza na MESMA linha do registro feito utilizando o card de Cardio Zona 2!
+        existingCardio.habitId = CARDIO_Z2_HABIT_ID;
+        existingCardio.planId = CARDIO_Z2_PLAN_ID;
         existingCardio.timerModality = modName;
         existingCardio.isMixed = isMixed;
         if (isMixed) {
@@ -1673,13 +1756,9 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, duratio
         existingCardio.rest = '-';
         existingCardio.unit = 'km/h';
         existingCardio.muscle = existingCardio.muscle || 'Sistema Cardiovascular / Resistência';
+        existingCardio.cardExerciseName = CARDIO_Z2_NAME;
 
-        const baseCardName = existingCardio.cardExerciseName || existingCardio.exerciseName || '';
-        if (baseCardName && !baseCardName.toLowerCase().includes(modName.toLowerCase())) {
-            existingCardio.exerciseName = `${baseCardName} • ${modName}`;
-        } else {
-            existingCardio.exerciseName = baseCardName || modName;
-        }
+        existingCardio.exerciseName = `${CARDIO_Z2_NAME} • ${modName}`;
 
         if (effectiveSpeed > 0) {
             existingCardio.weight = parseFloat(effectiveSpeed.toFixed(2));
@@ -1692,18 +1771,15 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, duratio
             combinedUserNotes || existingCardio.notes
         );
     } else {
-        const cardioCard = (workout && Array.isArray(workout.exercises))
-            ? workout.exercises.find(e => isCardioExercise(e.name, e.muscle))
-            : null;
-        const cardMuscle = cardioCard ? cardioCard.muscle : 'Sistema Cardiovascular / Resistência';
-        const baseName = cardioCard ? `${cardioCard.name} • ${modName}` : modName;
+        const cardMuscle = 'Sistema Cardiovascular / Resistência';
+        const baseName = `${CARDIO_Z2_NAME} • ${modName}`;
 
         atvLogs[targetDate].push({
             id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-            habitId: 'h_' + selectedWorkoutPlanId,
-            planId: selectedWorkoutPlanId,
+            habitId: CARDIO_Z2_HABIT_ID,
+            planId: CARDIO_Z2_PLAN_ID,
             exerciseName: baseName,
-            cardExerciseName: cardioCard ? cardioCard.name : modName,
+            cardExerciseName: CARDIO_Z2_NAME,
             timerModality: modName,
             isMixed,
             runSpeedKmh: isMixed ? rawRunSpeed : undefined,
@@ -1725,7 +1801,7 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, duratio
     if (typeof weekDays !== 'undefined' && Array.isArray(weekDays)) {
         const dIdx = weekDays.findIndex(d => d.iso === targetDate);
         if (dIdx !== -1 && Array.isArray(habits)) {
-            const atvHabit = habits.find(h => h.category === 'atv_fisica');
+            const atvHabit = habits.find(h => h.planId === CARDIO_Z2_PLAN_ID || h.id === CARDIO_Z2_HABIT_ID || h.name === CARDIO_Z2_NAME) || habits.find(h => h.category === 'atv_fisica');
             if (atvHabit) {
                 const addHours = parseFloat((durObj.avgMin / 60).toFixed(2));
                 atvHabit.dailyHours[dIdx] = parseFloat(((atvHabit.dailyHours[dIdx] || 0) + addHours).toFixed(2));
@@ -2045,8 +2121,18 @@ window.openEditAtvLog = function(dateStr, logId) {
     const slotSelect = document.getElementById('atv-edit-muscle-slot');
     if (slotSelect) {
         let slotOpts = '';
+        let cardioSlotAdded = false;
         WORKOUT_PLAN.forEach(w => {
             w.exercises.forEach((ex, idx) => {
+                const isCardioEx = isCardioExercise(ex.name, ex.muscle);
+                if (isCardioEx) {
+                    if (cardioSlotAdded) return;
+                    cardioSlotAdded = true;
+                    const val = `${w.planId}__${idx}`;
+                    const isSel = isCardioExercise(log.exerciseName, log.muscle) || (w.planId === matched.planId && idx === matched.slotIdx);
+                    slotOpts += `<option value="${val}" ${isSel ? 'selected' : ''}>${CARDIO_Z2_NAME} • ${ex.muscle}</option>`;
+                    return;
+                }
                 const val = `${w.planId}__${idx}`;
                 const isSel = w.planId === matched.planId && idx === matched.slotIdx;
                 slotOpts += `<option value="${val}" ${isSel ? 'selected' : ''}>${w.name} • ${ex.muscle} (Principal: ${ex.name})</option>`;
@@ -2099,6 +2185,10 @@ window.saveEditedAtvLog = function(event) {
 
     const isCardio = isCardioExercise(log.exerciseName, log.muscle);
     log.unit = isCardio ? 'km/h' : 'kg';
+    if (isCardio) {
+        log.planId = CARDIO_Z2_PLAN_ID;
+        log.habitId = CARDIO_Z2_HABIT_ID;
+    }
 
     const weightInput = document.getElementById('atv-edit-weight');
     if (weightInput) log.weight = getWeightNumericValue(weightInput.value);
@@ -2191,7 +2281,10 @@ function buildAtvLogRowHTML(dateStr, log) {
     }
     const meta = findExerciseMeta(log.exerciseName, log.habitId);
     const muscleStr = log.muscle || (meta ? meta.muscle : '') || 'Geral';
-    const isCardio = log.unit === 'km/h' || isCardioExercise(log.exerciseName, muscleStr);
+    const isCardio = log.unit === 'km/h' || log.planId === CARDIO_Z2_PLAN_ID || isCardioExercise(log.exerciseName, muscleStr);
+    if (isCardio) {
+        wName = CARDIO_Z2_NAME;
+    }
     const unitLabel = isCardio ? 'km/h' : 'kg';
     const volumeItem = isCardio ? 0 : calcLogEntryVolume(log);
     const cardioMetrics = isCardio ? calcCardioEntryVolumeKm(log) : null;
@@ -2606,11 +2699,14 @@ function renderAtvFisicaInteractiveView() {
     const dayRef = weekDays[dayIndex] || weekDays[0];
 
     const scheduledEvents = Array.isArray(calendarEvents) ? calendarEvents.filter(ev => ev.dayIndex === dayIndex) : [];
-    let scheduledPlanName = '';
-    if (scheduledEvents.length > 0) {
-        const evHabit = habits.find(h => h.id === scheduledEvents[0].habitId);
-        if (evHabit) scheduledPlanName = evHabit.name;
-    }
+    const scheduledNames = [];
+    scheduledEvents.forEach(ev => {
+        const evHabit = habits.find(h => h.id === ev.habitId && h.category === 'atv_fisica');
+        if (evHabit && !scheduledNames.includes(evHabit.name)) {
+            scheduledNames.push(evHabit.name);
+        }
+    });
+    const scheduledPlanName = scheduledNames.join(' + ');
 
     const agendaHintHTML = scheduledPlanName
         ? `📅 Agenda de ${dayRef.shortName}: <strong class="text-zinc-900">${scheduledPlanName}</strong>`
@@ -2664,14 +2760,19 @@ function renderAtvFisicaInteractiveView() {
         const notesValueToUse = savedCardState.notes || '';
 
         // Na lista do dropdown do exercício, a ref da carga fica OCULTA e aparece só no título do exercício quando selecionado
+        // Para o card de Cardio Zona 2, desassocia de Upper/Lower e mostra simplesmente 'Cardio Zona 2'
+        const mainOptionLabel = cardIsCardio ? CARDIO_Z2_NAME : `${currentWorkout.name} - ${ex.name}`;
         const selectOptionsHTML = [
-            `<option value="${ex.name}" ${selectedExName === ex.name ? 'selected' : ''}>${currentWorkout.name} - ${ex.name}</option>`,
+            `<option value="${ex.name}" ${selectedExName === ex.name ? 'selected' : ''}>${mainOptionLabel}</option>`,
             ...(ex.variations || []).map(v => {
                 return `<option value="${v}" ${selectedExName === v ? 'selected' : ''}>↳ ${v}</option>`;
             })
         ].join('');
 
-        const cardTitleText = `${currentWorkout.name} - ${selectedExName}${suggestedLoad ? ` (ref. ${suggestedLoad} ${unitShort})` : ''}`;
+        const baseCardTitle = isCardio
+            ? (selectedExName === CARDIO_Z2_NAME ? CARDIO_Z2_NAME : `${CARDIO_Z2_NAME} - ${selectedExName}`)
+            : `${currentWorkout.name} - ${selectedExName}`;
+        const cardTitleText = `${baseCardTitle}${suggestedLoad ? ` (ref. ${suggestedLoad} ${unitShort})` : ''}`;
 
         // Item 6: No card do sistema cardiovascular, retirar o ícone de alvo REPS e deixar apenas o ícone de tempo e algum que indique km/h
         const cardBadgesHTML = isCardio

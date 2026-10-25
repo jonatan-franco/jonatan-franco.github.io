@@ -324,8 +324,15 @@ function findExerciseMeta(exerciseName, habitId) {
 }
 
 /* Calcula o volume total de um item de log: (séries * repetições) * carga */
+function isMathItemCardio(item) {
+    if (!item) return false;
+    if (item.unit === 'km/h' || item.planId === 'cardio_z2' || item.habitId === 'h_cardio_z2') return true;
+    if (typeof isCardioExercise === 'function' && isCardioExercise(item.exerciseName, item.muscle)) return true;
+    return false;
+}
+
 function calcLogEntryVolume(item) {
-    if (!item) return 0;
+    if (!item || isMathItemCardio(item)) return 0;
     const weight = parseFloat(item.weight) || 0;
     if (weight <= 0) return 0;
 
@@ -369,12 +376,13 @@ function getRecentRegisteredLoadEntries(limit = 7) {
 
     const validDates = Object.keys(logs).filter(dateKey => {
         const list = logs[dateKey];
-        return Array.isArray(list) && list.length > 0;
+        if (!Array.isArray(list) || list.length === 0) return false;
+        return list.some(item => item && !isMathItemCardio(item) && calcLogEntryVolume(item) > 0);
     }).sort(); // cronológico crescente
 
     const recentDates = validDates.slice(-limit);
     return recentDates.map(dateKey => {
-        const list = logs[dateKey];
+        const list = (logs[dateKey] || []).filter(item => item && !isMathItemCardio(item));
         const dayVolume = list.reduce((acc, item) => acc + calcLogEntryVolume(item), 0);
         return { date: dateKey, load: dayVolume, count: list.length };
     });
@@ -486,6 +494,7 @@ function calcConsecutiveFullDaysStreak() {
 /* Identifica o grupo (upper_a, lower_a, upper_b, lower_b) de um item de log de atividade física */
 function resolveLogGroupPlanId(item) {
     if (!item) return 'upper_a';
+    if (isMathItemCardio(item)) return 'cardio_z2';
     const validPlans = ['upper_a', 'lower_a', 'upper_b', 'lower_b'];
     if (item.planId && validPlans.includes(item.planId)) return item.planId;
     if (item.habitId) {
@@ -536,12 +545,12 @@ function calcLoadEvolution30d() {
     };
 
     const exercisesMap = new Map();
-    // Descobre todos os exercícios já registrados pelo usuário
+    // Descobre apenas os exercícios de FORÇA já registrados pelo usuário (Aeróbico/Cardio Zona 2 não entra no gráfico de carga e volume)
     Object.keys(logs).sort().forEach(dateKey => {
         const list = logs[dateKey];
         if (!Array.isArray(list)) return;
         list.forEach(item => {
-            if (!item || !item.exerciseName) return;
+            if (!item || !item.exerciseName || isMathItemCardio(item)) return;
             const exName = String(item.exerciseName).trim();
             if (!exercisesMap.has(exName)) {
                 exercisesMap.set(exName, {
@@ -561,7 +570,7 @@ function calcLoadEvolution30d() {
         if (!Array.isArray(list) || list.length === 0) return;
 
         list.forEach(item => {
-            if (!item) return;
+            if (!item || isMathItemCardio(item)) return;
             const vol = calcLogEntryVolume(item);
             const w = parseFloat(item.weight) || 0;
             if (vol <= 0 && w <= 0) return;
