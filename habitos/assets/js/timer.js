@@ -405,6 +405,13 @@ window.setStopwatchModality = function(mod) {
     syncAllExternalTimerDisplays(false);
 };
 
+window.getActiveStopwatchElapsedMs = function() {
+    if (swRunning) {
+        return swElapsedMs + (Date.now() - swLastStartTs);
+    }
+    return swElapsedMs || 0;
+};
+
 window.finishAndLogStopwatchAtv = function() {
     let totalMs = swElapsedMs;
     if (swRunning) {
@@ -417,6 +424,7 @@ window.finishAndLogStopwatchAtv = function() {
     }
 
     let durationMin = totalMs / 60000;
+    const elapsedSeconds = Math.floor(totalMs / 1000);
     if (durationMin < 0.5) {
         const manualMin = prompt(`Informe a duração de ${swModality} em minutos:`, '20');
         if (manualMin === null) return;
@@ -433,8 +441,9 @@ window.finishAndLogStopwatchAtv = function() {
         window.recordAerobicSessionFromTimer({
             modality: swModality === 'Livre' ? 'Cardio / Aeróbico' : swModality,
             durationMin,
+            elapsedSeconds: elapsedSeconds >= 30 ? elapsedSeconds : Math.round(durationMin * 60),
             speedKmh,
-            notes: `Cronômetro HaQt (${Math.round(durationMin)} min)`
+            notes: ''
         });
     }
 
@@ -444,7 +453,7 @@ window.finishAndLogStopwatchAtv = function() {
     renderStopwatchLaps();
     syncStopwatchButtons();
     updateStopwatchDisplay();
-    alert(`✅ ${swModality} (${Math.round(durationMin)} min${speedKmh > 0 ? ` • ${speedKmh.toFixed(2).replace('.', ',')} km/h` : ''}) registrado em Atividade Física!`);
+    alert(`✅ ${swModality} (${Math.round(durationMin)} min${speedKmh > 0 ? ` • ${speedKmh.toFixed(2).replace('.', ',')} km/h` : ''}) registrado na linha de Sistema Cardiovascular em Atividade Física!`);
 };
 
 function updateStopwatchDisplay() {

@@ -875,6 +875,7 @@
                 <div>
                     <span class="text-[10px] font-mono uppercase tracking-widest text-rose-600 font-bold">EDIÇÃO DE REGISTRO</span>
                     <h3 class="text-base font-bold text-zinc-900" id="atv-edit-modal-title">Editar Exercício</h3>
+                    <p id="atv-edit-system-info" class="text-[11px] font-mono text-zinc-500 mt-0.5"></p>
                 </div>
                 <button type="button" onclick="closeAtvEditModal()" class="text-zinc-400 hover:text-black">✕</button>
             </div>
@@ -887,16 +888,20 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Carga (kg)</label>
+                        <label id="atv-edit-weight-label" class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Carga (kg)</label>
                         <input type="text" id="atv-edit-weight" inputmode="numeric" oninput="handleWeightInputMask(this)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center" placeholder="0,00">
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Séries × Reps</label>
+                    <div id="atv-edit-strength-group">
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Séries × REPS</label>
                         <div class="flex gap-1 items-center">
                             <input type="number" id="atv-edit-sets" min="1" max="20" class="w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs font-mono text-center" placeholder="Séries">
                             <span class="text-xs text-zinc-400">×</span>
-                            <input type="text" id="atv-edit-reps" class="w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs font-mono text-center" placeholder="Reps">
+                            <input type="text" id="atv-edit-reps" class="w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs font-mono text-center" placeholder="REPS">
                         </div>
+                    </div>
+                    <div id="atv-edit-cardio-group" class="hidden">
+                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Duração</label>
+                        <input type="text" id="atv-edit-duration" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900 text-center" placeholder="Ex: 20 min">
                     </div>
                 </div>
                 <div>
