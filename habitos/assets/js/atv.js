@@ -90,6 +90,7 @@ function isCardioExercise(exName, muscle) {
         combined.includes('ciclismo') ||
         combined.includes('corrida') ||
         combined.includes('caminhada') ||
+        combined.includes('misto') ||
         combined.includes('aerób') ||
         combined.includes('aerob') ||
         combined.includes('transport') ||
@@ -1051,7 +1052,131 @@ window.submitCustomAtvLog = function(event) {
 };
 
 /* ------------------------------------------------------------------
- * ABA AERÓBICO (CORRIDA, CAMINHADA, BIKE, ESTEIRA) + CRONÔMETRO INTEGRADO
+ * CÁLCULO MATEMÁTICO DE VOLUME AERÓBICO (QUILOMETRAGEM ESTIMADA POR PACE E INTERVALO)
+ * E CORREÇÃO FISIOLÓGICA/CINÉTICA PARA TREINO "MISTO (CAMINHADA + CORRIDA)"
+ * ------------------------------------------------------------------ */
+
+/* Converte velocidade v (km/h) para Pace em min/km no formato M'SS"/km */
+function formatPaceMinPerKm(speedKmh) {
+    const v = parseFloat(speedKmh) || 0;
+    if (v <= 0) return '—';
+    const paceMinFloat = 60 / v;
+    const totalSec = Math.round(paceMinFloat * 60);
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins}'${String(secs).padStart(2, '0')}"/km`;
+}
+
+/* Extrai duração (única ou intervalo [min, max]) a partir de strings como:
+ * "20 min (00:20:30)", "15-20 min", "20-30", "25 min" */
+function parseCardioDurationInterval(durationStr, fallbackMin) {
+    const raw = String(durationStr || '').trim();
+    // 1. Verifica se há tempo exato do cronômetro no formato (HH:MM:SS)
+    const hmsMatch = raw.match(/\((\d{2}):(\d{2}):(\d{2})\)/);
+    if (hmsMatch) {
+        const hh = parseInt(hmsMatch[1], 10) || 0;
+        const mm = parseInt(hmsMatch[2], 10) || 0;
+        const ss = parseInt(hmsMatch[3], 10) || 0;
+        const exactMin = hh * 60 + mm + (ss / 60);
+        if (exactMin > 0) {
+            return { minMin: exactMin, maxMin: exactMin, avgMin: exactMin, isInterval: false };
+        }
+    }
+
+    // 2. Verifica se é um intervalo (ex: "15-20 min" ou "20 a 30 min")
+    const rangeMatch = raw.match(/(\d+(?:[.,]\d+)?)\s*(?:[-–]|a)\s*(\d+(?:[.,]\d+)?)/i);
+    if (rangeMatch) {
+        const t1 = parseFloat(rangeMatch[1].replace(',', '.')) || 0;
+        const t2 = parseFloat(rangeMatch[2].replace(',', '.')) || 0;
+        if (t1 > 0 && t2 > 0) {
+            const minMin = Math.min(t1, t2);
+            const maxMin = Math.max(t1, t2);
+            const avgMin = (minMin + maxMin) / 2;
+            return { minMin, maxMin, avgMin, isInterval: Math.abs(maxMin - minMin) > 0.01 };
+        }
+    }
+
+    // 3. Valor único em minutos
+    const singleMatch = raw.match(/(\d+(?:[.,]\d+)?)/);
+    if (singleMatch) {
+        const val = parseFloat(singleMatch[1].replace(',', '.')) || 0;
+        if (val > 0) {
+            return { minMin: val, maxMin: val, avgMin: val, isInterval: false };
+        }
+    }
+
+    const fb = parseFloat(fallbackMin) > 0 ? parseFloat(fallbackMin) : 20;
+    return { minMin: fb, maxMin: fb, avgMin: fb, isInterval: false };
+}
+
+/* Modelo Matemático para Treino "Misto (Caminhada + Corrida)" (Método Intervalado Galloway):
+ * v_efetiva = eta_transicao * [ alpha * v_corrida + (1 - alpha) * v_caminhada ]
+ * Onde:
+ * - alpha (runRatio): fração do tempo em corrida (ex: 0.60 = 60% corrida / 40% caminhada)
+ * - v_corrida: velocidade de corrida (km/h)
+ * - v_caminhada: velocidade de caminhada (km/h, padrão 55% de v_corrida se não informada)
+ * - eta_transicao = 0.96: fator de correção de transição cinética (-4% pelas acelerações/desacelerações entre blocos)
+ */
+const MIXED_TRANSITION_FACTOR = 0.96;
+
+function calcMixedCardioEffectiveSpeed(runSpeedKmh, walkSpeedKmh, runRatio) {
+    const vRun = parseFloat(runSpeedKmh) || 0;
+    if (vRun <= 0) return 0;
+    const vWalk = (parseFloat(walkSpeedKmh) || 0) > 0 ? parseFloat(walkSpeedKmh) : (vRun * 0.55);
+    const alpha = (parseFloat(runRatio) > 0 && parseFloat(runRatio) < 1) ? parseFloat(runRatio) : 0.60;
+    const weightedSpeed = (alpha * vRun) + ((1 - alpha) * vWalk);
+    return parseFloat((MIXED_TRANSITION_FACTOR * weightedSpeed).toFixed(2));
+}
+
+/* Calcula o Volume (Quilometragem estimada em km) e o Pace para qualquer registro cardiovascular */
+function calcCardioEntryVolumeKm(log) {
+    if (!log) {
+        return { avgKm: 0, minKm: 0, maxKm: 0, isInterval: false, effectiveSpeedKmh: 0, paceStr: '—', isMixed: false, volumeText: '0,00 km' };
+    }
+    const isMixed = Boolean(log.isMixed) || String(log.exerciseName || '').toLowerCase().includes('misto') || String(log.timerModality || '').toLowerCase().includes('misto');
+    const rawSpeed = parseFloat(log.weight) || 0;
+
+    let effectiveSpeedKmh = rawSpeed;
+    if (isMixed && log.runSpeedKmh > 0) {
+        effectiveSpeedKmh = calcMixedCardioEffectiveSpeed(log.runSpeedKmh, log.walkSpeedKmh, log.runRatio);
+    } else if (isMixed && rawSpeed > 0 && !log.runSpeedKmh) {
+        // Caso o usuário tenha lançado apenas uma velocidade no Misto sem separar corrida/caminhada:
+        // aplica a correção ponderada padrão (60% na velocidade informada + 40% em caminhada a 55% da vel) * 0.96
+        effectiveSpeedKmh = calcMixedCardioEffectiveSpeed(rawSpeed, rawSpeed * 0.55, log.runRatio || 0.60);
+    }
+
+    const durObj = parseCardioDurationInterval(log.timerDuration || log.reps, log.durationMin || 20);
+    const minKm = effectiveSpeedKmh > 0 ? (effectiveSpeedKmh * durObj.minMin) / 60 : 0;
+    const maxKm = effectiveSpeedKmh > 0 ? (effectiveSpeedKmh * durObj.maxMin) / 60 : 0;
+    const avgKm = effectiveSpeedKmh > 0 ? (effectiveSpeedKmh * durObj.avgMin) / 60 : 0;
+    const paceStr = formatPaceMinPerKm(effectiveSpeedKmh);
+
+    let volumeText = '0,00 km';
+    if (avgKm > 0) {
+        const avgFmt = avgKm.toFixed(2).replace('.', ',');
+        if (durObj.isInterval) {
+            const minFmt = minKm.toFixed(2).replace('.', ',');
+            const maxFmt = maxKm.toFixed(2).replace('.', ',');
+            volumeText = `${minFmt}–${maxFmt} km (${avgFmt} km)`;
+        } else {
+            volumeText = `${avgFmt} km`;
+        }
+    }
+
+    return {
+        avgKm,
+        minKm,
+        maxKm,
+        isInterval: durObj.isInterval,
+        effectiveSpeedKmh,
+        paceStr,
+        isMixed,
+        volumeText
+    };
+}
+
+/* ------------------------------------------------------------------
+ * ABA AERÓBICO (CORRIDA, CAMINHADA, MISTO, BIKE, ESTEIRA) + CRONÔMETRO INTEGRADO
  * ------------------------------------------------------------------ */
 window.selectAtvAerobicModality = function(mod) {
     aeroSelectedModality = mod || 'Corrida';
@@ -1063,7 +1188,10 @@ window.selectAtvAerobicModality = function(mod) {
 
 window.onAtvAerobicInputChange = function() {
     atvUiState.aerobicInputs = {
+        ...(atvUiState.aerobicInputs || {}),
         speedKmh: document.getElementById('atv-aero-speed')?.value || '',
+        walkSpeedKmh: document.getElementById('atv-aero-walk-speed')?.value || '',
+        mixRunRatio: document.getElementById('atv-aero-mix-ratio')?.value || '0.60',
         manualMin: document.getElementById('atv-aero-minutes')?.value || '',
         notes: document.getElementById('atv-aero-notes')?.value || ''
     };
@@ -1074,14 +1202,36 @@ window.onAtvAerobicInputChange = function() {
 function updateAtvAerobicDistancePreview() {
     const distEl = document.getElementById('atv-aero-distance-preview');
     if (!distEl) return;
+    const isMixed = aeroSelectedModality.toLowerCase().includes('misto');
     const speedVal = getWeightNumericValue(document.getElementById('atv-aero-speed')?.value || '');
-    const manualMin = parseFloat(document.getElementById('atv-aero-minutes')?.value || '0') || 0;
-    const elapsedMin = aeroElapsedMs > 0 ? (aeroElapsedMs / 60000) : manualMin;
-    if (speedVal > 0 && elapsedMin > 0) {
-        const distKm = (speedVal * (elapsedMin / 60));
-        distEl.textContent = `${distKm.toFixed(2).replace('.', ',')} km estimados`;
+    const walkSpeedVal = getWeightNumericValue(document.getElementById('atv-aero-walk-speed')?.value || '');
+    const mixRatioVal = parseFloat(document.getElementById('atv-aero-mix-ratio')?.value || '0.60') || 0.60;
+    const manualRaw = document.getElementById('atv-aero-minutes')?.value || '';
+
+    const durSource = aeroElapsedMs >= 5000
+        ? `${(aeroElapsedMs / 60000).toFixed(2)} min`
+        : manualRaw;
+    const durObj = parseCardioDurationInterval(durSource, 0);
+    const hasTime = (aeroElapsedMs >= 5000) || (String(manualRaw).trim().length > 0 && durObj.avgMin > 0);
+
+    const effSpeed = isMixed
+        ? calcMixedCardioEffectiveSpeed(speedVal, walkSpeedVal, mixRatioVal)
+        : speedVal;
+
+    if (effSpeed > 0 && hasTime) {
+        const paceStr = formatPaceMinPerKm(effSpeed);
+        const avgKm = (effSpeed * durObj.avgMin) / 60;
+        if (durObj.isInterval) {
+            const minKm = (effSpeed * durObj.minMin) / 60;
+            const maxKm = (effSpeed * durObj.maxMin) / 60;
+            distEl.textContent = `${minKm.toFixed(2).replace('.', ',')}–${maxKm.toFixed(2).replace('.', ',')} km • Pace ${paceStr}`;
+        } else {
+            distEl.textContent = `${avgKm.toFixed(2).replace('.', ',')} km (${isMixed ? `Vel. ef. ${effSpeed.toFixed(2).replace('.', ',')} km/h • ` : ''}Pace ${paceStr})`;
+        }
+    } else if (effSpeed > 0) {
+        distEl.textContent = `Pace ${formatPaceMinPerKm(effSpeed)} • Informe o tempo`;
     } else {
-        distEl.textContent = 'Informe km/h + tempo p/ estimar distância';
+        distEl.textContent = 'Informe km/h + tempo p/ calcular volume (km) e pace';
     }
 }
 
@@ -1105,7 +1255,7 @@ window.toggleAtvAerobicStopwatch = function() {
         aeroTimerRunning = false;
         const minInput = document.getElementById('atv-aero-minutes');
         if (minInput && aeroElapsedMs >= 30000) {
-            minInput.value = Math.max(1, Math.round(aeroElapsedMs / 60000));
+            minInput.value = String(Math.max(1, Math.round(aeroElapsedMs / 60000)));
         }
     } else {
         aeroLastStartTs = Date.now();
@@ -1131,23 +1281,49 @@ window.resetAtvAerobicStopwatch = function() {
 };
 
 /* Registra sessão aeróbica vinda do Timer e consolida na mesma linha do histórico do card de Sistema Cardiovascular */
-window.recordAerobicSessionFromTimer = function({ modality, durationMin, elapsedSeconds, speedKmh, notes, dateIso }) {
+window.recordAerobicSessionFromTimer = function({ modality, durationMin, durationRawStr, elapsedSeconds, speedKmh, walkSpeedKmh, runRatio, notes, dateIso }) {
     const targetDate = dateIso || selectedAtvDate || getLocalISODate();
-    const cleanMin = Math.max(1, Math.round(parseFloat(durationMin) || 0));
-    const cleanSpeed = parseFloat(speedKmh) || 0;
-    const timerDurationStr = formatTimerCountedDuration(cleanMin, elapsedSeconds);
+    const durObj = parseCardioDurationInterval(durationRawStr || `${durationMin || 20} min`, durationMin || 20);
+    const cleanMin = Math.max(1, Math.round(durObj.avgMin || parseFloat(durationMin) || 20));
     const modName = modality || 'Corrida';
+    const isMixed = modName.toLowerCase().includes('misto');
+
+    const rawRunSpeed = parseFloat(speedKmh) || 0;
+    const rawWalkSpeed = parseFloat(walkSpeedKmh) || 0;
+    const cleanRatio = (parseFloat(runRatio) > 0 && parseFloat(runRatio) < 1) ? parseFloat(runRatio) : 0.60;
+
+    const effectiveSpeed = isMixed
+        ? calcMixedCardioEffectiveSpeed(rawRunSpeed, rawWalkSpeed, cleanRatio)
+        : rawRunSpeed;
+
+    const timerDurationStr = durObj.isInterval
+        ? `${durObj.minMin}-${durObj.maxMin} min`
+        : formatTimerCountedDuration(cleanMin, elapsedSeconds);
 
     const workout = WORKOUT_PLAN.find(w => w.planId === selectedWorkoutPlanId) || WORKOUT_PLAN[0];
     const was100Before = workout ? getWorkoutDayCompletionStatus(workout, targetDate).is100Percent : false;
 
     if (!atvLogs[targetDate]) atvLogs[targetDate] = [];
 
+    let mixedExtraNote = '';
+    if (isMixed && rawRunSpeed > 0) {
+        const walkUsed = rawWalkSpeed > 0 ? rawWalkSpeed : (rawRunSpeed * 0.55);
+        const pctRun = Math.round(cleanRatio * 100);
+        mixedExtraNote = `Misto ${pctRun}% Corrida (${rawRunSpeed.toFixed(1).replace('.', ',')} km/h) / ${100 - pctRun}% Caminhada (${walkUsed.toFixed(1).replace('.', ',')} km/h)`;
+    }
+    const combinedUserNotes = [mixedExtraNote, notes].filter(Boolean).join(' • ');
+
     const existingCardio = findExistingCardioLogForDate(targetDate);
     if (existingCardio) {
         // Atualiza na MESMA linha do registro feito utilizando o card de Sistema Cardiovascular!
         existingCardio.timerModality = modName;
-        existingCardio.durationMin = cleanMin;
+        existingCardio.isMixed = isMixed;
+        if (isMixed) {
+            existingCardio.runSpeedKmh = rawRunSpeed;
+            existingCardio.walkSpeedKmh = rawWalkSpeed > 0 ? rawWalkSpeed : parseFloat((rawRunSpeed * 0.55).toFixed(2));
+            existingCardio.runRatio = cleanRatio;
+        }
+        existingCardio.durationMin = durObj.avgMin;
         existingCardio.timerDuration = timerDurationStr;
         existingCardio.reps = timerDurationStr;
         existingCardio.sets = 1;
@@ -1162,15 +1338,15 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, elapsed
             existingCardio.exerciseName = baseCardName || modName;
         }
 
-        if (cleanSpeed > 0) {
-            existingCardio.weight = parseFloat(cleanSpeed.toFixed(2));
+        if (effectiveSpeed > 0) {
+            existingCardio.weight = parseFloat(effectiveSpeed.toFixed(2));
         }
 
         existingCardio.notes = buildCardioNotesString(
             existingCardio.weight,
-            cleanMin,
+            durObj.avgMin,
             timerDurationStr,
-            notes || existingCardio.notes
+            combinedUserNotes || existingCardio.notes
         );
     } else {
         const cardioCard = (workout && Array.isArray(workout.exercises))
@@ -1186,15 +1362,19 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, elapsed
             exerciseName: baseName,
             cardExerciseName: cardioCard ? cardioCard.name : modName,
             timerModality: modName,
+            isMixed,
+            runSpeedKmh: isMixed ? rawRunSpeed : undefined,
+            walkSpeedKmh: isMixed ? (rawWalkSpeed > 0 ? rawWalkSpeed : parseFloat((rawRunSpeed * 0.55).toFixed(2))) : undefined,
+            runRatio: isMixed ? cleanRatio : undefined,
             muscle: cardMuscle,
             sets: 1,
             reps: timerDurationStr,
             timerDuration: timerDurationStr,
-            durationMin: cleanMin,
+            durationMin: durObj.avgMin,
             rest: '-',
-            weight: parseFloat(cleanSpeed.toFixed(2)),
+            weight: parseFloat(effectiveSpeed.toFixed(2)),
             unit: 'km/h',
-            notes: buildCardioNotesString(cleanSpeed, cleanMin, timerDurationStr, notes)
+            notes: buildCardioNotesString(effectiveSpeed, durObj.avgMin, timerDurationStr, combinedUserNotes)
         });
     }
 
@@ -1204,7 +1384,7 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, elapsed
         if (dIdx !== -1 && Array.isArray(habits)) {
             const atvHabit = habits.find(h => h.category === 'atv_fisica');
             if (atvHabit) {
-                const addHours = parseFloat((cleanMin / 60).toFixed(2));
+                const addHours = parseFloat((durObj.avgMin / 60).toFixed(2));
                 atvHabit.dailyHours[dIdx] = parseFloat(((atvHabit.dailyHours[dIdx] || 0) + addHours).toFixed(2));
                 atvHabit.checks[dIdx] = true;
             }
@@ -1231,9 +1411,12 @@ window.submitAtvAerobicSession = function(event) {
     }
 
     const speedVal = getWeightNumericValue(document.getElementById('atv-aero-speed')?.value || '');
-    const manualMinVal = parseFloat(document.getElementById('atv-aero-minutes')?.value || '0') || 0;
+    const walkSpeedVal = getWeightNumericValue(document.getElementById('atv-aero-walk-speed')?.value || '');
+    const mixRatioVal = parseFloat(document.getElementById('atv-aero-mix-ratio')?.value || '0.60') || 0.60;
+    const manualRaw = (document.getElementById('atv-aero-minutes')?.value || '').trim();
+    const durObj = parseCardioDurationInterval(manualRaw, 0);
     const elapsedSeconds = Math.floor(aeroElapsedMs / 1000);
-    const elapsedMin = elapsedSeconds >= 30 ? (elapsedSeconds / 60) : manualMinVal;
+    const elapsedMin = elapsedSeconds >= 30 ? (elapsedSeconds / 60) : (manualRaw ? durObj.avgMin : 0);
 
     if (elapsedMin <= 0 && speedVal <= 0) {
         alert('Inicie o cronômetro ou informe a duração (min) / velocidade (km/h) para registrar o treino aeróbico.');
@@ -1246,21 +1429,27 @@ window.submitAtvAerobicSession = function(event) {
     window.recordAerobicSessionFromTimer({
         modality: aeroSelectedModality,
         durationMin: finalMin,
-        elapsedSeconds: elapsedSeconds >= 30 ? elapsedSeconds : Math.round(finalMin * 60),
+        durationRawStr: elapsedSeconds >= 30 ? '' : manualRaw,
+        elapsedSeconds: elapsedSeconds >= 30 ? elapsedSeconds : (durObj.isInterval ? 0 : Math.round(finalMin * 60)),
         speedKmh: speedVal,
+        walkSpeedKmh: walkSpeedVal,
+        runRatio: mixRatioVal,
         notes: notesVal,
         dateIso: selectedAtvDate
     });
 
     aeroElapsedMs = 0;
-    atvUiState.aerobicInputs = { speedKmh: '', manualMin: '', notes: '' };
+    atvUiState.aerobicInputs = { speedKmh: '', walkSpeedKmh: '', mixRunRatio: '0.60', manualMin: '', notes: '' };
     saveAtvUiState();
     renderAtvFisicaInteractiveView();
 };
 
 /* ------------------------------------------------------------------
- * Edição de Registro de Exercício (Atualiza campos conforme sistema do card)
+ * Edição de Registro de Exercício (No formato do novo sistema de Cards:
+ * Grupo Muscular Associado, Dropdown do Card, Principal vs Substituto)
  * ------------------------------------------------------------------ */
+let editModalSelectedRole = 'variation'; // 'main' | 'variation'
+
 function findExerciseMeta(exName, habitId) {
     if (!exName) return null;
     const target = String(exName).trim().toLowerCase();
@@ -1270,7 +1459,6 @@ function findExerciseMeta(exName, habitId) {
             if (Array.isArray(e.variations) && e.variations.some(v => v.toLowerCase() === target)) return e;
         }
     }
-    // Se for nome composto de cardio (ex: "Cardio Zona 2... • Corrida"), busca o card de sistema cardiovascular
     if (isCardioExercise(exName, '')) {
         for (const w of WORKOUT_PLAN) {
             const cardioCard = w.exercises.find(e => isCardioExercise(e.name, e.muscle));
@@ -1280,19 +1468,126 @@ function findExerciseMeta(exName, habitId) {
     return null;
 }
 
-function syncEditModalFieldsForExercise(exerciseName, logObj, isExerciseSwitch = false) {
-    const meta = findExerciseMeta(exerciseName, logObj ? logObj.habitId : null);
-    const muscleStr = (meta && meta.muscle) ? meta.muscle : (logObj && logObj.muscle ? logObj.muscle : 'Geral');
-    const isCardio = isCardioExercise(exerciseName, muscleStr) || (logObj && logObj.unit === 'km/h' && !meta);
+/* Localiza o par { planId, slotIdx, card } correspondente a um registro (mesmo se vindo do sistema antigo) */
+function findWorkoutSlotForLog(log) {
+    if (!log) return { planId: selectedWorkoutPlanId || 'upper_a', slotIdx: 0, card: WORKOUT_PLAN[0].exercises[0] };
+    const exNameLower = String(log.exerciseName || '').trim().toLowerCase();
+    const muscleLower = String(log.muscle || '').trim().toLowerCase();
+    const isCardio = log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle);
+
+    // 1. Busca por correspondência exata do nome principal ou variação
+    for (const w of WORKOUT_PLAN) {
+        for (let i = 0; i < w.exercises.length; i++) {
+            const e = w.exercises[i];
+            if (e.name.toLowerCase() === exNameLower) {
+                return { planId: w.planId, slotIdx: i, card: e };
+            }
+            if (Array.isArray(e.variations) && e.variations.some(v => v.toLowerCase() === exNameLower)) {
+                return { planId: w.planId, slotIdx: i, card: e };
+            }
+        }
+    }
+
+    // 2. Se for cardio, vincula ao card de Sistema Cardiovascular
+    if (isCardio) {
+        for (const w of WORKOUT_PLAN) {
+            const cIdx = w.exercises.findIndex(e => isCardioExercise(e.name, e.muscle));
+            if (cIdx !== -1) {
+                return { planId: w.planId, slotIdx: cIdx, card: w.exercises[cIdx] };
+            }
+        }
+    }
+
+    // 3. Busca por correspondência de grupo muscular (para exercícios antigos personalizados)
+    if (muscleLower) {
+        for (const w of WORKOUT_PLAN) {
+            const mIdx = w.exercises.findIndex(e => e.muscle.toLowerCase() === muscleLower || e.muscle.toLowerCase().includes(muscleLower) || muscleLower.includes(e.muscle.toLowerCase()));
+            if (mIdx !== -1) {
+                return { planId: w.planId, slotIdx: mIdx, card: w.exercises[mIdx] };
+            }
+        }
+    }
+
+    // 4. Fallback para o primeiro card do treino associado
+    const fallbackPlanId = (log.planId && WORKOUT_PLAN.some(w => w.planId === log.planId)) ? log.planId : (selectedWorkoutPlanId || 'upper_a');
+    const fallbackW = WORKOUT_PLAN.find(w => w.planId === fallbackPlanId) || WORKOUT_PLAN[0];
+    return { planId: fallbackW.planId, slotIdx: 0, card: fallbackW.exercises[0] };
+}
+
+window.setEditAtvRole = function(role) {
+    editModalSelectedRole = role === 'main' ? 'main' : 'variation';
+    const btnMain = document.getElementById('btn-edit-role-main');
+    const btnVar = document.getElementById('btn-edit-role-variation');
+    if (btnMain && btnVar) {
+        btnMain.className = editModalSelectedRole === 'main'
+            ? "flex-1 py-2 px-2 rounded-xl bg-black text-white text-[11px] font-bold transition shadow-xs"
+            : "flex-1 py-2 px-2 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-[11px] font-semibold transition";
+        btnVar.className = editModalSelectedRole === 'variation'
+            ? "flex-1 py-2 px-2 rounded-xl bg-black text-white text-[11px] font-bold transition shadow-xs"
+            : "flex-1 py-2 px-2 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-[11px] font-semibold transition";
+    }
+    const hintEl = document.getElementById('atv-edit-role-hint');
+    if (hintEl) {
+        hintEl.textContent = editModalSelectedRole === 'main'
+            ? '⭐ Será definido como exercício PRINCIPAL deste card; o antigo principal virará substituto/variação.'
+            : '🔄 Será mantido/adicionado como SUBSTITUTO/VARIAÇÃO na lista deste card.';
+    }
+};
+
+function getSelectedEditCardSlot() {
+    const slotSelect = document.getElementById('atv-edit-muscle-slot');
+    const val = slotSelect ? slotSelect.value : 'upper_a__0';
+    const [planId, idxStr] = String(val).split('__');
+    const workout = WORKOUT_PLAN.find(w => w.planId === planId) || WORKOUT_PLAN[0];
+    const slotIdx = parseInt(idxStr, 10) || 0;
+    const card = (workout && workout.exercises[slotIdx]) ? workout.exercises[slotIdx] : workout.exercises[0];
+    return { workout, planId: workout.planId, slotIdx, card };
+}
+
+function populateEditExerciseDropdownForSlot(card, currentExerciseName) {
+    const container = document.getElementById('atv-edit-exercise-container');
+    if (!container || !card) return;
+
+    const cleanCurrent = String(currentExerciseName || card.name || '').trim();
+    const allCardNames = [card.name, ...(card.variations || [])];
+    const isCardio = isCardioExercise(card.name, card.muscle);
+    if (isCardio) {
+        ['Corrida', 'Caminhada', 'Misto (Caminhada + Corrida)', 'Bike / Ciclismo', 'Esteira Inclinada', 'Escada / Elíptico'].forEach(mod => {
+            if (!allCardNames.some(n => n.toLowerCase() === mod.toLowerCase())) {
+                allCardNames.push(mod);
+            }
+        });
+    }
+
+    const existsInList = allCardNames.some(n => n.toLowerCase() === cleanCurrent.toLowerCase());
+    let optionsHtml = '';
+    if (!existsInList && cleanCurrent) {
+        optionsHtml += `<option value="${cleanCurrent.replace(/"/g, '&quot;')}" selected>📌 ${cleanCurrent} (Cadastrar no card)</option>`;
+    }
+    allCardNames.forEach((name, idx) => {
+        const isSel = name.toLowerCase() === cleanCurrent.toLowerCase();
+        const prefix = idx === 0 ? '⭐ ' : '↳ ';
+        optionsHtml += `<option value="${name.replace(/"/g, '&quot;')}" ${isSel ? 'selected' : ''}>${prefix}${name}</option>`;
+    });
+
+    container.innerHTML = `
+        <select id="atv-edit-exercise-select" onchange="onEditAtvExerciseSelectChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white">
+            ${optionsHtml}
+        </select>
+        <input type="text" id="atv-edit-exercise" oninput="onEditAtvExerciseNameInput()" value="${cleanCurrent.replace(/"/g, '&quot;')}" placeholder="Ou digite/edite o nome do exercício" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-zinc-900">
+    `;
+}
+
+function syncEditModalFieldsForSlotAndExercise(card, exerciseName, logObj, isSwitch = false) {
+    if (!card) return;
+    const isCardio = isCardioExercise(exerciseName, card.muscle);
 
     const sysInfoEl = document.getElementById('atv-edit-system-info');
     if (sysInfoEl) {
         if (isCardio) {
-            sysInfoEl.textContent = `❤️ ${muscleStr} • Sistema: Velocidade (km/h) + Duração`;
+            sysInfoEl.textContent = `❤️ ${card.muscle} • Somente Duração + Velocidade (km/h)`;
         } else {
-            const cardSets = meta ? meta.sets : (logObj ? logObj.sets : 3);
-            const cardReps = meta ? meta.reps : (logObj ? logObj.reps : '8-12');
-            sysInfoEl.textContent = `🏋️ ${muscleStr} • Sistema do Card: ${cardSets}× ${cardReps}`;
+            sysInfoEl.textContent = `🏋️ ${card.muscle} • Alvo atual do card: ${card.sets || 3}× ${card.reps || '8-12'} (${card.rest || '90s'})`;
         }
     }
 
@@ -1305,39 +1600,71 @@ function syncEditModalFieldsForExercise(exerciseName, logObj, isExerciseSwitch =
     const cardioGroup = document.getElementById('atv-edit-cardio-group');
     const setsField = document.getElementById('atv-edit-sets');
     const repsField = document.getElementById('atv-edit-reps');
+    const restField = document.getElementById('atv-edit-rest');
     const durationField = document.getElementById('atv-edit-duration');
 
     if (isCardio) {
         if (strengthGroup) strengthGroup.classList.add('hidden');
         if (cardioGroup) cardioGroup.classList.remove('hidden');
         if (durationField) {
-            if (isExerciseSwitch && meta && meta.reps) {
-                durationField.value = meta.reps;
+            if (isSwitch) {
+                durationField.value = card.reps || '20 min';
             } else if (logObj) {
-                durationField.value = logObj.timerDuration || logObj.reps || (meta ? meta.reps : '20 min');
+                durationField.value = logObj.timerDuration || logObj.reps || card.reps || '20 min';
             }
         }
     } else {
         if (strengthGroup) strengthGroup.classList.remove('hidden');
         if (cardioGroup) cardioGroup.classList.add('hidden');
-        if (isExerciseSwitch && meta) {
-            if (setsField) setsField.value = meta.sets || 3;
-            if (repsField) repsField.value = meta.reps || '8-12';
+        if (isSwitch) {
+            if (setsField) setsField.value = card.sets || 3;
+            if (repsField) repsField.value = card.reps || '8-12';
+            if (restField) restField.value = card.rest || '90-120s';
         } else if (logObj) {
-            if (setsField) setsField.value = logObj.sets || (meta ? meta.sets : 3);
-            if (repsField) repsField.value = logObj.reps || (meta ? meta.reps : '8-12');
+            if (setsField) setsField.value = logObj.sets || card.sets || 3;
+            if (repsField) repsField.value = logObj.reps || card.reps || '8-12';
+            if (restField) restField.value = (logObj.rest && logObj.rest !== '-') ? logObj.rest : (card.rest || '90-120s');
         }
     }
+
+    // Define se é Principal ou Substituto neste card
+    const isMain = String(card.name || '').trim().toLowerCase() === String(exerciseName || '').trim().toLowerCase();
+    window.setEditAtvRole(isMain ? 'main' : 'variation');
 }
 
-window.onEditAtvExerciseChange = function() {
+window.onEditAtvMuscleSlotChange = function() {
+    const { card } = getSelectedEditCardSlot();
+    if (!card) return;
     const dateStr = document.getElementById('atv-edit-date')?.value || '';
     const logId = document.getElementById('atv-edit-log-id')?.value || '';
-    const exInput = document.getElementById('atv-edit-exercise');
-    const chosenName = exInput ? exInput.value.trim() : '';
     const list = atvLogs[dateStr] || [];
     const log = list.find(item => item.id === logId) || null;
-    syncEditModalFieldsForExercise(chosenName, log, true);
+
+    populateEditExerciseDropdownForSlot(card, card.name);
+    syncEditModalFieldsForSlotAndExercise(card, card.name, log, true);
+};
+
+window.onEditAtvExerciseSelectChange = function() {
+    const sel = document.getElementById('atv-edit-exercise-select');
+    const txt = document.getElementById('atv-edit-exercise');
+    const chosen = sel ? sel.value : '';
+    if (txt && chosen) txt.value = chosen;
+
+    const { card } = getSelectedEditCardSlot();
+    const dateStr = document.getElementById('atv-edit-date')?.value || '';
+    const logId = document.getElementById('atv-edit-log-id')?.value || '';
+    const list = atvLogs[dateStr] || [];
+    const log = list.find(item => item.id === logId) || null;
+    syncEditModalFieldsForSlotAndExercise(card, chosen, log, true);
+};
+
+window.onEditAtvExerciseNameInput = function() {
+    const txt = document.getElementById('atv-edit-exercise');
+    const chosen = txt ? txt.value.trim() : '';
+    const { card } = getSelectedEditCardSlot();
+    if (!card) return;
+    const isMain = String(card.name || '').trim().toLowerCase() === chosen.toLowerCase();
+    window.setEditAtvRole(isMain ? 'main' : 'variation');
 };
 
 window.openEditAtvLog = function(dateStr, logId) {
@@ -1361,42 +1688,26 @@ window.openEditAtvLog = function(dateStr, logId) {
     const notesField = document.getElementById('atv-edit-notes');
     if (notesField) notesField.value = log.notes || '';
 
-    const container = document.getElementById('atv-edit-exercise-container');
-    if (container) {
-        const isSyncUser = typeof window.isRegisteredSyncUser === 'function' && window.isRegisteredSyncUser();
-        if (isSyncUser) {
-            const exMap = new Map();
-            WORKOUT_PLAN.forEach(w => {
-                w.exercises.forEach(e => {
-                    exMap.set(e.name, { name: e.name, muscle: e.muscle, isVar: false });
-                    (e.variations || []).forEach(v => {
-                        exMap.set(v, { name: v, muscle: e.muscle, isVar: true });
-                    });
-                });
+    // 1. Popula o select de Grupo Muscular Associado (Card) com todos os cards do plano
+    const matched = findWorkoutSlotForLog(log);
+    const slotSelect = document.getElementById('atv-edit-muscle-slot');
+    if (slotSelect) {
+        let slotOpts = '';
+        WORKOUT_PLAN.forEach(w => {
+            w.exercises.forEach((ex, idx) => {
+                const val = `${w.planId}__${idx}`;
+                const isSel = w.planId === matched.planId && idx === matched.slotIdx;
+                slotOpts += `<option value="${val}" ${isSel ? 'selected' : ''}>${w.name} • ${ex.muscle} (Principal: ${ex.name})</option>`;
             });
-            ['Corrida', 'Caminhada', 'Bike / Ciclismo', 'Esteira Inclinada', 'Escada / Elíptico'].forEach(aeroMod => {
-                if (!exMap.has(aeroMod)) {
-                    exMap.set(aeroMod, { name: aeroMod, muscle: 'Sistema Cardiovascular / Resistência', isVar: true });
-                }
-            });
-
-            let optsHtml = '';
-            let foundCurrent = false;
-            exMap.forEach((meta, name) => {
-                const isSel = name === log.exerciseName;
-                if (isSel) foundCurrent = true;
-                optsHtml += `<option value="${name}" ${isSel ? 'selected' : ''}>${meta.isVar ? '↳ ' + name : name} (${meta.muscle})</option>`;
-            });
-            if (!foundCurrent && log.exerciseName) {
-                optsHtml = `<option value="${log.exerciseName}" selected>${log.exerciseName} (${log.muscle || 'Card'})</option>` + optsHtml;
-            }
-            container.innerHTML = `<select id="atv-edit-exercise" onchange="onEditAtvExerciseChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white">${optsHtml}</select>`;
-        } else {
-            container.innerHTML = `<input type="text" id="atv-edit-exercise" oninput="onEditAtvExerciseChange()" value="${log.exerciseName || ''}" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white">`;
-        }
+        });
+        slotSelect.innerHTML = slotOpts;
     }
 
-    syncEditModalFieldsForExercise(log.exerciseName, log, false);
+    // 2. Popula a lista de Exercícios / Variações do card selecionado + input editável
+    populateEditExerciseDropdownForSlot(matched.card, log.exerciseName);
+
+    // 3. Sincroniza os campos (Principal vs Substituto, Séries/REPS/Descanso vs Duração)
+    syncEditModalFieldsForSlotAndExercise(matched.card, log.exerciseName, log, false);
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -1422,14 +1733,16 @@ window.saveEditedAtvLog = function(event) {
     const log = list.find(item => item.id === logId);
     if (!log) return;
 
+    const { workout, planId, slotIdx, card } = getSelectedEditCardSlot();
     const exInput = document.getElementById('atv-edit-exercise');
-    if (exInput) {
-        log.exerciseName = exInput.value.trim();
-        const meta = findExerciseMeta(log.exerciseName, log.habitId);
-        if (meta && meta.muscle) {
-            log.muscle = meta.muscle;
-            log.rest = meta.rest || log.rest || '-';
-        }
+    const exSelect = document.getElementById('atv-edit-exercise-select');
+    const chosenName = (exInput && exInput.value.trim()) ? exInput.value.trim() : (exSelect ? exSelect.value.trim() : log.exerciseName);
+
+    log.exerciseName = chosenName;
+    if (card) {
+        log.muscle = card.muscle;
+        log.planId = planId;
+        log.habitId = 'h_' + planId;
     }
 
     const isCardio = isCardioExercise(log.exerciseName, log.muscle);
@@ -1444,23 +1757,62 @@ window.saveEditedAtvLog = function(event) {
         log.sets = 1;
         log.reps = durVal || log.reps || '20 min';
         log.timerDuration = log.reps;
-        log.durationMin = parseRepsNumber(log.reps);
+        const durObj = parseCardioDurationInterval(log.reps, 20);
+        log.durationMin = durObj.avgMin;
         log.rest = '-';
     } else {
         const setsInput = document.getElementById('atv-edit-sets');
         if (setsInput) log.sets = parseInt(setsInput.value, 10) || 3;
 
         const repsInput = document.getElementById('atv-edit-reps');
-        if (repsInput) log.reps = repsInput.value.trim() || '10';
+        if (repsInput) log.reps = repsInput.value.trim() || '8-12';
+
+        const restInput = document.getElementById('atv-edit-rest');
+        if (restInput) log.rest = restInput.value.trim() || '90-120s';
     }
 
     const notesInput = document.getElementById('atv-edit-notes');
     if (notesInput) log.notes = notesInput.value.trim();
 
+    // Atualiza também o catálogo do Card selecionado (Principal ou Substituto/Variação) no novo formato
+    if (card && chosenName) {
+        if (!Array.isArray(card.variations)) card.variations = [];
+        const oldMain = card.name;
+        if (editModalSelectedRole === 'main') {
+            card.variations = card.variations.filter(v => v.toLowerCase() !== chosenName.toLowerCase());
+            if (oldMain && oldMain.toLowerCase() !== chosenName.toLowerCase()) {
+                card.variations = [oldMain, ...card.variations.filter(v => v.toLowerCase() !== oldMain.toLowerCase())];
+            }
+            card.name = chosenName;
+        } else {
+            const existsAsMain = card.name.toLowerCase() === chosenName.toLowerCase();
+            const existsAsVar = card.variations.some(v => v.toLowerCase() === chosenName.toLowerCase());
+            if (!existsAsMain && !existsAsVar) {
+                card.variations.push(chosenName);
+            }
+        }
+        if (isCardio) {
+            card.sets = 1;
+            card.reps = log.reps;
+            card.rest = '-';
+        } else {
+            card.sets = log.sets;
+            card.reps = log.reps;
+            card.rest = log.rest;
+        }
+        const cardStateKey = `${selectedAtvDate}_${planId}_${slotIdx}`;
+        atvUiState.cardInputs[cardStateKey] = {
+            ...(atvUiState.cardInputs[cardStateKey] || {}),
+            exercise: chosenName
+        };
+        saveWorkoutCatalogCustomizations();
+    }
+
     saveAtvLogs();
+    saveAtvUiState();
     saveData(false, true);
     closeAtvEditModal();
-    refreshAtvHistoryAndCardBadges();
+    renderAtvFisicaInteractiveView();
 };
 
 window.deleteAtvLogEntry = function(dateStr, logId) {
@@ -1490,13 +1842,26 @@ function buildAtvLogRowHTML(dateStr, log) {
     const isCardio = log.unit === 'km/h' || isCardioExercise(log.exerciseName, muscleStr);
     const unitLabel = isCardio ? 'km/h' : 'kg';
     const volumeItem = isCardio ? 0 : calcLogEntryVolume(log);
+    const cardioMetrics = isCardio ? calcCardioEntryVolumeKm(log) : null;
     const muscleEmoji = getMuscleEmoji(muscleStr);
     const cardioDurationTxt = log.timerDuration || log.reps || '20 min';
     const setsRepsTxt = isCardio
         ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">⏱️ ${cardioDurationTxt}</span>`
         : `${log.sets || 3}× ${log.reps || '10'} ${log.rest && log.rest !== '-' ? `(${log.rest})` : ''}`;
     const formattedDate = formatDateDDMMYYYY(dateStr);
-    const weightFormatted = (parseFloat(log.weight) || 0).toFixed(2).replace('.', ',');
+    const displaySpeedOrWeight = isCardio ? (cardioMetrics.effectiveSpeedKmh || parseFloat(log.weight) || 0) : (parseFloat(log.weight) || 0);
+    const weightFormatted = displaySpeedOrWeight.toFixed(2).replace('.', ',');
+
+    const speedOrLoadCellHTML = isCardio
+        ? `<div>${weightFormatted} km/h</div><div class="text-[10px] text-zinc-400 font-normal">Pace ${cardioMetrics.paceStr}</div>`
+        : `${weightFormatted} ${unitLabel}`;
+
+    const volumeCellHTML = isCardio
+        ? `<span class="inline-flex flex-col items-center">
+               <span class="text-emerald-700 font-bold">🏃 ${cardioMetrics.volumeText}</span>
+               ${cardioMetrics.isMixed ? `<span class="text-[9px] text-emerald-600 font-normal">Misto corrigido (η=0,96)</span>` : ''}
+           </span>`
+        : `${volumeItem.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
 
     return `
         <tr class="hover:bg-zinc-50 transition border-b border-zinc-100">
@@ -1505,8 +1870,8 @@ function buildAtvLogRowHTML(dateStr, log) {
             <td class="py-3 px-3 whitespace-nowrap"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-zinc-100 text-[11px] font-medium text-zinc-800"><span>${muscleEmoji}</span><span class="truncate max-w-[150px]">${muscleStr}</span></span></td>
             <td class="py-3 px-3 font-medium text-zinc-800">${log.exerciseName}</td>
             <td class="py-3 px-3 font-mono text-center text-xs text-zinc-600">${setsRepsTxt}</td>
-            <td class="py-3 px-3 text-center font-mono font-bold text-rose-600">${weightFormatted} ${unitLabel}</td>
-            <td class="py-3 px-3 text-center font-mono font-bold text-zinc-900">${isCardio ? `🏃 ${weightFormatted} km/h • ⏱️ ${cardioDurationTxt}` : `${volumeItem.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`}</td>
+            <td class="py-3 px-3 text-center font-mono font-bold text-rose-600">${speedOrLoadCellHTML}</td>
+            <td class="py-3 px-3 text-center font-mono font-bold text-zinc-900">${volumeCellHTML}</td>
             <td class="py-3 px-3 text-zinc-500 text-xs italic">${log.notes || '—'}</td>
             <td class="py-3 px-3 text-right whitespace-nowrap">
                 <button type="button" onclick="openEditAtvLog('${dateStr}', '${log.id}')" title="Editar exercício" class="p-1.5 text-zinc-600 hover:text-black transition">✏️</button>
@@ -1516,52 +1881,77 @@ function buildAtvLogRowHTML(dateStr, log) {
 }
 
 /* Monta o conteúdo interno da seção de Histórico (#atv-history-section)
- * Mostra apenas os primeiros 3 exercícios do último treino com botão para ocultar os últimos treinos. */
+ * Item 2: Na tela de Aeróbico (atvSubMode === 'aerobic'), o histórico mostra APENAS os exercícios aeróbicos. */
 function buildAtvHistorySectionInnerHTML() {
     const isSyncUser = typeof window.isRegisteredSyncUser === 'function' && window.isRegisteredSyncUser();
-    const currentLogs = atvLogs[selectedAtvDate] || [];
+    const isAeroOnly = atvSubMode === 'aerobic';
+    const rawCurrentLogs = atvLogs[selectedAtvDate] || [];
+    const currentLogs = isAeroOnly
+        ? rawCurrentLogs.filter(log => log && (log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle)))
+        : rawCurrentLogs;
     const hidePrev = !!atvUiState.hidePreviousWorkouts;
 
     let logsTableHTML = '';
-    let totalDayVolume = 0;
+    let totalDayVolumeKg = 0;
+    let totalDayAeroKm = 0;
 
     currentLogs.forEach(log => {
-        if (!isCardioExercise(log.exerciseName, log.muscle) && log.unit !== 'km/h') {
-            totalDayVolume += calcLogEntryVolume(log);
+        const isCardio = log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle);
+        if (isCardio) {
+            totalDayAeroKm += calcCardioEntryVolumeKm(log).avgKm;
+        } else {
+            totalDayVolumeKg += calcLogEntryVolume(log);
         }
         logsTableHTML += buildAtvLogRowHTML(selectedAtvDate, log);
     });
 
-    // Busca apenas os primeiros 3 exercícios do último treino anterior
+    // Busca apenas os primeiros 3 exercícios do último treino anterior (respeitando filtro aeróbico quando na aba Aeróbico)
     let recentPreviousRowsHTML = '';
     let lastWorkoutDateFormatted = '';
     const previousDates = Object.keys(atvLogs || {})
-        .filter(d => d < selectedAtvDate && Array.isArray(atvLogs[d]) && atvLogs[d].length > 0)
+        .filter(d => {
+            if (d >= selectedAtvDate || !Array.isArray(atvLogs[d]) || atvLogs[d].length === 0) return false;
+            if (isAeroOnly) {
+                return atvLogs[d].some(l => l && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle)));
+            }
+            return true;
+        })
         .sort((a, b) => b.localeCompare(a));
 
     const hasPreviousWorkout = previousDates.length > 0;
     if (hasPreviousWorkout && !hidePrev) {
         const lastDate = previousDates[0];
         lastWorkoutDateFormatted = formatDateDDMMYYYY(lastDate);
-        const firstThreeExercises = (atvLogs[lastDate] || []).slice(0, 3);
+        const dayList = isAeroOnly
+            ? (atvLogs[lastDate] || []).filter(l => l && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle)))
+            : (atvLogs[lastDate] || []);
+        const firstThreeExercises = dayList.slice(0, 3);
         firstThreeExercises.forEach(log => {
             recentPreviousRowsHTML += buildAtvLogRowHTML(lastDate, log);
         });
     }
 
+    const emptyLabel = isAeroOnly
+        ? 'Nenhum exercício aeróbico registrado nesta data.<br>Utilize o painel aeróbico acima para registrar sua corrida, caminhada ou treino misto.'
+        : `Nenhum exercício registrado nesta data.<br>Utilize ${isSyncUser ? 'os cards acima' : 'o card acima'} para registrar suas cargas ou velocidades.`;
+
+    const prevHeaderLabel = isAeroOnly
+        ? `🕒 Primeiros 3 Exercícios Aeróbicos do Último Treino (${lastWorkoutDateFormatted})`
+        : `🕒 Primeiros 3 Exercícios do Último Treino (${lastWorkoutDateFormatted})`;
+
     if (currentLogs.length === 0 && !recentPreviousRowsHTML) {
-        logsTableHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">Nenhum exercício registrado nesta data.<br>Utilize ${isSyncUser ? 'os cards acima' : 'o card acima'} para registrar suas cargas ou velocidades.</td></tr>`;
+        logsTableHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">${emptyLabel}</td></tr>`;
     } else if (currentLogs.length === 0 && recentPreviousRowsHTML) {
         logsTableHTML = `
-            <tr><td colspan="9" class="py-4 text-center text-zinc-400 text-xs border-b border-zinc-100">Nenhum exercício registrado em ${formatDateDDMMYYYY(selectedAtvDate)}. Abaixo estão os 3 primeiros exercícios do último treino (${lastWorkoutDateFormatted}):</td></tr>
+            <tr><td colspan="9" class="py-4 text-center text-zinc-400 text-xs border-b border-zinc-100">Nenhum registro ${isAeroOnly ? 'aeróbico ' : ''}em ${formatDateDDMMYYYY(selectedAtvDate)}. Abaixo estão os registros do último treino (${lastWorkoutDateFormatted}):</td></tr>
             <tr class="bg-zinc-50/90 border-b border-zinc-200">
-                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">🕒 Primeiros 3 Exercícios do Último Treino (${lastWorkoutDateFormatted})</td>
+                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">${prevHeaderLabel}</td>
             </tr>
             ${recentPreviousRowsHTML}`;
     } else if (recentPreviousRowsHTML) {
         logsTableHTML += `
             <tr class="bg-zinc-50/90 border-b border-zinc-200">
-                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">🕒 Primeiros 3 Exercícios do Último Treino (${lastWorkoutDateFormatted})</td>
+                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">${prevHeaderLabel}</td>
             </tr>
             ${recentPreviousRowsHTML}`;
     }
@@ -1571,8 +1961,8 @@ function buildAtvHistorySectionInnerHTML() {
     return `
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 pb-4">
             <div>
-                <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-bold">HISTÓRICO DO DIA</span>
-                <h3 class="text-base font-bold text-zinc-900">Exercícios Registrados (${formattedSelectedDate})</h3>
+                <span class="text-[10px] font-mono uppercase tracking-widest ${isAeroOnly ? 'text-emerald-600' : 'text-zinc-400'} font-bold">${isAeroOnly ? 'HISTÓRICO AERÓBICO DO DIA' : 'HISTÓRICO DO DIA'}</span>
+                <h3 class="text-base font-bold text-zinc-900">${isAeroOnly ? `Exercícios Aeróbicos Registrados (${formattedSelectedDate})` : `Exercícios Registrados (${formattedSelectedDate})`}</h3>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 ${hasPreviousWorkout ? `
@@ -1580,10 +1970,15 @@ function buildAtvHistorySectionInnerHTML() {
                         ${hidePrev ? '👁️ Mostrar último treino (3 exerc.)' : '🙈 Ocultar últimos treinos'}
                     </button>
                 ` : ''}
-                ${currentLogs.length > 0 ? `
+                ${currentLogs.length > 0 && !isAeroOnly && totalDayVolumeKg > 0 ? `
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-mono text-zinc-500">Volume (${formattedSelectedDate}):</span>
-                        <span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-950 font-mono font-bold text-xs">${totalDayVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</span>
+                        <span class="text-xs font-mono text-zinc-500">Volume Força:</span>
+                        <span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-950 font-mono font-bold text-xs">${totalDayVolumeKg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</span>
+                    </div>` : ''}
+                ${currentLogs.length > 0 && totalDayAeroKm > 0 ? `
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-mono text-zinc-500">Volume Cardio:</span>
+                        <span class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-950 font-mono font-bold text-xs">🏃 ${totalDayAeroKm.toFixed(2).replace('.', ',')} km</span>
                     </div>` : ''}
             </div>
         </div>
@@ -1596,9 +1991,9 @@ function buildAtvHistorySectionInnerHTML() {
                         <th class="py-2.5 px-3">Atividade</th>
                         <th class="py-2.5 px-3">Grupo Muscular</th>
                         <th class="py-2.5 px-3">Exercício</th>
-                        <th class="py-2.5 px-3 text-center">Séries × REPS / Duração</th>
-                        <th class="py-2.5 px-3 text-center">Carga / km/h</th>
-                        <th class="py-2.5 px-3 text-center">Volume / Resumo Cardio</th>
+                        <th class="py-2.5 px-3 text-center">${isAeroOnly ? 'Duração / Intervalo' : 'Séries × REPS / Duração'}</th>
+                        <th class="py-2.5 px-3 text-center">${isAeroOnly ? 'Velocidade & Pace' : 'Carga / km/h & Pace'}</th>
+                        <th class="py-2.5 px-3 text-center">${isAeroOnly ? 'Volume Estimado (km)' : 'Volume Total (kg / km)'}</th>
                         <th class="py-2.5 px-3">Observações</th>
                         <th class="py-2.5 px-3 text-right">Ações</th>
                     </tr>
@@ -1609,11 +2004,12 @@ function buildAtvHistorySectionInnerHTML() {
     `;
 }
 
-/* Monta a tela dedicada de Aeróbico (Corrida / Caminhada / Bike / Esteira) dentro de Atividade Física */
+/* Monta a tela dedicada de Aeróbico (Corrida / Caminhada / Misto / Bike / Esteira) dentro de Atividade Física */
 function buildAtvAerobicPanelHTML() {
     const modalities = [
         { id: 'Corrida', icon: '🏃', sub: 'Rua ou Pista' },
         { id: 'Caminhada', icon: '🚶', sub: 'Ritmo Leve / Moderado' },
+        { id: 'Misto (Caminhada + Corrida)', icon: '🔄', sub: 'Caminhada + Corrida' },
         { id: 'Bike / Ciclismo', icon: '🚴', sub: 'Ergométrica ou Rua' },
         { id: 'Esteira Inclinada', icon: '⚡', sub: 'Cardio Zona 2' },
         { id: 'Escada / Elíptico', icon: '🪜', sub: 'Alta Intensidade' }
@@ -1634,6 +2030,8 @@ function buildAtvAerobicPanelHTML() {
     }).join('');
 
     const ai = atvUiState.aerobicInputs || {};
+    const isMixed = aeroSelectedModality.toLowerCase().includes('misto');
+    const curMixRatio = String(ai.mixRunRatio || '0.60');
     const timeFormatted = (typeof formatHMS === 'function')
         ? formatHMS(Math.floor(aeroElapsedMs / 1000))
         : '00:00:00';
@@ -1641,25 +2039,63 @@ function buildAtvAerobicPanelHTML() {
         ? formatCentiseconds(aeroElapsedMs)
         : '.00';
 
+    const mixedFieldsHTML = isMixed ? `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-2xl border border-emerald-200/80">
+            <div>
+                <label class="block text-[10px] uppercase font-bold text-emerald-700 mb-1">🏃 Vel. Corrida (km/h)</label>
+                <input type="text" id="atv-aero-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvAerobicInputChange()" value="${(ai.speedKmh || '').replace(/"/g, '&quot;')}" placeholder="Ex: 10,50" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center">
+            </div>
+            <div>
+                <label class="block text-[10px] uppercase font-bold text-emerald-700 mb-1">🚶 Vel. Caminhada (km/h)</label>
+                <input type="text" id="atv-aero-walk-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvAerobicInputChange()" value="${(ai.walkSpeedKmh || '').replace(/"/g, '&quot;')}" placeholder="Ex: 5,50" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-indigo-600 text-center">
+            </div>
+            <div class="sm:col-span-2">
+                <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Proporção do Intervalo (Corrida / Caminhada • Fator η = 0,96)</label>
+                <select id="atv-aero-mix-ratio" onchange="onAtvAerobicInputChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900">
+                    <option value="0.50" ${curMixRatio === '0.50' ? 'selected' : ''}>50% Corrida / 50% Caminhada (Ex: 2 min : 2 min)</option>
+                    <option value="0.60" ${curMixRatio === '0.60' ? 'selected' : ''}>60% Corrida / 40% Caminhada (Ex: 3 min : 2 min)</option>
+                    <option value="0.75" ${curMixRatio === '0.75' ? 'selected' : ''}>75% Corrida / 25% Caminhada (Ex: 3 min : 1 min)</option>
+                    <option value="0.40" ${curMixRatio === '0.40' ? 'selected' : ''}>40% Corrida / 60% Caminhada (Ex: 2 min : 3 min)</option>
+                    <option value="0.80" ${curMixRatio === '0.80' ? 'selected' : ''}>80% Corrida / 20% Caminhada (Ex: 4 min : 1 min)</option>
+                </select>
+            </div>
+        </div>
+        <div>
+            <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Duração ou Intervalo de Tempo (min)</label>
+            <input type="text" id="atv-aero-minutes" oninput="onAtvAerobicInputChange()" value="${(ai.manualMin || '').replace(/"/g, '&quot;')}" placeholder="Auto pelo cronômetro ou Ex: 25 ou 20-30" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-zinc-900 text-center">
+        </div>
+    ` : `
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Velocidade Média (km/h)</label>
+                <input type="text" id="atv-aero-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvAerobicInputChange()" value="${(ai.speedKmh || '').replace(/"/g, '&quot;')}" placeholder="Ex: 9,50" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center">
+            </div>
+            <div>
+                <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Duração / Intervalo (min)</label>
+                <input type="text" id="atv-aero-minutes" oninput="onAtvAerobicInputChange()" value="${(ai.manualMin || '').replace(/"/g, '&quot;')}" placeholder="Auto ou Ex: 15-20" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-zinc-900 text-center">
+            </div>
+        </div>
+    `;
+
     return `
         <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 pb-4">
                 <div>
                     <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">TREINO AERÓBICO &amp; CARDIO</span>
                     <h3 class="text-lg font-bold text-zinc-900">Selecione a Modalidade e Contabilize o Tempo</h3>
-                    <p class="text-xs text-zinc-500 mt-0.5">Ao registrar, o tempo do cronômetro e o km/h são consolidados na mesma linha do card de Sistema Cardiovascular.</p>
+                    <p class="text-xs text-zinc-500 mt-0.5">Ao registrar, o tempo do cronômetro, o Pace e o volume em km são consolidados na mesma linha do card de Sistema Cardiovascular.</p>
                 </div>
                 <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-mono font-semibold">
                     Modalidade: ${aeroSelectedModality}
                 </span>
             </div>
 
-            <!-- 1. Escolha da Modalidade Aeróbica -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <!-- 1. Escolha da Modalidade Aeróbica (incluindo Misto: Caminhada + Corrida) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 ${modButtonsHTML}
             </div>
 
-            <!-- 2. Cronômetro Aeróbico Integrado + Campos de Velocidade (km/h) e Duração -->
+            <!-- 2. Cronômetro Aeróbico Integrado + Campos de Velocidade (km/h), Pace e Duração -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
                 <div class="bg-zinc-950 text-white rounded-3xl p-6 flex flex-col items-center justify-between space-y-5 border border-zinc-800 shadow-lg">
                     <div class="w-full flex items-center justify-between">
@@ -1685,21 +2121,12 @@ function buildAtvAerobicPanelHTML() {
                 </div>
 
                 <form onsubmit="submitAtvAerobicSession(event)" class="bg-zinc-50 border border-zinc-200 rounded-3xl p-5 space-y-4">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
                         <h4 class="text-sm font-bold text-zinc-900">Dados da Sessão (${aeroSelectedModality})</h4>
                         <span id="atv-aero-distance-preview" class="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Informe km/h + tempo</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Velocidade Média (km/h)</label>
-                            <input type="text" id="atv-aero-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvAerobicInputChange()" value="${(ai.speedKmh || '').replace(/"/g, '&quot;')}" placeholder="Ex: 9,50" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Duração Manual (min)</label>
-                            <input type="number" id="atv-aero-minutes" min="1" max="360" oninput="onAtvAerobicInputChange()" value="${(ai.manualMin || '').replace(/"/g, '&quot;')}" placeholder="Auto pelo cronômetro" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-zinc-900 text-center">
-                        </div>
-                    </div>
+                    ${mixedFieldsHTML}
 
                     <div>
                         <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Observações (Inclinação, FC, Zona)</label>

@@ -416,6 +416,7 @@
                             <div class="flex flex-wrap gap-1.5" id="sw-modality-pills">
                                 <button type="button" onclick="setStopwatchModality('Corrida')" data-sw-mod="Corrida" class="sw-mod-btn px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-semibold transition">🏃 Corrida</button>
                                 <button type="button" onclick="setStopwatchModality('Caminhada')" data-sw-mod="Caminhada" class="sw-mod-btn px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold transition">🚶 Caminhada</button>
+                                <button type="button" onclick="setStopwatchModality('Misto (Caminhada + Corrida)')" data-sw-mod="Misto (Caminhada + Corrida)" class="sw-mod-btn px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold transition">🔄 Misto</button>
                                 <button type="button" onclick="setStopwatchModality('Bike / Ciclismo')" data-sw-mod="Bike / Ciclismo" class="sw-mod-btn px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold transition">🚴 Bike</button>
                                 <button type="button" onclick="setStopwatchModality('Livre')" data-sw-mod="Livre" class="sw-mod-btn px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold transition">⏱️ Livre</button>
                             </div>
@@ -868,13 +869,13 @@
         </div>
     </div>
 
-    <!-- MODAL DE EDIÇÃO DE EXERCÍCIO -->
-    <div id="atv-edit-log-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+    <!-- MODAL DE EDIÇÃO DE EXERCÍCIO (NO FORMATO DO NOVO SISTEMA DE REGISTRO) -->
+    <div id="atv-edit-log-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-3.5 shadow-2xl my-auto">
             <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
                 <div>
-                    <span class="text-[10px] font-mono uppercase tracking-widest text-rose-600 font-bold">EDIÇÃO DE REGISTRO</span>
-                    <h3 class="text-base font-bold text-zinc-900" id="atv-edit-modal-title">Editar Exercício</h3>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-rose-600 font-bold">EDIÇÃO NO SISTEMA DE CARDS</span>
+                    <h3 class="text-base font-bold text-zinc-900" id="atv-edit-modal-title">Editar Exercício Registrado</h3>
                     <p id="atv-edit-system-info" class="text-[11px] font-mono text-zinc-500 mt-0.5"></p>
                 </div>
                 <button type="button" onclick="closeAtvEditModal()" class="text-zinc-400 hover:text-black">✕</button>
@@ -882,35 +883,67 @@
             <form id="atv-edit-form" onsubmit="saveEditedAtvLog(event)" class="space-y-3">
                 <input type="hidden" id="atv-edit-date">
                 <input type="hidden" id="atv-edit-log-id">
+
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Exercício / Variação</label>
-                    <div id="atv-edit-exercise-container"></div>
+                    <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Grupo Muscular Associado (Card)</label>
+                    <select id="atv-edit-muscle-slot" onchange="onEditAtvMuscleSlotChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white"></select>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Exercício / Variação (Lista do Card)</label>
+                    <div id="atv-edit-exercise-container" class="space-y-1.5"></div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Classificação no Card</label>
+                    <div class="flex gap-1.5">
+                        <button type="button" id="btn-edit-role-main" onclick="setEditAtvRole('main')" class="flex-1 py-2 px-2 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-[11px] font-semibold transition">
+                            ⭐ Principal
+                        </button>
+                        <button type="button" id="btn-edit-role-variation" onclick="setEditAtvRole('variation')" class="flex-1 py-2 px-2 rounded-xl bg-black text-white text-[11px] font-bold transition shadow-xs">
+                            🔄 Substituto
+                        </button>
+                    </div>
+                    <p id="atv-edit-role-hint" class="text-[10px] text-zinc-500 mt-1 leading-snug">
+                        🔄 Será mantido/adicionado como substituto/variação na lista do card selecionado.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2.5 pt-1">
                     <div>
-                        <label id="atv-edit-weight-label" class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Carga (kg)</label>
+                        <label id="atv-edit-weight-label" class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Carga (kg)</label>
                         <input type="text" id="atv-edit-weight" inputmode="numeric" oninput="handleWeightInputMask(this)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center" placeholder="0,00">
                     </div>
-                    <div id="atv-edit-strength-group">
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Séries × REPS</label>
-                        <div class="flex gap-1 items-center">
-                            <input type="number" id="atv-edit-sets" min="1" max="20" class="w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs font-mono text-center" placeholder="Séries">
-                            <span class="text-xs text-zinc-400">×</span>
-                            <input type="text" id="atv-edit-reps" class="w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-2 text-xs font-mono text-center" placeholder="REPS">
+
+                    <div id="atv-edit-strength-group" class="grid grid-cols-3 gap-1.5">
+                        <div>
+                            <label class="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Séries</label>
+                            <input type="number" id="atv-edit-sets" min="1" max="20" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-bold" placeholder="Ex: 3">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">REPS</label>
+                            <input type="text" id="atv-edit-reps" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold" placeholder="Ex: 8-12">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Descanso</label>
+                            <input type="text" id="atv-edit-rest" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold" placeholder="Ex: 90s">
                         </div>
                     </div>
+
                     <div id="atv-edit-cardio-group" class="hidden">
-                        <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Duração</label>
-                        <input type="text" id="atv-edit-duration" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900 text-center" placeholder="Ex: 20 min">
+                        <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Duração</label>
+                        <input type="text" id="atv-edit-duration" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900 text-center" placeholder="Ex: 20 min ou 15-20 min">
                     </div>
                 </div>
+
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Observações</label>
+                    <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Observações</label>
                     <input type="text" id="atv-edit-notes" placeholder="Ex: RPE 8, cadência" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-900">
                 </div>
+
                 <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
                     <button type="button" onclick="closeAtvEditModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold">Salvar Alterações</button>
+                    <button type="submit" class="px-5 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold">Salvar e Atualizar Card</button>
                 </div>
             </form>
         </div>
