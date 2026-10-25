@@ -632,7 +632,7 @@ function calcAdvancedAnalytics() {
 
     // 1. PRs, 1RM Estimado (Epley) e Progressão por Exercício
     const prMap = new Map();
-    const muscleBalance = {
+    const muscleBalanceObj = {
         'Costas': { sets: 0, volume: 0, sessions: 0 },
         'Peitoral': { sets: 0, volume: 0, sessions: 0 },
         'Quadríceps': { sets: 0, volume: 0, sessions: 0 },
@@ -641,10 +641,11 @@ function calcAdvancedAnalytics() {
         'Bíceps': { sets: 0, volume: 0, sessions: 0 },
         'Tríceps': { sets: 0, volume: 0, sessions: 0 },
         'Panturrilhas': { sets: 0, volume: 0, sessions: 0 },
-        'Abdômen': { sets: 0, volume: 0, sessions: 0 }
+        'Abdômen': { sets: 0, volume: 0, sessions: 0 },
+        'Cardio': { sets: 0, volume: 0, sessions: 0 }
     };
 
-    const dailyWorkoutVolume = {}; // { 'YYYY-MM-DD': totalVol }
+    const dailyWorkoutSummary = {}; // { 'YYYY-MM-DD': { volume, maxWeight } }
 
     const sortedLogDates = Object.keys(logs).sort();
     sortedLogDates.forEach(dateIso => {
@@ -652,15 +653,18 @@ function calcAdvancedAnalytics() {
         if (!Array.isArray(list) || list.length === 0) return;
 
         let dayVol = 0;
+        let dayMaxW = 0;
         list.forEach(item => {
             if (!item || !item.exerciseName) return;
             const exName = String(item.exerciseName).trim();
+            const isCardio = item.unit === 'km/h' || (typeof isCardioExercise === 'function' && isCardioExercise(exName, item.muscle));
             const w = parseFloat(item.weight) || 0;
-            const vol = calcLogEntryVolume(item);
+            const vol = isCardio ? 0 : calcLogEntryVolume(item);
             dayVol += vol;
+            if (!isCardio && w > dayMaxW) dayMaxW = w;
 
             const meta = findExerciseMeta(exName, item.habitId);
-            const sets = parseInt(item.sets, 10) || (meta && meta.sets ? parseInt(meta.sets, 10) : 3) || 3;
+            const sets = isCardio ? 1 : (parseInt(item.sets, 10) || (meta && meta.sets ? parseInt(meta.sets, 10) : 3) || 3);
             let reps = 10;
             const repsStr = String(item.reps || (meta && meta.reps) || '10');
             const mRange = repsStr.match(/(\d+)\s*[-–]\s*(\d+)/);
@@ -671,13 +675,13 @@ function calcAdvancedAnalytics() {
             }
 
             const muscleCat = categorizeMuscleGroup(item.muscle || (meta && meta.muscle), exName);
-            if (dateIso >= cutoff30dIso && muscleBalance[muscleCat]) {
-                muscleBalance[muscleCat].sets += sets;
-                muscleBalance[muscleCat].volume += vol;
-                muscleBalance[muscleCat].sessions += 1;
+            if (dateIso >= cutoff30dIso && muscleBalanceObj[muscleCat]) {
+                muscleBalanceObj[muscleCat].sets += sets;
+                muscleBalanceObj[muscleCat].volume += vol;
+                muscleBalanceObj[muscleCat].sessions += 1;
             }
 
-            if (w <= 0) return;
+            if (w <= 0 || isCardio) return;
             // Fórmula de Epley para 1RM: w * (1 + reps / 30)
             const epley1RM = w * (1 + Math.min(reps, 20) / 30);
 
@@ -685,23 +689,29 @@ function calcAdvancedAnalytics() {
                 prMap.set(exName, {
                     name: exName,
                     muscleCategory: muscleCat,
+                    muscleGroup: muscleCat,
                     sessions: 0,
+                    sessionsCount: 0,
                     firstDate: dateIso,
                     firstWeight: w,
                     lastDate: dateIso,
                     lastWeight: w,
+                    currentWeight: w,
                     maxWeight: w,
                     maxWeightDate: dateIso,
                     best1RM: epley1RM,
                     maxSessionVolume: vol,
+                    maxVolume: vol,
                     maxVolumeDate: dateIso
                 });
             }
 
             const rec = prMap.get(exName);
             rec.sessions += 1;
+            rec.sessionsCount = rec.sessions;
             rec.lastDate = dateIso;
             rec.lastWeight = w;
+            rec.currentWeight = w;
             if (w >= rec.maxWeight) {
                 rec.maxWeight = w;
                 rec.maxWeightDate = dateIso;
@@ -711,12 +721,13 @@ function calcAdvancedAnalytics() {
             }
             if (vol >= rec.maxSessionVolume) {
                 rec.maxSessionVolume = vol;
+                rec.maxVolume = vol;
                 rec.maxVolumeDate = dateIso;
             }
         });
 
         if (dayVol > 0) {
-            dailyWorkoutVolume[dateIso] = dayVol;
+            dailyWorkoutSummary[dateIso] = { volume: dayVol, maxWeight: dayMaxW };
         }
     });
 
@@ -725,24 +736,62 @@ function calcAdvancedAnalytics() {
         return { ...r, progressionPct };
     }).sort((a, b) => b.best1RM - a.best1RM);
 
-    // 2. Correlação Sono × Performance de Treino (Scatter + Regressão Linear)
+    // Converte muscleBalanceObj em array ordenado de grupos com séries > 0
+    const muscleBalance = Object.keys(muscleBalanceObj)
+        .map(muscle => ({
+            muscle,
+            sets: muscleBalanceObj[muscle].sets,
+            volume: parseFloat(muscleBalanceObj[muscle].volume.toFixed(1)),
+            sessions: muscleBalanceObj[muscle].sessions
+        }))
+        .filter(item => item.sets > 0 || item.volume > 0)
+        .sort((a, b) => b.sets - a.sets || b.volume - a.volume);
+
+    // 2. Correlação Sono × Performance de Treino (Scatter + Regressão Linear de Pearson)
     const correlationPoints = [];
-    Object.keys(dailyWorkoutVolume).sort().forEach(dateIso => {
-        const vol = dailyWorkoutVolume[dateIso];
-        const sleepEntry = sleepJournal ? sleepJournal[dateIso] : null;
-        if (sleepEntry && sleepEntry.bed && sleepEntry.bed !== '—') {
-            const { sleptH, eff } = calcSleepJournalEntry(sleepEntry);
-            if (sleptH > 0) {
-                const parts = dateIso.split('-');
-                const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateIso;
-                correlationPoints.push({ dateIso, label, sleptH: parseFloat(sleptH.toFixed(2)), volume: parseFloat(vol.toFixed(2)), eff: Math.round(eff) });
+    Object.keys(dailyWorkoutSummary).sort().forEach(dateIso => {
+        const { volume: vol, maxWeight } = dailyWorkoutSummary[dateIso];
+        let sleepEntry = (typeof sleepJournal === 'object' && sleepJournal !== null) ? sleepJournal[dateIso] : null;
+
+        // Caso não haja sono registrado no próprio dia ISO, verifica a noite imediatamente anterior (dateIso - 1 dia)
+        if (!sleepEntry || !sleepEntry.bed || sleepEntry.bed === '—') {
+            const [y, m, d] = dateIso.split('-').map(Number);
+            if (y && m && d) {
+                const prevDt = new Date(y, m - 1, d, 12, 0, 0);
+                prevDt.setDate(prevDt.getDate() - 1);
+                const prevIso = `${prevDt.getFullYear()}-${String(prevDt.getMonth() + 1).padStart(2, '0')}-${String(prevDt.getDate()).padStart(2, '0')}`;
+                if (sleepJournal && sleepJournal[prevIso] && sleepJournal[prevIso].bed && sleepJournal[prevIso].bed !== '—') {
+                    sleepEntry = sleepJournal[prevIso];
+                }
             }
+        }
+
+        let sleptH = 0;
+        let eff = 0;
+        if (sleepEntry && sleepEntry.bed && sleepEntry.bed !== '—') {
+            const parsed = calcSleepJournalEntry(sleepEntry);
+            sleptH = parsed.sleptH;
+            eff = parsed.eff;
+        }
+
+        if (sleptH > 0) {
+            const parts = dateIso.split('-');
+            const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateIso;
+            correlationPoints.push({
+                date: dateIso,
+                dateIso,
+                label,
+                sleptH: parseFloat(sleptH.toFixed(2)),
+                volume: parseFloat(vol.toFixed(2)),
+                maxWeight: parseFloat(maxWeight.toFixed(2)),
+                eff: Math.round(eff)
+            });
         }
     });
 
     let pearsonR = null;
-    let regSlope = 0;
-    let regIntercept = 0;
+    let regSlope = null;
+    let regIntercept = null;
     if (correlationPoints.length >= 2) {
         const n = correlationPoints.length;
         const meanX = correlationPoints.reduce((a, p) => a + p.sleptH, 0) / n;
@@ -768,23 +817,28 @@ function calcAdvancedAnalytics() {
     sleepDatesSorted.forEach(dateIso => {
         const e = sleepJournal[dateIso];
         if (!e || !e.bed || e.bed === '—') return;
-        const sleptMin = parseTimeHM(e.slept);
-        const wakeMin = parseTimeHM(e.wake);
+        const sleptMinRaw = hhmmToMinutes(e.slept);
+        const wakeMinRaw = hhmmToMinutes(e.wake);
         const { sleptH, eff } = calcSleepJournalEntry(e);
-        if (sleptMin === null || wakeMin === null || sleptH <= 0) return;
+        if (sleptMinRaw === null || wakeMinRaw === null || sleptH <= 0) return;
 
-        // Normaliza horário de dormir em escala contínua (ex: 23:30 = 23.5, 01:00 = 25.0)
-        let sleptHourCont = sleptMin / 60;
+        // Normaliza horário de dormir em escala contínua (ex: 23:30 = 23.5h / 1410m, 01:00 = 25.0h / 1500m)
+        let sleptHourCont = sleptMinRaw / 60;
         if (sleptHourCont < 14) sleptHourCont += 24;
-        const wakeHour = wakeMin / 60;
+        const sleptMinCont = Math.round(sleptHourCont * 60);
+        const wakeHour = wakeMinRaw / 60;
 
         const parts = dateIso.split('-');
         const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateIso;
         circadianSeries.push({
             dateIso,
             label,
+            rawSlept: e.slept,
+            rawWake: e.wake,
             sleptStr: e.slept,
             wakeStr: e.wake,
+            sleptMin: sleptMinCont,
+            wakeMin: wakeMinRaw,
             sleptHourCont: parseFloat(sleptHourCont.toFixed(2)),
             wakeHour: parseFloat(wakeHour.toFixed(2)),
             sleptH: parseFloat(sleptH.toFixed(2)),
@@ -794,8 +848,8 @@ function calcAdvancedAnalytics() {
 
     let bedtimeSdMinutes = null;
     let wakeSdMinutes = null;
-    let avgSleptClock = '—';
-    let avgWakeClock = '—';
+    let avgSleptClock = null;
+    let avgWakeClock = null;
 
     function formatContHourToHHMM(contH) {
         let hNorm = contH % 24;
@@ -835,5 +889,3 @@ function calcAdvancedAnalytics() {
         avgWakeClock
     };
 }
-
-
