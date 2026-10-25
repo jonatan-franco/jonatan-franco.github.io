@@ -871,7 +871,6 @@ function populateDashLoadChartSelect(evoData, forceReset) {
 
         if (dashLoadChartScope === 'group') {
             sel.innerHTML += `<option value="all">📊 Todos os Grupos (Upper / Lower)</option>`;
-            sel.innerHTML += `<option value="total_all">📈 Volume Total (Geral)</option>`;
             sel.innerHTML += `<option value="upper_a">🏋️ Upper A</option>`;
             sel.innerHTML += `<option value="lower_a">🦵 Lower A</option>`;
             sel.innerHTML += `<option value="upper_b">🏋️ Upper B</option>`;
@@ -928,8 +927,7 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
 
     if (dashLoadChartScope === 'group') {
         if (targetVal === 'all' || !evo.groups[targetVal]) {
-            // Coloca os 4 grupos de treino primeiro (order: 1, desenhados na frente) para que suas bolinhas coloridas
-            // e tooltips nunca sejam encobertos pelo Volume Total (Geral).
+            // Exibe apenas os 4 grupos de treino (Upper A, Lower A, Upper B, Lower B), sem Volume Total (pois não é grupo)
             const specificGroups = ['upper_a', 'lower_a', 'upper_b', 'lower_b'];
             specificGroups.forEach(gk => {
                 const g = evo.groups[gk];
@@ -940,17 +938,6 @@ function buildLoadEvolutionChartConfig(evo, targetVal) {
                     pointHoverRadius: 7.5
                 }));
             });
-            // Volume Total (Geral) ao fundo (order: 2, tracejado) conectando a tendência geral desde o 1º registro
-            if (evo.groups.total_all) {
-                const gt = evo.groups.total_all;
-                datasets.push(buildLoadDatasetItem(gt.label, gt, gt.color, false, {
-                    order: 2,
-                    borderWidth: 2,
-                    borderDash: [6, 4],
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }));
-            }
         } else {
             const g = evo.groups[targetVal];
             if (g) {

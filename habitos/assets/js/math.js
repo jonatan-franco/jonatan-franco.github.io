@@ -1,23 +1,94 @@
-function calcSleepElasticity(sleepArr, bedArr) {
+/* Razão da Variabilidade de Sono (RVS = ρ) e Coeficiente Beta de Vigília (β_W):
+ * Modelo:
+ *   TST = TIB - W   onde   W = SOL + WASO + TASAFA = TIB - TST
+ *   Var(TST) = Var(TIB) + Var(W) - 2*Cov(TIB, W)
+ *   β_W = Cov(TIB, W) / Var(TIB)
+ *   RVS² = Var(TST) / Var(TIB) = 1 + Var(W)/Var(TIB) - 2*β_W
+ *   RVS (ρ) = sqrt(Var(TST) / Var(TIB))
+ */
+function calcSleepRVS(sleepArr, bedArr) {
     const pairs = [];
-    for (let i = 0; i < 7; i++) {
-        const s = parseFloat(sleepArr[i]) || 0;
-        const b = parseFloat(bedArr[i]) || 0;
-        if (s > 0 && b > 0) pairs.push({ s, b });
+    const len = Math.min(
+        Array.isArray(sleepArr) ? sleepArr.length : 0,
+        Array.isArray(bedArr) ? bedArr.length : 0
+    );
+    for (let i = 0; i < len; i++) {
+        const tst = parseFloat(sleepArr[i]) || 0;
+        const tib = parseFloat(bedArr[i]) || 0;
+        if (tst > 0 && tib > 0) {
+            const w = Math.max(0, tib - tst);
+            pairs.push({ tst, tib, w });
+        }
     }
-    if (pairs.length < 2) return 0;
+    const n = pairs.length;
+    if (n < 2) {
+        return {
+            valid: false,
+            n,
+            rvs: null,
+            rvsSquared: null,
+            betaW: null,
+            betaTST: null,
+            varTIB: 0,
+            varTST: 0,
+            varW: 0,
+            covTIBW: 0
+        };
+    }
 
-    const meanS = pairs.reduce((a, p) => a + p.s, 0) / pairs.length;
-    const meanB = pairs.reduce((a, p) => a + p.b, 0) / pairs.length;
+    const meanTST = pairs.reduce((a, p) => a + p.tst, 0) / n;
+    const meanTIB = pairs.reduce((a, p) => a + p.tib, 0) / n;
+    const meanW = pairs.reduce((a, p) => a + p.w, 0) / n;
 
-    let cov = 0, varB = 0;
+    let sqTIB = 0, sqTST = 0, sqW = 0, spTIBW = 0;
     pairs.forEach(p => {
-        cov  += (p.b - meanB) * (p.s - meanS);
-        varB += Math.pow(p.b - meanB, 2);
+        const dTIB = p.tib - meanTIB;
+        const dTST = p.tst - meanTST;
+        const dW = p.w - meanW;
+        sqTIB += dTIB * dTIB;
+        sqTST += dTST * dTST;
+        sqW += dW * dW;
+        spTIBW += dTIB * dW;
     });
-    if (varB === 0) return 0;
-    const slope = cov / varB;
-    return slope * (meanB / (meanS || 1));
+
+    const df = n - 1;
+    const varTIB = sqTIB / df;
+    const varTST = sqTST / df;
+    const varW = sqW / df;
+    const covTIBW = spTIBW / df;
+
+    if (varTIB <= 1e-9) {
+        return {
+            valid: false,
+            n,
+            rvs: null,
+            rvsSquared: null,
+            betaW: null,
+            betaTST: null,
+            varTIB,
+            varTST,
+            varW,
+            covTIBW
+        };
+    }
+
+    const betaW = covTIBW / varTIB;
+    const betaTST = 1 - betaW;
+    const rvsSquared = Math.max(0, 1 + (varW / varTIB) - (2 * betaW));
+    const rvs = Math.sqrt(rvsSquared);
+
+    return {
+        valid: true,
+        n,
+        rvs,
+        rvsSquared,
+        betaW,
+        betaTST,
+        varTIB,
+        varTST,
+        varW,
+        covTIBW
+    };
 }
 
 function calcHabitMetrics(habit) {
@@ -36,15 +107,15 @@ function calcHabitMetrics(habit) {
 
     const sensitivityDerivative = (100 / targetH) * (0.5 + 0.5 * freqRatio);
 
-    let elasticity;
+    let rvs = null;
+    let betaW = null;
     if (habit.category === 'sono' && Array.isArray(habit.bedtimeHours)) {
-        elasticity = calcSleepElasticity(
+        const rvsObj = calcSleepRVS(
             habit.dailyHours.map(v => parseFloat(v) || 0),
             habit.bedtimeHours.map(v => parseFloat(v) || 0)
         );
-    } else {
-        const syncFactor = Math.exp(-Math.abs(freqRatio - Math.min(1, hoursRatio)) * 0.35);
-        elasticity = hoursRatio * syncFactor;
+        rvs = rvsObj.rvs;
+        betaW = rvsObj.betaW;
     }
 
     let maxStreak = 0, cur = 0;
@@ -60,7 +131,7 @@ function calcHabitMetrics(habit) {
     return {
         daysCompleted, freqRatio, freqPct, freqPctElapsed,
         totalHours, meanHours, sdHours, targetH,
-        hoursRatio, hoursPct, sensitivityDerivative, elasticity, streak: maxStreak
+        hoursRatio, hoursPct, sensitivityDerivative, rvs, betaW, streak: maxStreak
     };
 }
 
@@ -267,15 +338,20 @@ function calcSleepWeekSeries() {
     const sdBed = Math.sqrt(varianceBed);
     const sdDailyEff = Math.sqrt(varianceDailyEff);
 
-    const elasticity = recent.length >= 2 
-        ? calcSleepElasticity(recent.map(r => r.sleptH), recent.map(r => r.bedH))
-        : calcSleepElasticity(slept, bed);
+    const rvsData = recent.length >= 2
+        ? calcSleepRVS(recent.map(r => r.sleptH), recent.map(r => r.bedH))
+        : calcSleepRVS(slept, bed);
 
     return {
         bed, slept, eff,
         meanBed, meanSlept, sdSlept, sdBed, efficiency, meanDailyEfficiency, sdDailyEff, activeDays,
         weekActiveDays, weekMeanBed, weekMeanSlept, weekMeanEff, weekSdSlept, weekSdBed, weekSdEff,
-        elasticity, source
+        rvs: rvsData.rvs,
+        rvsSquared: rvsData.rvsSquared,
+        betaW: rvsData.betaW,
+        betaTST: rvsData.betaTST,
+        rvsData,
+        source
     };
 }
 

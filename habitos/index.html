@@ -102,7 +102,7 @@
         <section id="view-dashboard" class="space-y-6">
             <!-- KPIs -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="bg-[#e0e7ff] p-5 rounded-3xl flex flex-col justify-between min-h-[170px]">
+                <div class="bg-[#e0e7ff] p-5 rounded-3xl flex flex-col justify-between min-h-[170px] relative">
                     <div class="flex justify-between items-start">
                         <div>
                             <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">SONO</span>
@@ -111,14 +111,24 @@
                                 <span class="text-xs text-zinc-600 font-mono" id="kpi-sleep-sd">± —</span>
                             </div>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-zinc-900"><i data-lucide="moon" class="w-5 h-5"></i></div>
+                        <div class="relative group cursor-help">
+                            <div class="w-10 h-10 rounded-full bg-white/60 hover:bg-white/90 flex items-center justify-center text-zinc-900 transition shadow-2xs">
+                                <i data-lucide="moon" class="w-5 h-5"></i>
+                            </div>
+                            <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute right-0 top-12 w-72 sm:w-80 p-3.5 rounded-2xl bg-zinc-900 text-white text-[11px] leading-relaxed shadow-xl z-30 border border-zinc-700">
+                                <div class="font-bold text-indigo-300 mb-1">🌙 Razão da Variabilidade de Sono (ρ = RVS) e β<sub>W</sub></div>
+                                <p class="text-zinc-200 font-mono text-[10px]">RVS² = Var(TST)/Var(TIB) = 1 + Var(W)/Var(TIB) − 2β<sub>W</sub></p>
+                                <p class="text-zinc-200 font-mono text-[10px] mt-0.5">β<sub>W</sub> = Cov(TIB, W) / Var(TIB) &nbsp;•&nbsp; W = TIB − TST</p>
+                                <p id="kpi-sleep-rvs-tooltip" class="text-zinc-400 mt-1.5 pt-1.5 border-t border-zinc-800">RVS (ρ) ≈ 1 e β<sub>W</sub> ≈ 0 indicam que variações no tempo de cama acompanham o sono (RTC contraindicada). RVS (ρ) ≈ 0 e β<sub>W</sub> ≈ 1 indicam que mais tempo de cama aumenta a vigília (W).</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mt-2 text-xs font-mono text-zinc-600 flex justify-between">
+                    <div class="mt-2 text-xs font-mono text-zinc-700 flex flex-wrap justify-between gap-1">
                         <span id="kpi-sleep-bed">Tempo de cama: —</span>
-                        <span id="kpi-sleep-sens">ε —</span>
+                        <span id="kpi-sleep-sens" class="font-semibold text-indigo-950">ρ (RVS): — • β_W: —</span>
                     </div>
                     <div class="mt-3 pt-2.5 border-t border-black/10 text-xs text-zinc-700 flex justify-between font-mono">
-                        <span id="kpi-sleep-eff-aggr">Ef. Média: —</span>
+                        <span id="kpi-sleep-eff-aggr">ESM: —</span>
                         <span id="kpi-sleep-eff-mean">μ(E): —</span>
                     </div>
                 </div>

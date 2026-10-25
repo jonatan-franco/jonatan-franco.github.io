@@ -430,14 +430,23 @@ function renderDedicatedSleepView() {
                 });
                 const avgBed = sumBed / filteredDates.length;
                 const avgSlept = sumSlept / filteredDates.length;
-                const avgEff = sumEff / filteredDates.length;
+                const esmPct = avgBed > 0 ? (avgSlept / avgBed) * 100 : (sumEff / filteredDates.length);
+                const periodRvs = (typeof calcSleepRVS === 'function')
+                    ? calcSleepRVS(
+                        filteredDates.map(d => calcSleepJournalEntry(sleepJournal[d]).sleptH),
+                        filteredDates.map(d => calcSleepJournalEntry(sleepJournal[d]).bedH)
+                    )
+                    : { valid: false, rvs: null, betaW: null };
+                const rvsBadgeTxt = periodRvs.valid ? periodRvs.rvs.toFixed(2) : '—';
+                const betaWBadgeTxt = periodRvs.valid ? periodRvs.betaW.toFixed(2) : '—';
                 summaryEl.classList.remove('hidden');
                 summaryEl.classList.add('flex');
                 summaryEl.innerHTML = `
                     <span class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">${filteredDates.length} noite(s) registrada(s)</span>
                     <span class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-semibold">Média Cama: ${avgBed.toFixed(1)}h</span>
                     <span class="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-semibold">Média Dormida: ${avgSlept.toFixed(1)}h</span>
-                    <span class="px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 font-semibold">Eficiência Média: ${avgEff.toFixed(0)}%</span>
+                    <span class="px-2.5 py-1 rounded-xl bg-purple-50 text-purple-700 font-semibold">ESM: ${esmPct.toFixed(0)}%</span>
+                    <span class="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 font-semibold">ρ<sub>RVS</sub>: ${rvsBadgeTxt} • β<sub>W</sub>: ${betaWBadgeTxt}</span>
                 `;
             } else {
                 summaryEl.classList.add('hidden');
@@ -582,16 +591,24 @@ function renderDashboardView() {
             sleepMeanEl.textContent = formatSleepDuration(s.meanSlept);
             if (sleepSdEl) sleepSdEl.textContent = `± ${formatSleepDuration(s.sdSlept)}`;
             if (sleepBedEl) sleepBedEl.textContent = `Tempo de cama: ${formatSleepDuration(s.meanBed)} (${s.activeDays}d reg.)`;
-            if (sleepEffAggrEl) sleepEffAggrEl.textContent = `Ef. Média: ${s.efficiency.toFixed(0)}%`;
+            if (sleepEffAggrEl) sleepEffAggrEl.textContent = `ESM: ${s.efficiency.toFixed(0)}%`;
             if (sleepEffMeanEl) sleepEffMeanEl.textContent = `μ(E): ${s.meanDailyEfficiency.toFixed(0)}%`;
-            if (sleepSensEl) sleepSensEl.textContent = `ε ${s.elasticity.toFixed(2)}`;
+            if (sleepSensEl) {
+                const rvsStr = (s.rvs !== null && s.rvs !== undefined && !isNaN(s.rvs)) ? s.rvs.toFixed(2) : '—';
+                const betaWStr = (s.betaW !== null && s.betaW !== undefined && !isNaN(s.betaW)) ? s.betaW.toFixed(2) : '—';
+                sleepSensEl.innerHTML = `ρ<sub>RVS</sub> ${rvsStr} • β<sub>W</sub> ${betaWStr}`;
+            }
+            const rvsTipEl = document.getElementById('kpi-sleep-rvs-tooltip');
+            if (rvsTipEl && s.rvsData && s.rvsData.valid) {
+                rvsTipEl.innerHTML = `Var(TIB): ${s.rvsData.varTIB.toFixed(3)} • Var(TST): ${s.rvsData.varTST.toFixed(3)} • Var(W): ${s.rvsData.varW.toFixed(3)} • Cov(TIB,W): ${s.rvsData.covTIBW.toFixed(3)}<br><strong class="text-indigo-300">ρ (RVS) = ${s.rvs.toFixed(2)}</strong> &nbsp;|&nbsp; <strong class="text-emerald-300">β<sub>W</sub> = ${s.betaW.toFixed(2)}</strong> (β<sub>TST</sub> = ${s.betaTST.toFixed(2)})`;
+            }
         } else {
             sleepMeanEl.textContent = '—';
             if (sleepSdEl) sleepSdEl.textContent = '± —';
             if (sleepBedEl) sleepBedEl.textContent = 'Tempo de cama: —';
-            if (sleepEffAggrEl) sleepEffAggrEl.textContent = 'Ef. Média: —';
+            if (sleepEffAggrEl) sleepEffAggrEl.textContent = 'ESM: —';
             if (sleepEffMeanEl) sleepEffMeanEl.textContent = 'μ(E): —';
-            if (sleepSensEl) sleepSensEl.textContent = 'ε —';
+            if (sleepSensEl) sleepSensEl.innerHTML = 'ρ<sub>RVS</sub> — • β<sub>W</sub> —';
         }
     }
 
@@ -1211,11 +1228,13 @@ window.pullFromGist = async function() {
 };
 
 window.exportToCSV = function() {
-    let csv = "data:text/csv;charset=utf-8,habit_id,habit_name,category,target_hours_week,total_hours_week,mean_hours_day,sd_hours_week,freq_pct,sensitivity_deriv,elasticity,day_of_week,date_iso,completed,hours_day\n";
+    let csv = "data:text/csv;charset=utf-8,habit_id,habit_name,category,target_hours_week,total_hours_week,mean_hours_day,sd_hours_week,freq_pct,sensitivity_deriv,rvs_rho,beta_w,day_of_week,date_iso,completed,hours_day\n";
     habits.forEach(h => {
         const m = calcHabitMetrics(h), cleanName = `"${h.name.replace(/"/g, '""')}"`;
+        const rvsVal = (m.rvs !== null && m.rvs !== undefined && !isNaN(m.rvs)) ? m.rvs.toFixed(3) : '';
+        const betaWVal = (m.betaW !== null && m.betaW !== undefined && !isNaN(m.betaW)) ? m.betaW.toFixed(3) : '';
         weekDays.forEach((day, dIdx) => {
-            csv += `${h.id},${cleanName},${h.category},${h.targetHours},${m.totalHours.toFixed(2)},${m.meanHours.toFixed(2)},${m.sdHours.toFixed(2)},${m.freqPct.toFixed(1)},${m.sensitivityDerivative.toFixed(2)},${m.elasticity.toFixed(3)},${day.shortName},${day.iso},${h.checks[dIdx] ? 1 : 0},${h.dailyHours[dIdx] || 0}\n`;
+            csv += `${h.id},${cleanName},${h.category},${h.targetHours},${m.totalHours.toFixed(2)},${m.meanHours.toFixed(2)},${m.sdHours.toFixed(2)},${m.freqPct.toFixed(1)},${m.sensitivityDerivative.toFixed(2)},${rvsVal},${betaWVal},${day.shortName},${day.iso},${h.checks[dIdx] ? 1 : 0},${h.dailyHours[dIdx] || 0}\n`;
         });
     });
     const link = document.createElement("a");
