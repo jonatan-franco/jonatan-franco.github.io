@@ -65,17 +65,85 @@ const WORKOUT_CATALOG_KEY = 'hq_workout_catalog_v1';
 
 let atvLogs = {}; // { "YYYY-MM-DD": [ { id, habitId, planId, exerciseName, muscle, sets, reps, rest, weight, unit, notes }, ... ] }
 
-// Estado do Cronômetro Aeróbico Dedicado dentro de Atividade Física
-let aeroTimerInterval = null;
-let aeroTimerRunning = false;
-let aeroElapsedMs = 0;
-let aeroLastStartTs = 0;
-let aeroSelectedModality = 'Corrida'; // 'Corrida' | 'Caminhada' | 'Bike / Ciclismo' | 'Esteira Inclinada' | 'Escada / Elíptico'
+// Estado Independente de Timer (Cronômetro & Regressivo) para cada Exercício Aeróbico
+const AERO_MODALITIES_LIST = [
+    'Corrida',
+    'Caminhada',
+    'Misto (Caminhada + Corrida)',
+    'Bike / Ciclismo',
+    'Esteira Inclinada',
+    'Escada / Elíptico'
+];
+
+let aeroSelectedModality = 'Corrida';
+const aeroTimersByModality = {};
+
+function createDefaultAeroModalityTimerState(mod) {
+    return {
+        modality: mod,
+        timerType: 'stopwatch',       // 'stopwatch' (Cronômetro) | 'countdown' (Regressivo)
+        running: false,
+        intervalId: null,
+        // Cronômetro (progressivo)
+        elapsedMs: 0,
+        lastStartTs: 0,
+        // Regressivo (countdown)
+        cdTotalSec: 20 * 60,          // padrão 20:00
+        cdRemainingMs: 20 * 60 * 1000,
+        cdTargetEndTs: 0,
+        // Fase do treino Misto (Corrida <-> Caminhada)
+        mixedPhase: 'run',            // 'run' | 'walk'
+        runElapsedMs: 0,
+        walkElapsedMs: 0,
+        // Última duração concluída via botão "Concluir" do timer
+        concludedDurationStr: '',
+        concludedElapsedSec: 0
+    };
+}
+
+function getAeroModalityTimerState(mod) {
+    const key = mod || aeroSelectedModality || 'Corrida';
+    if (!aeroTimersByModality[key]) {
+        aeroTimersByModality[key] = createDefaultAeroModalityTimerState(key);
+    }
+    return aeroTimersByModality[key];
+}
+
+function getActiveOrConcludedAeroDurationMs(mod) {
+    const st = getAeroModalityTimerState(mod || aeroSelectedModality);
+    if (st.concludedElapsedSec > 0) return st.concludedElapsedSec * 1000;
+    if (st.timerType === 'countdown') {
+        const usedMs = Math.max(0, (st.cdTotalSec * 1000) - st.cdRemainingMs);
+        return usedMs;
+    }
+    return st.elapsedMs > 0 ? st.elapsedMs : 0;
+}
 
 window.getAtvAerobicTimerState = function() {
+    const cur = getAeroModalityTimerState(aeroSelectedModality);
+    if (cur && cur.running) {
+        const displayMs = cur.timerType === 'countdown' ? cur.cdRemainingMs : cur.elapsedMs;
+        return {
+            running: true,
+            elapsedMs: displayMs,
+            modality: cur.timerType === 'countdown' ? `${cur.modality} (Regressivo)` : cur.modality
+        };
+    }
+    for (const mod of AERO_MODALITIES_LIST) {
+        const st = aeroTimersByModality[mod];
+        if (st && st.running) {
+            const displayMs = st.timerType === 'countdown' ? st.cdRemainingMs : st.elapsedMs;
+            return {
+                running: true,
+                elapsedMs: displayMs,
+                modality: st.timerType === 'countdown' ? `${st.modality} (Regressivo)` : st.modality
+            };
+        }
+    }
+    const fallbackDisplayMs = cur.timerType === 'countdown' ? cur.cdRemainingMs : cur.elapsedMs;
     return {
-        running: aeroTimerRunning,
-        elapsedMs: aeroElapsedMs,
+        running: false,
+        elapsedMs: fallbackDisplayMs,
         modality: aeroSelectedModality
     };
 };
@@ -223,7 +291,10 @@ function loadAtvUiState() {
                         manualMin: '',
                         notes: '',
                         ...(parsed.aerobicInputs || {})
-                    }
+                    },
+                    aerobicInputsByModality: (parsed.aerobicInputsByModality && typeof parsed.aerobicInputsByModality === 'object')
+                        ? parsed.aerobicInputsByModality
+                        : {}
                 };
             }
         }
@@ -803,7 +874,7 @@ window.submitAtvCardLog = function(cardIndex) {
 
     if (isCardio) {
         // Verifica se há tempo ativo no cronômetro aeróbico ou principal para já incorporar caso ainda não registrado
-        let activeTimerMs = aeroElapsedMs > 0 ? aeroElapsedMs : 0;
+        let activeTimerMs = getActiveOrConcludedAeroDurationMs(aeroSelectedModality);
         if (activeTimerMs <= 0 && typeof window.getActiveStopwatchElapsedMs === 'function') {
             activeTimerMs = window.getActiveStopwatchElapsedMs();
         }
@@ -1178,23 +1249,149 @@ function calcCardioEntryVolumeKm(log) {
 /* ------------------------------------------------------------------
  * ABA AERÓBICO (CORRIDA, CAMINHADA, MISTO, BIKE, ESTEIRA) + CRONÔMETRO INTEGRADO
  * ------------------------------------------------------------------ */
+function getAeroModalityInputs(mod) {
+    const key = mod || aeroSelectedModality || 'Corrida';
+    if (!atvUiState.aerobicInputsByModality || typeof atvUiState.aerobicInputsByModality !== 'object') {
+        atvUiState.aerobicInputsByModality = {};
+    }
+    if (!atvUiState.aerobicInputsByModality[key]) {
+        atvUiState.aerobicInputsByModality[key] = {
+            speedKmh: '',
+            walkSpeedKmh: '',
+            mixRunRatio: '0.60',
+            manualMin: '',
+            notes: ''
+        };
+    }
+    return atvUiState.aerobicInputsByModality[key];
+}
+
+function formatAeroConcludedDurationString(totalSeconds) {
+    const cleanSec = Math.max(1, Math.round(totalSeconds));
+    const hms = (typeof formatHMS === 'function') ? formatHMS(cleanSec) : '00:00:00';
+    if (cleanSec >= 60) {
+        const minsRounded = Math.round((cleanSec / 60) * 10) / 10;
+        const minsStr = String(minsRounded).replace('.', ',');
+        return `${minsStr} min (${hms})`;
+    }
+    const minsDec = (cleanSec / 60).toFixed(2).replace('.', ',');
+    return `${minsDec} min (${hms})`;
+}
+
+function triggerAeroCountdownFinishedAlerts(mod) {
+    if (typeof window.playTimerAlarmSound === 'function') {
+        window.playTimerAlarmSound();
+    }
+    if (navigator.vibrate) {
+        try { navigator.vibrate([350, 150, 350, 150, 500]); } catch (e) {}
+    }
+    if (('Notification' in window) && Notification.permission === 'granted') {
+        try {
+            new Notification(`⏰ Tempo Concluído — ${mod}`, {
+                body: `O temporizador regressivo de ${mod} chegou a 00:00:00! A duração foi enviada automaticamente.`,
+                tag: 'haqt-aero-timer-done',
+                renotify: true
+            });
+        } catch (e) {}
+    }
+}
+
 window.selectAtvAerobicModality = function(mod) {
     aeroSelectedModality = mod || 'Corrida';
+    getAeroModalityTimerState(aeroSelectedModality);
+    getAeroModalityInputs(aeroSelectedModality);
     renderAtvFisicaInteractiveView();
     if (typeof window.syncAllExternalTimerDisplays === 'function') {
         window.syncAllExternalTimerDisplays(false);
     }
 };
 
+window.setAtvAerobicTimerType = function(type) {
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    const nextType = type === 'countdown' ? 'countdown' : 'stopwatch';
+    if (st.timerType === nextType) return;
+    if (st.running) {
+        clearInterval(st.intervalId);
+        st.running = false;
+    }
+    st.timerType = nextType;
+    if (nextType === 'countdown' && st.cdRemainingMs <= 0) {
+        st.cdRemainingMs = st.cdTotalSec * 1000;
+    }
+    renderAtvFisicaInteractiveView();
+    if (typeof updateMiniTimerPill === 'function') updateMiniTimerPill();
+};
+
+window.setAtvAerobicCountdownPreset = function(minutes) {
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    if (st.running) {
+        clearInterval(st.intervalId);
+        st.running = false;
+    }
+    const totalSec = Math.max(60, Math.round((parseFloat(minutes) || 20) * 60));
+    st.timerType = 'countdown';
+    st.cdTotalSec = totalSec;
+    st.cdRemainingMs = totalSec * 1000;
+    st.concludedDurationStr = '';
+    st.concludedElapsedSec = 0;
+    renderAtvFisicaInteractiveView();
+};
+
+window.onAtvAerobicCountdownDirectInput = function(inputEl) {
+    if (!inputEl) return;
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    if (st.running) return;
+    const raw = String(inputEl.value || '').trim();
+    if (!raw) return;
+
+    let totalSec = 0;
+    const parts = raw.split(':').map(p => parseInt(p.replace(/\D/g, ''), 10) || 0);
+    if (parts.length === 3) {
+        totalSec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+        totalSec = parts[0] * 60 + parts[1];
+    } else if (parts.length === 1) {
+        totalSec = parts[0] * 60;
+    }
+    if (totalSec > 0) {
+        st.cdTotalSec = Math.min(totalSec, 12 * 3600);
+        st.cdRemainingMs = st.cdTotalSec * 1000;
+        inputEl.value = (typeof formatHMS === 'function') ? formatHMS(st.cdTotalSec) : raw;
+    } else {
+        inputEl.value = (typeof formatHMS === 'function') ? formatHMS(st.cdTotalSec) : '00:20:00';
+    }
+};
+
+window.toggleAtvAeroMixedPhase = function(targetPhase) {
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    const now = Date.now();
+    if (st.running && st.lastStartTs > 0) {
+        const delta = Math.max(0, now - st.lastStartTs);
+        if (st.timerType === 'stopwatch') {
+            st.elapsedMs += delta;
+        }
+        if (st.mixedPhase === 'walk') {
+            st.walkElapsedMs += delta;
+        } else {
+            st.runElapsedMs += delta;
+        }
+        st.lastStartTs = now;
+    }
+    if (targetPhase === 'run' || targetPhase === 'walk') {
+        st.mixedPhase = targetPhase;
+    } else {
+        st.mixedPhase = st.mixedPhase === 'run' ? 'walk' : 'run';
+    }
+    renderAtvFisicaInteractiveView();
+};
+
 window.onAtvAerobicInputChange = function() {
-    atvUiState.aerobicInputs = {
-        ...(atvUiState.aerobicInputs || {}),
-        speedKmh: document.getElementById('atv-aero-speed')?.value || '',
-        walkSpeedKmh: document.getElementById('atv-aero-walk-speed')?.value || '',
-        mixRunRatio: document.getElementById('atv-aero-mix-ratio')?.value || '0.60',
-        manualMin: document.getElementById('atv-aero-minutes')?.value || '',
-        notes: document.getElementById('atv-aero-notes')?.value || ''
-    };
+    const inp = getAeroModalityInputs(aeroSelectedModality);
+    inp.speedKmh = document.getElementById('atv-aero-speed')?.value || '';
+    inp.walkSpeedKmh = document.getElementById('atv-aero-walk-speed')?.value || '';
+    inp.mixRunRatio = document.getElementById('atv-aero-mix-ratio')?.value || '0.60';
+    inp.manualMin = document.getElementById('atv-aero-minutes')?.value || '';
+    inp.notes = document.getElementById('atv-aero-notes')?.value || '';
     saveAtvUiState();
     updateAtvAerobicDistancePreview();
 };
@@ -1208,11 +1405,8 @@ function updateAtvAerobicDistancePreview() {
     const mixRatioVal = parseFloat(document.getElementById('atv-aero-mix-ratio')?.value || '0.60') || 0.60;
     const manualRaw = document.getElementById('atv-aero-minutes')?.value || '';
 
-    const durSource = aeroElapsedMs >= 5000
-        ? `${(aeroElapsedMs / 60000).toFixed(2)} min`
-        : manualRaw;
-    const durObj = parseCardioDurationInterval(durSource, 0);
-    const hasTime = (aeroElapsedMs >= 5000) || (String(manualRaw).trim().length > 0 && durObj.avgMin > 0);
+    const durObj = parseCardioDurationInterval(manualRaw, 0);
+    const hasTime = String(manualRaw).trim().length > 0 && durObj.avgMin > 0;
 
     const effSpeed = isMixed
         ? calcMixedCardioEffectiveSpeed(speedVal, walkSpeedVal, mixRatioVal)
@@ -1229,62 +1423,205 @@ function updateAtvAerobicDistancePreview() {
             distEl.textContent = `${avgKm.toFixed(2).replace('.', ',')} km (${isMixed ? `Vel. ef. ${effSpeed.toFixed(2).replace('.', ',')} km/h • ` : ''}Pace ${paceStr})`;
         }
     } else if (effSpeed > 0) {
-        distEl.textContent = `Pace ${formatPaceMinPerKm(effSpeed)} • Informe o tempo`;
+        distEl.textContent = `Pace ${formatPaceMinPerKm(effSpeed)} • Conclua o timer ou informe o tempo`;
+    } else if (hasTime) {
+        distEl.textContent = `Duração: ${manualRaw} • Informe a velocidade (km/h)`;
     } else {
-        distEl.textContent = 'Informe km/h + tempo p/ calcular volume (km) e pace';
+        distEl.textContent = 'Informe km/h + tempo (ou Conclua o Timer) p/ calcular km e pace';
     }
 }
 
-function updateAtvAerobicTimerDOM() {
-    const mainEl = document.getElementById('atv-aero-timer-display');
-    const msEl = document.getElementById('atv-aero-timer-ms');
-    if (mainEl && typeof formatHMS === 'function') {
-        mainEl.textContent = formatHMS(Math.floor(aeroElapsedMs / 1000));
+function updateAtvAerobicTimerDOM(mod) {
+    const targetMod = mod || aeroSelectedModality;
+    const st = getAeroModalityTimerState(targetMod);
+    if (targetMod === aeroSelectedModality) {
+        const mainEl = document.getElementById('atv-aero-timer-display');
+        const msEl = document.getElementById('atv-aero-timer-ms');
+        const displayMs = st.timerType === 'countdown' ? st.cdRemainingMs : st.elapsedMs;
+        if (mainEl && typeof formatHMS === 'function') {
+            if (mainEl.tagName === 'INPUT') {
+                if (document.activeElement !== mainEl) {
+                    mainEl.value = formatHMS(Math.ceil(displayMs / 1000));
+                }
+            } else {
+                mainEl.textContent = formatHMS(Math.floor(displayMs / 1000));
+            }
+        }
+        if (msEl && typeof formatCentiseconds === 'function') {
+            msEl.textContent = formatCentiseconds(displayMs);
+        }
+        const runPhaseTimeEl = document.getElementById('atv-aero-mixed-run-time');
+        const walkPhaseTimeEl = document.getElementById('atv-aero-mixed-walk-time');
+        if (runPhaseTimeEl && typeof formatHMS === 'function') {
+            runPhaseTimeEl.textContent = formatHMS(Math.floor(st.runElapsedMs / 1000)).slice(3);
+        }
+        if (walkPhaseTimeEl && typeof formatHMS === 'function') {
+            walkPhaseTimeEl.textContent = formatHMS(Math.floor(st.walkElapsedMs / 1000)).slice(3);
+        }
     }
-    if (msEl && typeof formatCentiseconds === 'function') {
-        msEl.textContent = formatCentiseconds(aeroElapsedMs);
-    }
-    updateAtvAerobicDistancePreview();
     if (typeof updateMiniTimerPill === 'function') updateMiniTimerPill();
 }
 
 window.toggleAtvAerobicStopwatch = function() {
-    if (aeroTimerRunning) {
-        clearInterval(aeroTimerInterval);
-        aeroElapsedMs += (Date.now() - aeroLastStartTs);
-        aeroTimerRunning = false;
-        const minInput = document.getElementById('atv-aero-minutes');
-        if (minInput && aeroElapsedMs >= 30000) {
-            minInput.value = String(Math.max(1, Math.round(aeroElapsedMs / 60000)));
+    const mod = aeroSelectedModality;
+    const st = getAeroModalityTimerState(mod);
+    const isMixed = mod.toLowerCase().includes('misto');
+
+    if (st.running) {
+        clearInterval(st.intervalId);
+        const now = Date.now();
+        const delta = Math.max(0, now - st.lastStartTs);
+        if (st.timerType === 'stopwatch') {
+            st.elapsedMs += delta;
+        } else {
+            st.cdRemainingMs = Math.max(0, st.cdTargetEndTs - now);
         }
+        if (isMixed) {
+            if (st.mixedPhase === 'walk') st.walkElapsedMs += delta;
+            else st.runElapsedMs += delta;
+        }
+        st.running = false;
     } else {
-        aeroLastStartTs = Date.now();
-        aeroTimerRunning = true;
-        aeroTimerInterval = setInterval(() => {
-            const now = Date.now();
-            aeroElapsedMs += (now - aeroLastStartTs);
-            aeroLastStartTs = now;
-            updateAtvAerobicTimerDOM();
+        st.concludedDurationStr = '';
+        if (st.timerType === 'countdown' && st.cdRemainingMs <= 0) {
+            st.cdRemainingMs = st.cdTotalSec * 1000;
+        }
+        const now = Date.now();
+        st.lastStartTs = now;
+        if (st.timerType === 'countdown') {
+            st.cdTargetEndTs = now + st.cdRemainingMs;
+        }
+        st.running = true;
+        st.intervalId = setInterval(() => {
+            const tickNow = Date.now();
+            const delta = Math.max(0, tickNow - st.lastStartTs);
+            st.lastStartTs = tickNow;
+
+            if (isMixed) {
+                if (st.mixedPhase === 'walk') st.walkElapsedMs += delta;
+                else st.runElapsedMs += delta;
+            }
+
+            if (st.timerType === 'stopwatch') {
+                st.elapsedMs += delta;
+                updateAtvAerobicTimerDOM(mod);
+            } else {
+                const rem = Math.max(0, st.cdTargetEndTs - tickNow);
+                st.cdRemainingMs = rem;
+                updateAtvAerobicTimerDOM(mod);
+                if (rem <= 0) {
+                    clearInterval(st.intervalId);
+                    st.running = false;
+                    triggerAeroCountdownFinishedAlerts(mod);
+                    window.concludeAtvAerobicTimer(mod, true);
+                }
+            }
         }, 80);
     }
     renderAtvFisicaInteractiveView();
 };
 
 window.resetAtvAerobicStopwatch = function() {
-    if (aeroTimerRunning) {
-        clearInterval(aeroTimerInterval);
-        aeroTimerRunning = false;
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    if (st.running) {
+        clearInterval(st.intervalId);
+        st.running = false;
     }
-    aeroElapsedMs = 0;
+    st.elapsedMs = 0;
+    st.cdRemainingMs = st.cdTotalSec * 1000;
+    st.runElapsedMs = 0;
+    st.walkElapsedMs = 0;
+    st.concludedDurationStr = '';
+    st.concludedElapsedSec = 0;
     renderAtvFisicaInteractiveView();
     if (typeof updateMiniTimerPill === 'function') updateMiniTimerPill();
+};
+
+/* Botão "Concluir" do Timer Aeróbico:
+ * Finaliza a contagem do exercício atual e preenche AUTOMATICAMENTE o campo Duração (#atv-aero-minutes) */
+window.concludeAtvAerobicTimer = function(modOverride, fromCountdownZero = false) {
+    const mod = modOverride || aeroSelectedModality;
+    const st = getAeroModalityTimerState(mod);
+    const inp = getAeroModalityInputs(mod);
+    const isMixed = mod.toLowerCase().includes('misto');
+
+    if (st.running) {
+        clearInterval(st.intervalId);
+        const now = Date.now();
+        const delta = Math.max(0, now - st.lastStartTs);
+        if (st.timerType === 'stopwatch') {
+            st.elapsedMs += delta;
+        } else {
+            st.cdRemainingMs = Math.max(0, st.cdTargetEndTs - now);
+        }
+        if (isMixed) {
+            if (st.mixedPhase === 'walk') st.walkElapsedMs += delta;
+            else st.runElapsedMs += delta;
+        }
+        st.running = false;
+    }
+
+    let countedMs = 0;
+    if (st.timerType === 'countdown') {
+        if (fromCountdownZero || st.cdRemainingMs <= 0) {
+            countedMs = st.cdTotalSec * 1000;
+        } else {
+            const elapsedInCd = (st.cdTotalSec * 1000) - st.cdRemainingMs;
+            countedMs = elapsedInCd > 0 ? elapsedInCd : (st.cdTotalSec * 1000);
+        }
+    } else {
+        countedMs = st.elapsedMs;
+    }
+
+    if (countedMs <= 0) {
+        alert('Inicie o timer antes de clicar em Concluir para enviar o tempo automaticamente ao campo de Duração.');
+        return;
+    }
+
+    const totalSec = Math.max(1, Math.round(countedMs / 1000));
+    const formattedDuration = formatAeroConcludedDurationString(totalSec);
+
+    // Preenche automaticamente o estado e o campo Duração do exercício atual
+    inp.manualMin = formattedDuration;
+    st.concludedDurationStr = formattedDuration;
+    st.concludedElapsedSec = totalSec;
+
+    // Se for Misto e houve medição nas duas fases (Corrida + Caminhada), calcula a proporção real alpha automaticamente
+    const totalPhaseMs = st.runElapsedMs + st.walkElapsedMs;
+    if (isMixed && totalPhaseMs >= 2000 && st.runElapsedMs > 0 && st.walkElapsedMs > 0) {
+        const measuredRatio = Math.min(0.95, Math.max(0.05, parseFloat((st.runElapsedMs / totalPhaseMs).toFixed(2))));
+        inp.mixRunRatio = String(measuredRatio);
+    }
+
+    // Reinicia os contadores ativos após concluir para deixar pronto
+    st.elapsedMs = 0;
+    st.cdRemainingMs = st.cdTotalSec * 1000;
+    st.runElapsedMs = 0;
+    st.walkElapsedMs = 0;
+
+    saveAtvUiState();
+    renderAtvFisicaInteractiveView();
+    if (typeof updateMiniTimerPill === 'function') updateMiniTimerPill();
+
+    // Destaca visualmente o campo de Duração preenchido automaticamente
+    setTimeout(() => {
+        const minInput = document.getElementById('atv-aero-minutes');
+        if (minInput) {
+            minInput.value = formattedDuration;
+            minInput.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+            setTimeout(() => {
+                minInput.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+            }, 1800);
+        }
+        updateAtvAerobicDistancePreview();
+    }, 30);
 };
 
 /* Registra sessão aeróbica vinda do Timer e consolida na mesma linha do histórico do card de Sistema Cardiovascular */
 window.recordAerobicSessionFromTimer = function({ modality, durationMin, durationRawStr, elapsedSeconds, speedKmh, walkSpeedKmh, runRatio, notes, dateIso }) {
     const targetDate = dateIso || selectedAtvDate || getLocalISODate();
     const durObj = parseCardioDurationInterval(durationRawStr || `${durationMin || 20} min`, durationMin || 20);
-    const cleanMin = Math.max(1, Math.round(durObj.avgMin || parseFloat(durationMin) || 20));
+    const cleanMin = Math.max(0.1, parseFloat((durObj.avgMin || parseFloat(durationMin) || 20).toFixed(2)));
     const modName = modality || 'Corrida';
     const isMixed = modName.toLowerCase().includes('misto');
 
@@ -1296,9 +1633,15 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, duratio
         ? calcMixedCardioEffectiveSpeed(rawRunSpeed, rawWalkSpeed, cleanRatio)
         : rawRunSpeed;
 
-    const timerDurationStr = durObj.isInterval
-        ? `${durObj.minMin}-${durObj.maxMin} min`
-        : formatTimerCountedDuration(cleanMin, elapsedSeconds);
+    let timerDurationStr = '';
+    if (durationRawStr && String(durationRawStr).trim()) {
+        const rawTrim = String(durationRawStr).trim();
+        timerDurationStr = /min/i.test(rawTrim) ? rawTrim : `${rawTrim} min`;
+    } else if (durObj.isInterval) {
+        timerDurationStr = `${durObj.minMin}-${durObj.maxMin} min`;
+    } else {
+        timerDurationStr = formatTimerCountedDuration(cleanMin, elapsedSeconds);
+    }
 
     const workout = WORKOUT_PLAN.find(w => w.planId === selectedWorkoutPlanId) || WORKOUT_PLAN[0];
     const was100Before = workout ? getWorkoutDayCompletionStatus(workout, targetDate).is100Percent : false;
@@ -1404,33 +1747,35 @@ window.recordAerobicSessionFromTimer = function({ modality, durationMin, duratio
 
 window.submitAtvAerobicSession = function(event) {
     if (event) event.preventDefault();
-    if (aeroTimerRunning) {
-        clearInterval(aeroTimerInterval);
-        aeroElapsedMs += (Date.now() - aeroLastStartTs);
-        aeroTimerRunning = false;
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    const inp = getAeroModalityInputs(aeroSelectedModality);
+
+    // Se o timer ainda estava rodando e o campo Duração estiver vazio, conclui o timer primeiro para preencher a duração
+    const currentMinFieldVal = (document.getElementById('atv-aero-minutes')?.value || '').trim();
+    if (!currentMinFieldVal && (st.running || st.elapsedMs > 0 || (st.timerType === 'countdown' && st.cdRemainingMs < st.cdTotalSec * 1000))) {
+        window.concludeAtvAerobicTimer(aeroSelectedModality, false);
     }
 
-    const speedVal = getWeightNumericValue(document.getElementById('atv-aero-speed')?.value || '');
-    const walkSpeedVal = getWeightNumericValue(document.getElementById('atv-aero-walk-speed')?.value || '');
-    const mixRatioVal = parseFloat(document.getElementById('atv-aero-mix-ratio')?.value || '0.60') || 0.60;
-    const manualRaw = (document.getElementById('atv-aero-minutes')?.value || '').trim();
+    const speedVal = getWeightNumericValue(document.getElementById('atv-aero-speed')?.value || inp.speedKmh || '');
+    const walkSpeedVal = getWeightNumericValue(document.getElementById('atv-aero-walk-speed')?.value || inp.walkSpeedKmh || '');
+    const mixRatioVal = parseFloat(document.getElementById('atv-aero-mix-ratio')?.value || inp.mixRunRatio || '0.60') || 0.60;
+    const manualRaw = (document.getElementById('atv-aero-minutes')?.value || inp.manualMin || '').trim();
     const durObj = parseCardioDurationInterval(manualRaw, 0);
-    const elapsedSeconds = Math.floor(aeroElapsedMs / 1000);
-    const elapsedMin = elapsedSeconds >= 30 ? (elapsedSeconds / 60) : (manualRaw ? durObj.avgMin : 0);
+    const hasManualDuration = manualRaw.length > 0 && durObj.avgMin > 0;
 
-    if (elapsedMin <= 0 && speedVal <= 0) {
-        alert('Inicie o cronômetro ou informe a duração (min) / velocidade (km/h) para registrar o treino aeróbico.');
+    if (!hasManualDuration && speedVal <= 0) {
+        alert('Conclua o timer para enviar a duração automaticamente ou informe a Duração (min) e Velocidade (km/h).');
         return;
     }
 
-    const finalMin = elapsedMin > 0 ? elapsedMin : 20;
+    const finalMin = hasManualDuration ? durObj.avgMin : 20;
     const notesVal = document.getElementById('atv-aero-notes')?.value.trim() || '';
 
     window.recordAerobicSessionFromTimer({
         modality: aeroSelectedModality,
         durationMin: finalMin,
-        durationRawStr: elapsedSeconds >= 30 ? '' : manualRaw,
-        elapsedSeconds: elapsedSeconds >= 30 ? elapsedSeconds : (durObj.isInterval ? 0 : Math.round(finalMin * 60)),
+        durationRawStr: manualRaw,
+        elapsedSeconds: st.concludedElapsedSec > 0 ? st.concludedElapsedSec : (durObj.isInterval ? 0 : Math.round(finalMin * 60)),
         speedKmh: speedVal,
         walkSpeedKmh: walkSpeedVal,
         runRatio: mixRatioVal,
@@ -1438,8 +1783,15 @@ window.submitAtvAerobicSession = function(event) {
         dateIso: selectedAtvDate
     });
 
-    aeroElapsedMs = 0;
-    atvUiState.aerobicInputs = { speedKmh: '', walkSpeedKmh: '', mixRunRatio: '0.60', manualMin: '', notes: '' };
+    st.concludedDurationStr = '';
+    st.concludedElapsedSec = 0;
+    atvUiState.aerobicInputsByModality[aeroSelectedModality] = {
+        speedKmh: '',
+        walkSpeedKmh: '',
+        mixRunRatio: '0.60',
+        manualMin: '',
+        notes: ''
+    };
     saveAtvUiState();
     renderAtvFisicaInteractiveView();
 };
@@ -2017,27 +2369,49 @@ function buildAtvAerobicPanelHTML() {
 
     const modButtonsHTML = modalities.map(m => {
         const active = aeroSelectedModality === m.id;
+        const mSt = getAeroModalityTimerState(m.id);
+        const hasPausedTime = !mSt.running && (
+            (mSt.timerType === 'stopwatch' && mSt.elapsedMs > 0) ||
+            (mSt.timerType === 'countdown' && mSt.cdRemainingMs < mSt.cdTotalSec * 1000 && mSt.cdRemainingMs > 0)
+        );
+        const statusBadge = mSt.running
+            ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-emerald-500 text-white">● Ativo</span>`
+            : (hasPausedTime
+                ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-amber-500/20 text-amber-500 border border-amber-400/40">⏸ Pausado</span>`
+                : '');
         const cls = active
-            ? "p-3.5 rounded-2xl bg-black text-white shadow-sm border-2 border-black text-left transition"
-            : "p-3.5 rounded-2xl bg-zinc-50 hover:bg-zinc-100 text-zinc-800 border border-zinc-200 text-left transition";
+            ? "p-3.5 rounded-2xl bg-black text-white shadow-sm border-2 border-black text-left transition relative"
+            : "p-3.5 rounded-2xl bg-zinc-50 hover:bg-zinc-100 text-zinc-800 border border-zinc-200 text-left transition relative";
         return `
             <button type="button" onclick="selectAtvAerobicModality('${m.id}')" class="${cls}">
-                <div class="text-xl mb-1">${m.icon}</div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xl">${m.icon}</span>
+                    ${statusBadge}
+                </div>
                 <div class="text-xs font-bold leading-snug">${m.id}</div>
                 <div class="text-[10px] opacity-75 font-mono mt-0.5">${m.sub}</div>
             </button>
         `;
     }).join('');
 
-    const ai = atvUiState.aerobicInputs || {};
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    const ai = getAeroModalityInputs(aeroSelectedModality);
     const isMixed = aeroSelectedModality.toLowerCase().includes('misto');
+    const isCountdown = st.timerType === 'countdown';
     const curMixRatio = String(ai.mixRunRatio || '0.60');
+
+    const displayMs = isCountdown ? st.cdRemainingMs : st.elapsedMs;
     const timeFormatted = (typeof formatHMS === 'function')
-        ? formatHMS(Math.floor(aeroElapsedMs / 1000))
+        ? formatHMS(isCountdown && !st.running ? Math.ceil(displayMs / 1000) : Math.floor(displayMs / 1000))
         : '00:00:00';
     const msFormatted = (typeof formatCentiseconds === 'function')
-        ? formatCentiseconds(aeroElapsedMs)
+        ? formatCentiseconds(displayMs)
         : '.00';
+
+    const presetRatios = ['0.50', '0.60', '0.75', '0.40', '0.80'];
+    const customRatioOption = !presetRatios.includes(curMixRatio)
+        ? `<option value="${curMixRatio}" selected>⚡ Medido no Timer: ${Math.round(parseFloat(curMixRatio) * 100)}% Corrida / ${100 - Math.round(parseFloat(curMixRatio) * 100)}% Caminhada</option>`
+        : '';
 
     const mixedFieldsHTML = isMixed ? `
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-2xl border border-emerald-200/80">
@@ -2052,6 +2426,7 @@ function buildAtvAerobicPanelHTML() {
             <div class="sm:col-span-2">
                 <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Proporção do Intervalo (Corrida / Caminhada • Fator η = 0,96)</label>
                 <select id="atv-aero-mix-ratio" onchange="onAtvAerobicInputChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900">
+                    ${customRatioOption}
                     <option value="0.50" ${curMixRatio === '0.50' ? 'selected' : ''}>50% Corrida / 50% Caminhada (Ex: 2 min : 2 min)</option>
                     <option value="0.60" ${curMixRatio === '0.60' ? 'selected' : ''}>60% Corrida / 40% Caminhada (Ex: 3 min : 2 min)</option>
                     <option value="0.75" ${curMixRatio === '0.75' ? 'selected' : ''}>75% Corrida / 25% Caminhada (Ex: 3 min : 1 min)</option>
@@ -2062,79 +2437,148 @@ function buildAtvAerobicPanelHTML() {
         </div>
         <div>
             <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Duração ou Intervalo de Tempo (min)</label>
-            <input type="text" id="atv-aero-minutes" oninput="onAtvAerobicInputChange()" value="${(ai.manualMin || '').replace(/"/g, '&quot;')}" placeholder="Auto pelo cronômetro ou Ex: 25 ou 20-30" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-zinc-900 text-center">
+            <input type="text" id="atv-aero-minutes" oninput="onAtvAerobicInputChange()" value="${(ai.manualMin || '').replace(/"/g, '&quot;')}" placeholder="Clique em '✓ Concluir' no timer ou digite (Ex: 25 ou 20-30)" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-zinc-900 text-center transition">
         </div>
     ` : `
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
                 <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Velocidade Média (km/h)</label>
                 <input type="text" id="atv-aero-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvAerobicInputChange()" value="${(ai.speedKmh || '').replace(/"/g, '&quot;')}" placeholder="Ex: 9,50" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center">
             </div>
             <div>
                 <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Duração / Intervalo (min)</label>
-                <input type="text" id="atv-aero-minutes" oninput="onAtvAerobicInputChange()" value="${(ai.manualMin || '').replace(/"/g, '&quot;')}" placeholder="Auto ou Ex: 15-20" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-zinc-900 text-center">
+                <input type="text" id="atv-aero-minutes" oninput="onAtvAerobicInputChange()" value="${(ai.manualMin || '').replace(/"/g, '&quot;')}" placeholder="Conclua o timer ou Ex: 15-20" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-zinc-900 text-center transition">
             </div>
         </div>
     `;
+
+    // Seletor de Fase (Corrida <-> Caminhada) exclusivo para o Timer do Misto
+    const runTimeStr = (typeof formatHMS === 'function') ? formatHMS(Math.floor(st.runElapsedMs / 1000)).slice(3) : '00:00';
+    const walkTimeStr = (typeof formatHMS === 'function') ? formatHMS(Math.floor(st.walkElapsedMs / 1000)).slice(3) : '00:00';
+    const mixedTimerPhaseBarHTML = isMixed ? `
+        <div class="w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl p-2.5 flex flex-col gap-2">
+            <div class="flex items-center justify-between text-[10px] font-mono text-zinc-400 px-1">
+                <span>RITMO ATUAL NO TIMER MISTO:</span>
+                <span>🏃 <b id="atv-aero-mixed-run-time" class="text-emerald-400">${runTimeStr}</b> • 🚶 <b id="atv-aero-mixed-walk-time" class="text-indigo-400">${walkTimeStr}</b></span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="toggleAtvAeroMixedPhase('run')" class="py-1.5 px-3 rounded-xl text-xs font-bold transition ${st.mixedPhase === 'run' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-zinc-800 text-zinc-400 hover:text-white'}">
+                    🏃 Correndo ${st.mixedPhase === 'run' ? '●' : ''}
+                </button>
+                <button type="button" onclick="toggleAtvAeroMixedPhase('walk')" class="py-1.5 px-3 rounded-xl text-xs font-bold transition ${st.mixedPhase === 'walk' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-zinc-800 text-zinc-400 hover:text-white'}">
+                    🚶 Caminhando ${st.mixedPhase === 'walk' ? '●' : ''}
+                </button>
+            </div>
+        </div>
+    ` : '';
+
+    // Atalhos de tempo para o modo Regressivo
+    const countdownPresetsHTML = isCountdown ? `
+        <div class="flex flex-wrap items-center justify-center gap-1.5 w-full">
+            ${[10, 15, 20, 30, 45, 60].map(m => {
+                const isSel = Math.round(st.cdTotalSec / 60) === m;
+                return `<button type="button" onclick="setAtvAerobicCountdownPreset(${m})" class="px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold transition ${isSel ? 'bg-emerald-500 text-black' : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'}">${m} min</button>`;
+            }).join('')}
+        </div>
+    ` : '';
+
+    const hasAnyProgress = st.running ||
+        (st.timerType === 'stopwatch' && st.elapsedMs > 0) ||
+        (st.timerType === 'countdown' && st.cdRemainingMs < st.cdTotalSec * 1000);
 
     return `
         <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 pb-4">
                 <div>
-                    <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">TREINO AERÓBICO &amp; CARDIO</span>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-600 font-bold">TREINO AERÓBICO &amp; CARDIO (TIMERS INDEPENDENTES)</span>
                     <h3 class="text-lg font-bold text-zinc-900">Selecione a Modalidade e Contabilize o Tempo</h3>
-                    <p class="text-xs text-zinc-500 mt-0.5">Ao registrar, o tempo do cronômetro, o Pace e o volume em km são consolidados na mesma linha do card de Sistema Cardiovascular.</p>
+                    <p class="text-xs text-zinc-500 mt-0.5">Cada exercício possui seu próprio <b>Cronômetro</b> e <b>Regressivo</b> independente. Clique em <b>✓ Concluir</b> no timer para enviar o tempo automaticamente ao campo de Duração.</p>
                 </div>
                 <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-mono font-semibold">
                     Modalidade: ${aeroSelectedModality}
                 </span>
             </div>
 
-            <!-- 1. Escolha da Modalidade Aeróbica (incluindo Misto: Caminhada + Corrida) -->
+            <!-- 1. Escolha da Modalidade Aeróbica (cada uma com seu próprio timer independente) -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 ${modButtonsHTML}
             </div>
 
-            <!-- 2. Cronômetro Aeróbico Integrado + Campos de Velocidade (km/h), Pace e Duração -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
-                <div class="bg-zinc-950 text-white rounded-3xl p-6 flex flex-col items-center justify-between space-y-5 border border-zinc-800 shadow-lg">
-                    <div class="w-full flex items-center justify-between">
-                        <span class="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-bold">⏱️ CRONÔMETRO • ${aeroSelectedModality.toUpperCase()}</span>
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono ${aeroTimerRunning ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'}">
-                            ${aeroTimerRunning ? 'Contando...' : (aeroElapsedMs > 0 ? 'Pausado' : 'Pronto')}
+            <!-- 2. Timer Independente (Cronômetro | Regressivo) + Campos de Velocidade (km/h), Pace e Duração -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                <div class="bg-zinc-950 text-white rounded-3xl p-6 flex flex-col items-center justify-between space-y-4 border border-zinc-800 shadow-lg">
+                    <!-- Cabeçalho + Seletor Cronômetro vs Regressivo -->
+                    <div class="w-full flex flex-col sm:flex-row items-center justify-between gap-2">
+                        <div class="inline-flex bg-zinc-900 p-1 rounded-2xl border border-zinc-800 w-full sm:w-auto">
+                            <button type="button" onclick="setAtvAerobicTimerType('stopwatch')" class="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold transition ${!isCountdown ? 'bg-emerald-500 text-black shadow-xs' : 'text-zinc-400 hover:text-white'}">
+                                ⏱️ Cronômetro
+                            </button>
+                            <button type="button" onclick="setAtvAerobicTimerType('countdown')" class="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold transition ${isCountdown ? 'bg-emerald-500 text-black shadow-xs' : 'text-zinc-400 hover:text-white'}">
+                                ⏳ Regressivo
+                            </button>
+                        </div>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono ${st.running ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'}">
+                            ${st.running ? 'Contando...' : (hasAnyProgress ? 'Pausado' : `Pronto • ${aeroSelectedModality}`)}
                         </span>
                     </div>
 
-                    <div class="py-3 flex items-baseline justify-center select-none">
-                        <span id="atv-aero-timer-display" class="text-5xl sm:text-6xl font-mono font-extrabold tracking-tight">${timeFormatted}</span>
-                        <span id="atv-aero-timer-ms" class="text-xl sm:text-2xl font-mono font-bold text-emerald-400 ml-1">${msFormatted}</span>
+                    <!-- Visor do Timer (editável direto no modo Regressivo quando pausado) -->
+                    <div class="py-2 flex flex-col items-center justify-center w-full">
+                        <div class="flex items-baseline justify-center select-none">
+                            ${isCountdown && !st.running ? `
+                                <input id="atv-aero-timer-display" type="text" value="${timeFormatted}"
+                                    onchange="onAtvAerobicCountdownDirectInput(this)"
+                                    onblur="onAtvAerobicCountdownDirectInput(this)"
+                                    title="Clique para digitar o tempo regressivo (HH:MM:SS ou MM:SS)"
+                                    class="w-56 sm:w-64 bg-transparent text-center text-4xl sm:text-5xl font-mono font-extrabold tracking-tight text-white border-b border-dashed border-zinc-700 focus:border-emerald-400 focus:outline-none">
+                            ` : `
+                                <span id="atv-aero-timer-display" class="text-4xl sm:text-5xl font-mono font-extrabold tracking-tight">${timeFormatted}</span>
+                                <span id="atv-aero-timer-ms" class="text-lg sm:text-xl font-mono font-bold text-emerald-400 ml-1">${msFormatted}</span>
+                            `}
+                        </div>
+                        ${isCountdown && !st.running ? `<span class="text-[10px] font-mono text-zinc-400 mt-1">Toque nos números para digitar ou escolha abaixo</span>` : ''}
                     </div>
 
-                    <div class="flex items-center justify-center gap-3 w-full">
-                        <button type="button" onclick="resetAtvAerobicStopwatch()" class="flex-1 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition">
+                    ${countdownPresetsHTML}
+                    ${mixedTimerPhaseBarHTML}
+
+                    ${st.concludedDurationStr ? `
+                        <div class="w-full px-3 py-2 rounded-xl bg-emerald-950/80 border border-emerald-700/80 text-emerald-300 text-[11px] font-mono text-center">
+                            ✓ Tempo concluído (<b>${st.concludedDurationStr}</b>) preenchido automaticamente em Duração!
+                        </div>
+                    ` : ''}
+
+                    <!-- Botões do Timer: Zerar | Começar/Pausar | ✓ Concluir (envia para o campo Duração) -->
+                    <div class="grid grid-cols-3 gap-2.5 w-full pt-1">
+                        <button type="button" onclick="resetAtvAerobicStopwatch()" class="py-3 px-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition">
                             Zerar
                         </button>
-                        <button type="button" onclick="toggleAtvAerobicStopwatch()" class="flex-1 py-3 rounded-2xl ${aeroTimerRunning ? 'bg-rose-600 hover:bg-rose-500' : 'bg-emerald-600 hover:bg-emerald-500'} text-white text-xs font-bold transition shadow-md">
-                            ${aeroTimerRunning ? '⏸ Pausar' : (aeroElapsedMs > 0 ? '▶ Continuar' : '▶ Começar Contagem')}
+                        <button type="button" onclick="toggleAtvAerobicStopwatch()" class="py-3 px-2 rounded-2xl ${st.running ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'} text-white text-xs font-bold transition shadow-md">
+                            ${st.running ? '⏸ Pausar' : (hasAnyProgress ? '▶ Continuar' : '▶ Começar')}
+                        </button>
+                        <button type="button" onclick="concludeAtvAerobicTimer()" class="py-3 px-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-md" title="Finaliza a contagem e preenche automaticamente o campo Duração">
+                            ✓ Concluir
                         </button>
                     </div>
                 </div>
 
-                <form onsubmit="submitAtvAerobicSession(event)" class="bg-zinc-50 border border-zinc-200 rounded-3xl p-5 space-y-4">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h4 class="text-sm font-bold text-zinc-900">Dados da Sessão (${aeroSelectedModality})</h4>
-                        <span id="atv-aero-distance-preview" class="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Informe km/h + tempo</span>
-                    </div>
+                <form onsubmit="submitAtvAerobicSession(event)" class="bg-zinc-50 border border-zinc-200 rounded-3xl p-5 flex flex-col justify-between space-y-4">
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h4 class="text-sm font-bold text-zinc-900">Dados da Sessão (${aeroSelectedModality})</h4>
+                            <span id="atv-aero-distance-preview" class="text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Informe km/h + tempo</span>
+                        </div>
 
-                    ${mixedFieldsHTML}
+                        ${mixedFieldsHTML}
 
-                    <div>
-                        <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Observações (Inclinação, FC, Zona)</label>
-                        <input type="text" id="atv-aero-notes" oninput="onAtvAerobicInputChange()" value="${(ai.notes || '').replace(/"/g, '&quot;')}" placeholder="Ex: Inclinação 4%, FC 135 bpm" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-800">
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Observações (Inclinação, FC, Zona)</label>
+                            <input type="text" id="atv-aero-notes" oninput="onAtvAerobicInputChange()" value="${(ai.notes || '').replace(/"/g, '&quot;')}" placeholder="Ex: Inclinação 4%, FC 135 bpm" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-800">
+                        </div>
                     </div>
 
                     <button type="submit" class="w-full py-3 bg-black hover:bg-zinc-800 text-white rounded-2xl text-xs font-bold transition shadow-sm">
-                        ✓ Concluir e Registrar ${aeroSelectedModality} no Dia
+                        💾 Registrar ${aeroSelectedModality} no Histórico
                     </button>
                 </form>
             </div>
