@@ -1486,23 +1486,24 @@ window.updateSobreSleepSim = function() {
             : null;
     }
 
-    // β_W é o coeficiente angular de regressão: Cov(TIB, W) / Var(W)
+    // β_W é o coeficiente angular da regressão W ~ TIB: Cov(TIB, W) / Var(TIB)
+    // β_TST = 1 - β_W (fração que vira sono efetivo)
     // ρ_RVS é a razão de variabilidade do sono: sqrt(Var(TST) / Var(TIB))
-    let betaWVal = '1.08';
-    let rvsVal = '0.78';
+    let betaWVal = '0.08';
+    let rvsVal = '0.92';
     if (liveRvsData && liveRvsData.valid && liveRvsData.betaW !== null) {
         betaWVal = liveRvsData.betaW.toFixed(2);
         rvsVal = liveRvsData.rvs.toFixed(2);
     } else {
         if (eff >= 85) {
-            betaWVal = '1.04';
-            rvsVal = '0.78';
+            betaWVal = '0.08';
+            rvsVal = '0.92';
         } else if (eff < 75) {
-            betaWVal = '1.68';
-            rvsVal = '1.42';
+            betaWVal = '0.72';
+            rvsVal = '0.45';
         } else {
-            betaWVal = '1.18';
-            rvsVal = '0.94';
+            betaWVal = '0.35';
+            rvsVal = '0.75';
         }
     }
 
@@ -1523,11 +1524,11 @@ window.updateSobreSleepSim = function() {
 
     if (elDiag) {
         if (eff >= 85) {
-            elDiag.innerHTML = `<strong class="text-emerald-700">🌟 Eficiência de Sono Excelente (${eff.toFixed(1)}%)!</strong> Acima do limiar clínico padrão (≥ 85%). O tempo de vigília no leito foi de apenas <strong>${Math.round(wMin)} min</strong>. Em modelos longitudinais, a estabilidade circadiana é preservada quando o coeficiente angular de regressão <span class="font-mono font-bold text-purple-700">β<sub>W</sub></span> se mantém próximo de 1, evitando estender excessivamente o leito para compensar vigília.`;
+            elDiag.innerHTML = `<strong class="text-emerald-700">🌟 Eficiência de Sono Excelente (${eff.toFixed(1)}%)!</strong> Acima do limiar clínico padrão (≥ 85%). O tempo de vigília no leito foi de apenas <strong>${Math.round(wMin)} min</strong>. Em modelos longitudinais, uma taxa de vigília reduzida (<span class="font-mono font-bold text-purple-700">β<sub>W</sub> ≈ 0</span>) indica que praticamente toda extensão de leito se converte em sono (<span class="font-mono font-bold text-indigo-700">β<sub>TST</sub> ≈ 1</span>).`;
         } else if (eff < 80) {
-            elDiag.innerHTML = `<strong class="text-amber-700">⚠️ Eficiência Reduzida (${eff.toFixed(1)}%).</strong> Você está passando <strong>${(wMin / 60).toFixed(1)}h acordado na cama</strong> (${Math.round(wMin)} min em vigília). Em TCC-I (Terapia Cognitivo-Comportamental para Insônia), a conduta indicada é a <em>restrição de tempo de leito</em> para consolidar o sono e manter o coeficiente de regressão <span class="font-mono font-bold text-purple-700">β<sub>W</sub> = Cov(TIB,W)/Var(W)</span> sob controle.`;
+            elDiag.innerHTML = `<strong class="text-amber-700">⚠️ Eficiência Reduzida (${eff.toFixed(1)}%).</strong> Você está passando <strong>${(wMin / 60).toFixed(1)}h acordado na cama</strong> (${Math.round(wMin)} min em vigília). Quando a taxa de vigília é elevada (<span class="font-mono font-bold text-purple-700">β<sub>W</sub> = Cov(TIB,W)/Var(TIB) &gt; 0,5</span>), estender o leito apenas prolonga a insônia. Nesse perfil, a conduta clínica indicada é a <em>Restrição do Tempo na Cama (RCT)</em>.`;
         } else {
-            elDiag.innerHTML = `<strong class="text-indigo-700">✓ Padrão Estável (${eff.toFixed(1)}%).</strong> Eficiência dentro da faixa de normalidade clínica (${eff.toFixed(1)}%), com vigília e transições de sono controladas.`;
+            elDiag.innerHTML = `<strong class="text-indigo-700">✓ Padrão Estável (${eff.toFixed(1)}%).</strong> Eficiência dentro da faixa de normalidade clínica (${eff.toFixed(1)}%), com boa proporção de conversão do leito em sono reparador.`;
         }
     }
 };

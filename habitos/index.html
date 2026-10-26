@@ -777,11 +777,12 @@
                         <div class="border-l-2 border-purple-500/70 pl-4 py-1 space-y-1">
                             <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-700">Modelo RVS &amp; Coeficiente β_W</span>
                             <div class="text-xs font-mono text-zinc-700 space-y-0.5 pt-0.5">
-                                <div>• <strong>β_W</strong> = Cov(TIB, W) / Var(W)</div>
+                                <div>• <strong>β_W</strong> = Cov(TIB, W) / Var(TIB)</div>
+                                <div>• <strong>β_TST</strong> = 1 − β_W = Cov(TIB, TST) / Var(TIB)</div>
                                 <div>• <strong>ρ_RVS</strong> = √( Var(TST) / Var(TIB) )</div>
                             </div>
                             <p class="text-[11px] text-zinc-500 leading-relaxed pt-1">
-                                <strong>β_W é o coeficiente angular de regressão</strong> entre tempo de cama e vigília: indica quanto o tempo de leito varia a cada oscilação no tempo acordado.
+                                <strong>β_W é o coeficiente angular da regressão da Vigília sobre o Tempo de Cama (W ~ TIB)</strong>: indica a fração marginal de vigília. Se β_W ≈ 0, todo aumento de cama vira sono (β_TST = 1); se β_W for alto, estender a cama gera vigília (alvo clássico da RCT).
                             </p>
                         </div>
 
@@ -871,13 +872,13 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="px-4 py-2 bg-white rounded-2xl border border-zinc-200/70 shadow-2xs text-center">
-                                <span class="text-[10px] font-mono text-zinc-400 block uppercase">β_W (Regressão)</span>
-                                <span id="sim-sleep-res-beta" class="text-lg font-mono font-bold text-purple-700">1.08</span>
-                                <span class="text-[9px] font-mono text-zinc-400 block">Cov(TIB,W)/Var(W)</span>
+                                <span class="text-[10px] font-mono text-zinc-400 block uppercase">β_W (Vigília ~ TIB)</span>
+                                <span id="sim-sleep-res-beta" class="text-lg font-mono font-bold text-purple-700">0.08</span>
+                                <span class="text-[9px] font-mono text-zinc-400 block">Cov(TIB,W)/Var(TIB)</span>
                             </div>
                             <div class="px-4 py-2 bg-white rounded-2xl border border-zinc-200/70 shadow-2xs text-center">
                                 <span class="text-[10px] font-mono text-zinc-400 block uppercase">ρ_RVS (Razão)</span>
-                                <span id="sim-sleep-res-rvs" class="text-lg font-mono font-bold text-indigo-700">0.78</span>
+                                <span id="sim-sleep-res-rvs" class="text-lg font-mono font-bold text-indigo-700">0.92</span>
                                 <span class="text-[9px] font-mono text-zinc-400 block">√(Var(TST)/Var(TIB))</span>
                             </div>
                         </div>

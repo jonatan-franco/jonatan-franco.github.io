@@ -2,7 +2,8 @@
  * Modelo:
  *   TST = TIB - W   onde   W = SOL + WASO + TASAFA = TIB - TST
  *   Var(TST) = Var(TIB) + Var(W) - 2*Cov(TIB, W)
- *   β_W = Cov(TIB, W) / Var(W) (coeficiente angular da regressão TIB ~ W)
+ *   β_W = Cov(TIB, W) / Var(TIB) (coeficiente angular da regressão W ~ TIB: taxa de vigília por expansão do leito)
+ *   β_TST = 1 - β_W = Cov(TIB, TST) / Var(TIB) (fração que vira sono efetivo)
  *   RVS² = Var(TST) / Var(TIB) = 1 + Var(W)/Var(TIB) - 2*β_W
  *   RVS (ρ) = sqrt(Var(TST) / Var(TIB))
  */
@@ -72,7 +73,7 @@ function calcSleepRVS(sleepArr, bedArr) {
         };
     }
 
-    const betaW = varW > 1e-9 ? (covTIBW / varW) : null;
+    const betaW = varTIB > 1e-9 ? (covTIBW / varTIB) : null;
     const betaTST = 1 - betaW;
     const rvs = varTIB > 1e-9 ? Math.sqrt(Math.max(0, varTST / varTIB)) : 0; const rvsSquared = rvs * rvs;
     // rvs = sqrt(varTST / varTIB)
