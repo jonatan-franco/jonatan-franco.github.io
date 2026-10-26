@@ -58,6 +58,7 @@
                 <button type="button" onclick="navigateTo('timer')" data-route="timer" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full" title="Timer"><i data-lucide="timer" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Timer</span></button>
                 <button type="button" onclick="navigateTo('metrics')" data-route="metrics" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full" title="Métricas"><i data-lucide="bar-chart-2" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Métricas</span></button>
                 <button type="button" onclick="navigateTo('calendar')" data-route="calendar" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full" title="Agenda"><i data-lucide="calendar" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Agenda</span></button>
+                <button type="button" onclick="navigateTo('sobre')" data-route="sobre" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition w-full" title="Sobre o HaQt"><i data-lucide="book-open" class="w-4 h-4 shrink-0"></i><span class="sidebar-label truncate">Sobre o HaQt</span></button>
             </nav>
         </div>
         <div class="p-4 border-t border-zinc-900 space-y-2 text-xs">
@@ -76,7 +77,8 @@
         <button type="button" onclick="navigateTo('sono')" data-mobile-route="sono" class="mobile-nav-item flex flex-col items-center py-1.5 px-2.5 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="moon" class="w-4 h-4 mb-0.5"></i><span>Sono</span></button>
         <button type="button" onclick="navigateTo('timer')" data-mobile-route="timer" class="mobile-nav-item flex flex-col items-center py-1.5 px-2.5 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="timer" class="w-4 h-4 mb-0.5"></i><span>Timer</span></button>
         <button type="button" onclick="navigateTo('metrics')" data-mobile-route="metrics" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="bar-chart-2" class="w-4 h-4 mb-0.5"></i><span>Métricas</span></button>
-        <button type="button" onclick="navigateTo('calendar')" data-mobile-route="calendar" class="mobile-nav-item flex flex-col items-center py-1.5 px-4 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span>Agenda</span></button>
+        <button type="button" onclick="navigateTo('calendar')" data-mobile-route="calendar" class="mobile-nav-item flex flex-col items-center py-1.5 px-2 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span>Agenda</span></button>
+        <button type="button" onclick="navigateTo('sobre')" data-mobile-route="sobre" class="mobile-nav-item flex flex-col items-center py-1.5 px-2 rounded-full text-[11px] font-medium text-zinc-400"><i data-lucide="book-open" class="w-4 h-4 mb-0.5"></i><span>Sobre</span></button>
     </nav>
 
     <main class="flex-1 min-w-0 p-5 pb-24 md:p-8 max-w-7xl mx-auto w-full space-y-8">
@@ -311,19 +313,19 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                             <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário de Deitar</label>
-                            <input type="text" id="sleep-reg-bed" inputmode="numeric" maxlength="5" placeholder="23:00" value="23:00" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                            <input type="text" id="sleep-reg-bed" inputmode="numeric" maxlength="5" placeholder="23:00" value="23:00" onfocus="this.select()" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário que Dormiu</label>
-                            <input type="text" id="sleep-reg-slept" inputmode="numeric" maxlength="5" placeholder="23:30" value="23:30" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                            <input type="text" id="sleep-reg-slept" inputmode="numeric" maxlength="5" placeholder="23:30" value="23:30" onfocus="this.select()" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário que Acordou</label>
-                            <input type="text" id="sleep-reg-wake" inputmode="numeric" maxlength="5" placeholder="07:00" value="07:00" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                            <input type="text" id="sleep-reg-wake" inputmode="numeric" maxlength="5" placeholder="07:00" value="07:00" onfocus="this.select()" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold uppercase text-zinc-500 mb-1">Horário que Levantou</label>
-                            <input type="text" id="sleep-reg-getup" inputmode="numeric" maxlength="5" placeholder="07:30" value="07:30" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                            <input type="text" id="sleep-reg-getup" inputmode="numeric" maxlength="5" placeholder="07:30" value="07:30" onfocus="this.select()" oninput="handleSleepTimeMask(this); updateInlineSleepPreview()" onblur="handleSleepTimeBlur(this); updateInlineSleepPreview()" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                         </div>
                     </div>
 
@@ -685,6 +687,514 @@
                 </div>
             </div>
         </section>
+        <!-- SEÇÃO: SOBRE O HAQT & GUIA DIDÁTICO INTERATIVO -->
+        <section id="view-sobre" class="hidden space-y-6">
+            <!-- Hero de Apresentação -->
+            <div class="bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-zinc-800 relative overflow-hidden">
+                <div class="relative z-10 max-w-3xl space-y-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold tracking-wider uppercase">LOCAL-FIRST • PRIVACIDADE TOTAL</span>
+                        <span class="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-mono font-semibold">SEM CADASTRO & SEM BACKEND</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">HaQt — Rastreamento Quantitativo de Hábitos & Performance</h2>
+                    <p class="text-sm sm:text-base text-zinc-300 leading-relaxed">
+                        O HaQt foi construído com base em princípios da <strong>Cronobiologia Humana</strong> e da <strong>Fisiologia do Exercício</strong>. Aqui cada número possui rigor matemático: calculamos volume real de treino, estimativa de 1RM com Epley, desvios circadianos, eficiência do sono e o efeito biomecânico na transição entre caminhada e corrida.
+                    </p>
+                    <div class="pt-2 flex flex-wrap gap-2 text-xs font-mono text-zinc-400">
+                        <span class="flex items-center gap-1.5 bg-zinc-800/80 px-3 py-1.5 rounded-xl border border-zinc-700/60">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Seus dados ficam 100% no seu navegador
+                        </span>
+                        <span class="flex items-center gap-1.5 bg-zinc-800/80 px-3 py-1.5 rounded-xl border border-zinc-700/60">
+                            <i data-lucide="cloud" class="w-4 h-4 text-indigo-400"></i> Sync opcional via GitHub Gist
+                        </span>
+                        <span class="flex items-center gap-1.5 bg-zinc-800/80 px-3 py-1.5 rounded-xl border border-zinc-700/60">
+                            <i data-lucide="smartphone" class="w-4 h-4 text-rose-400"></i> PWA e notificações no celular
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navegador de Abas Didáticas do Guia -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                <button type="button" onclick="setSobreTab('sono')" id="btn-sobre-tab-sono" class="px-4 py-2.5 rounded-2xl bg-black text-white text-xs font-bold transition shadow-xs shrink-0 flex items-center gap-2">
+                    <span>🌙</span><span>Sono & RVS</span>
+                </button>
+                <button type="button" onclick="setSobreTab('forca')" id="btn-sobre-tab-forca" class="px-4 py-2.5 rounded-2xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition shadow-xs shrink-0 flex items-center gap-2">
+                    <span>🏋️</span><span>Treino de Força & 1RM</span>
+                </button>
+                <button type="button" onclick="setSobreTab('cardio')" id="btn-sobre-tab-cardio" class="px-4 py-2.5 rounded-2xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition shadow-xs shrink-0 flex items-center gap-2">
+                    <span>🏃</span><span>Cardio & Treino Misto</span>
+                </button>
+                <button type="button" onclick="setSobreTab('timer')" id="btn-sobre-tab-timer" class="px-4 py-2.5 rounded-2xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition shadow-xs shrink-0 flex items-center gap-2">
+                    <span>⏱️</span><span>Timers & Segundo Plano</span>
+                </button>
+                <button type="button" onclick="setSobreTab('nuvem')" id="btn-sobre-tab-nuvem" class="px-4 py-2.5 rounded-2xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition shadow-xs shrink-0 flex items-center gap-2">
+                    <span>☁️</span><span>Agenda & Nuvem</span>
+                </button>
+                <button type="button" onclick="setSobreTab('tutorial')" id="btn-sobre-tab-tutorial" class="px-4 py-2.5 rounded-2xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition shadow-xs shrink-0 flex items-center gap-2">
+                    <span>🚀</span><span>Tutorial Passo a Passo</span>
+                </button>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- 1. PAINEL DE SONO & CRONOBIOLOGIA -->
+            <!-- ============================================================= -->
+            <div id="sobre-panel-sono" class="space-y-6">
+                <!-- Explicação Científica -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2 text-indigo-600 font-mono text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="moon" class="w-4 h-4"></i>
+                        <span>1. Arquitetura do Sono & Métricas Cronobiológicas</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-zinc-900">Como o HaQt analisa suas noites</h3>
+                    <p class="text-sm text-zinc-600 leading-relaxed">
+                        Ao contrário de rastreadores simplistas que apenas marcam "horas totais", o HaQt separa com precisão o tempo que você passou na cama do tempo em que esteve efetivamente dormindo. Isso permite diagnosticar problemas como <strong>alta latência para adormecer</strong> (insônia de conciliação) e <strong>despertar precoce</strong>.
+                    </p>
+
+                    <!-- Grade de Fórmulas de Sono -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                        <div class="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200/70 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-indigo-700">TIB, TST & Vigília (W)</span>
+                            <div class="text-xs text-zinc-700 space-y-1 font-mono">
+                                <div>• <strong>TIB</strong> (Time in Bed): Deitou → Levantou</div>
+                                <div>• <strong>TST</strong> (Total Sleep Time): Dormiu → Acordou</div>
+                                <div>• <strong>W</strong> (Wakefulness): TIB − TST</div>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 mt-1">W mede a quantidade de tempo que você passou acordado rolando na cama.</p>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-purple-50/60 border border-purple-200/70 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-purple-700">Fração de Vigília (β_W) & RVS (ρ)</span>
+                            <div class="text-xs text-zinc-700 space-y-1 font-mono">
+                                <div>• <strong>β_W</strong> = (W / TIB) × 100%</div>
+                                <div>• <strong>ρ_RVS</strong> = W / TST</div>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 mt-1">A Razão Vigília-Sono (RVS) indica quantos minutos de insônia você sofre para cada hora dormida. O ideal clínico é ρ &lt; 0,15.</p>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/70 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-emerald-700">Eficiência & ESM (Elasticidade)</span>
+                            <div class="text-xs text-zinc-700 space-y-1 font-mono">
+                                <div>• <strong>Eficiência</strong> = (TST / TIB) × 100%</div>
+                                <div>• <strong>ESM</strong>: Elasticidade Sono-Leito</div>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 mt-1">A ESM indica se estender o tempo na cama realmente aumenta suas horas de sono ou apenas eleva a fragmentação.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SIMULADOR INTERATIVO 1: LABORATÓRIO DE SONO -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-7 shadow-sm space-y-5">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-zinc-100 pb-3">
+                        <div>
+                            <div class="flex items-center gap-1.5 text-xs font-mono font-bold uppercase text-indigo-600">
+                                <i data-lucide="calculator" class="w-4 h-4"></i>
+                                <span>SIMULADOR INTERATIVO • EXPERIMENTE NA PRÁTICA</span>
+                            </div>
+                            <h4 class="text-base font-bold text-zinc-900 mt-0.5">Laboratório de Sono & Diagnóstico de Vigília</h4>
+                        </div>
+                        <!-- Presets didáticos rápidos -->
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-[10px] font-mono uppercase text-zinc-400">Exemplos:</span>
+                            <button type="button" onclick="setSobreSleepPreset('otimo')" class="px-2.5 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-[11px] font-medium text-zinc-800 transition">🌟 Ideal</button>
+                            <button type="button" onclick="setSobreSleepPreset('insonia')" class="px-2.5 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-[11px] font-medium text-zinc-800 transition">⚠️ Insônia</button>
+                            <button type="button" onclick="setSobreSleepPreset('precoce')" class="px-2.5 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-[11px] font-medium text-zinc-800 transition">⏰ Acordar Cedo</button>
+                        </div>
+                    </div>
+
+                    <!-- Controles do Simulador -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-zinc-50 p-3 rounded-2xl border border-zinc-200">
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">1. Horário de Deitar</label>
+                            <input type="time" id="sim-sleep-bed" value="23:00" onchange="updateSobreSleepSim()" class="w-full bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-zinc-900 text-center">
+                        </div>
+                        <div class="bg-zinc-50 p-3 rounded-2xl border border-zinc-200">
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">2. Horário que Dormiu</label>
+                            <input type="time" id="sim-sleep-slept" value="23:30" onchange="updateSobreSleepSim()" class="w-full bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-zinc-900 text-center">
+                        </div>
+                        <div class="bg-zinc-50 p-3 rounded-2xl border border-zinc-200">
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">3. Horário que Acordou</label>
+                            <input type="time" id="sim-sleep-wake" value="07:00" onchange="updateSobreSleepSim()" class="w-full bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-zinc-900 text-center">
+                        </div>
+                        <div class="bg-zinc-50 p-3 rounded-2xl border border-zinc-200">
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">4. Horário que Levantou</label>
+                            <input type="time" id="sim-sleep-getup" value="07:30" onchange="updateSobreSleepSim()" class="w-full bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-zinc-900 text-center">
+                        </div>
+                    </div>
+
+                    <!-- Resultados em Tempo Real -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
+                        <div class="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 text-center">
+                            <div class="text-[10px] font-mono uppercase text-indigo-700 font-bold">Tempo na Cama (TIB)</div>
+                            <div id="sim-sleep-res-tib" class="text-base font-mono font-bold text-indigo-950 mt-0.5">8.5h</div>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                            <div class="text-[10px] font-mono uppercase text-emerald-700 font-bold">Tempo Dormido (TST)</div>
+                            <div id="sim-sleep-res-tst" class="text-base font-mono font-bold text-emerald-950 mt-0.5">7.5h</div>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+                            <div class="text-[10px] font-mono uppercase text-rose-700 font-bold">Vigília na Cama (W)</div>
+                            <div id="sim-sleep-res-w" class="text-base font-mono font-bold text-rose-950 mt-0.5">1.0h</div>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-center">
+                            <div class="text-[10px] font-mono uppercase text-purple-700 font-bold">Eficiência</div>
+                            <div id="sim-sleep-res-eff" class="text-base font-mono font-bold text-purple-950 mt-0.5">88.2%</div>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+                            <div class="text-[10px] font-mono uppercase text-amber-800 font-bold">Fração Vigília (β_W)</div>
+                            <div id="sim-sleep-res-beta" class="text-base font-mono font-bold text-amber-950 mt-0.5">11.8%</div>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-sky-50 border border-sky-200 text-center">
+                            <div class="text-[10px] font-mono uppercase text-sky-800 font-bold">RVS (ρ_RVS)</div>
+                            <div id="sim-sleep-res-rvs" class="text-base font-mono font-bold text-sky-950 mt-0.5">0.133</div>
+                        </div>
+                    </div>
+
+                    <!-- Diagnóstico Clínico do Simulador -->
+                    <div id="sim-sleep-diagnostic" class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-start gap-3 text-xs leading-relaxed">
+                        <i data-lucide="info" class="w-5 h-5 text-indigo-600 shrink-0 mt-0.5"></i>
+                        <div id="sim-sleep-diagnostic-text" class="text-zinc-700">
+                            Excelente perfil de sono! Eficiência acima de 85% e razão de vigília controlada.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- 2. PAINEL DE TREINO DE FORÇA & 1RM -->
+            <!-- ============================================================= -->
+            <div id="sobre-panel-forca" class="hidden space-y-6">
+                <!-- Explicação da Periodização e Substituições -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2 text-rose-600 font-mono text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="dumbbell" class="w-4 h-4"></i>
+                        <span>2. Periodização Upper/Lower, 1RM de Epley & Volume de Sobrecarga</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-zinc-900">Como funciona o sistema de treino do HaQt</h3>
+                    <p class="text-sm text-zinc-600 leading-relaxed">
+                        O HaQt organiza seu treino em uma divisão eficiente <strong>Upper/Lower (Superiores e Inferiores)</strong>. Cada sessão possui cards para cada grupo muscular principal. Você pode alternar entre exercícios principais (⭐) e substitutos equivalentes (🔄) mantendo o acompanhamento de carga limpo e histórico preservado.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                        <div class="p-4 rounded-2xl bg-rose-50/60 border border-rose-200/70 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-rose-700">Fórmula de 1RM Estimado (Epley)</span>
+                            <div class="text-xs text-zinc-700 font-mono">
+                                <strong>1RM = Carga × (1 + Repetições / 30)</strong>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 mt-1">Permite estimar sua força máxima teórica (1 repetição com carga máxima) com segurança sem precisar realizar testes de fadiga até a falha com risco de lesão.</p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-zinc-700">Volume Total da Sessão</span>
+                            <div class="text-xs text-zinc-700 font-mono">
+                                <strong>Volume (kg) = Séries × Repetições × Carga</strong>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 mt-1">O volume mede a tonelagem total levantada no treino. É o principal determinante biológico para hipertrofia e sobrecarga progressiva ao longo das semanas.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SIMULADOR INTERATIVO 2: CALCULADORA DE 1RM & ZONAS DE CARGA -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-7 shadow-sm space-y-5">
+                    <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
+                        <div class="flex items-center gap-1.5 text-xs font-mono font-bold uppercase text-rose-600">
+                            <i data-lucide="calculator" class="w-4 h-4"></i>
+                            <span>SIMULADOR INTERATIVO • CALCULADORA DE 1RM & VOLUME</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold uppercase text-zinc-500">Carga Levantada (kg)</label>
+                                <span id="sim-force-load-val" class="text-xs font-mono font-bold text-rose-600">80 kg</span>
+                            </div>
+                            <input type="range" id="sim-force-load" min="10" max="250" step="2.5" value="80" oninput="updateSobreForceSim()" class="w-full accent-rose-600 cursor-pointer">
+                        </div>
+
+                        <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold uppercase text-zinc-500">Repetições Feitas (Reps)</label>
+                                <span id="sim-force-reps-val" class="text-xs font-mono font-bold text-indigo-600">8 reps</span>
+                            </div>
+                            <input type="range" id="sim-force-reps" min="1" max="15" step="1" value="8" oninput="updateSobreForceSim()" class="w-full accent-indigo-600 cursor-pointer">
+                        </div>
+
+                        <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold uppercase text-zinc-500">Séries Realizadas</label>
+                                <span id="sim-force-sets-val" class="text-xs font-mono font-bold text-emerald-600">4 séries</span>
+                            </div>
+                            <input type="range" id="sim-force-sets" min="1" max="8" step="1" value="4" oninput="updateSobreForceSim()" class="w-full accent-emerald-600 cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Métricas Estimadas de Força -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+                            <span class="text-[10px] font-mono uppercase text-rose-700 font-bold">1RM Estimado (Epley)</span>
+                            <div id="sim-force-res-1rm" class="text-2xl font-mono font-extrabold text-rose-950 mt-1">101.3 kg</div>
+                            <span class="text-[10px] font-mono text-zinc-500">Capacidade máxima teórica (1 rep)</span>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                            <span class="text-[10px] font-mono uppercase text-emerald-700 font-bold">Volume Total do Exercício</span>
+                            <div id="sim-force-res-vol" class="text-2xl font-mono font-extrabold text-emerald-950 mt-1">2.560 kg</div>
+                            <span class="text-[10px] font-mono text-zinc-500">4 séries × 8 reps × 80 kg</span>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-center">
+                            <span class="text-[10px] font-mono uppercase text-indigo-700 font-bold">Carga para Hipertrofia (10 reps)</span>
+                            <div id="sim-force-res-10rm" class="text-2xl font-mono font-extrabold text-indigo-950 mt-1">76.0 kg</div>
+                            <span class="text-[10px] font-mono text-zinc-500">~75% do seu 1RM</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- 3. PAINEL DE CARDIO & TREINO MISTO -->
+            <!-- ============================================================= -->
+            <div id="sobre-panel-cardio" class="hidden space-y-6">
+                <!-- Explicação do Fator Biomecânico de Transição (η = 0,96) -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2 text-emerald-600 font-mono text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="activity" class="w-4 h-4"></i>
+                        <span>3. Métricas de Aeróbico, Pace & Correção Biomecânica do Treino Misto</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-zinc-900">Por que o Treino Misto no HaQt possui correção física?</h3>
+                    <p class="text-sm text-zinc-600 leading-relaxed">
+                        Ao alternar entre caminhada e corrida na mesma sessão (treino misto ou intervalado), o corpo humano passa por uma <strong>mudança de regime biomecânico</strong>: na caminhada usamos o mecanismo de pêndulo invertido com conservação de energia gravitacional; na corrida usamos o modelo massa-mola (propulsão elástica dos tendões).
+                    </p>
+                    <p class="text-sm text-zinc-600 leading-relaxed">
+                        A cada transição há amortecimento, aceleração e quebra de cadência. Por isso, uma simples média linear superestima a distância real percorrida. O HaQt aplica o <strong>fator biomecânico de transição η = 0,96 (−4%)</strong>, garantindo que o volume em km e o pace reflitam o deslocamento real.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                        <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/70 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-emerald-700">Fórmula de Velocidade Efetiva do Misto</span>
+                            <div class="text-xs text-zinc-800 font-mono">
+                                <strong>v_efetiva = (p_run · v_run + (1 − p_run) · v_walk) × 0,96</strong>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 mt-1">Onde p_run é a fração de tempo correndo (ex: 60%) e v_run/v_walk são as velocidades parciais.</p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-sky-50/60 border border-sky-200/70 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-sky-700">Volume em KM e Pace (min/km)</span>
+                            <div class="text-xs text-zinc-800 font-mono">
+                                <strong>Distância = (v_efetiva × Duração) / 60</strong><br>
+                                <strong>Pace = 60 / v_efetiva</strong>
+                            </div>
+                            <p class="text-[11px] text-zinc-500 mt-1">O pace indica o tempo necessário para completar 1 quilômetro (ex: 6:00 min/km = 10,0 km/h).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SIMULADOR INTERATIVO 3: SIMULADOR DE CARDIO E TREINO MISTO -->
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-7 shadow-sm space-y-5">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-zinc-100 pb-3">
+                        <div class="flex items-center gap-1.5 text-xs font-mono font-bold uppercase text-emerald-600">
+                            <i data-lucide="calculator" class="w-4 h-4"></i>
+                            <span>SIMULADOR INTERATIVO • CARDIO & TREINO MISTO</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="btn-sobre-cardio-simple" onclick="setSobreCardioMode('simple')" class="px-3 py-1.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 text-xs font-semibold transition">Cardio Simples</button>
+                            <button type="button" id="btn-sobre-cardio-mixed" onclick="setSobreCardioMode('mixed')" class="px-3 py-1.5 rounded-xl bg-black text-white text-xs font-bold transition">Treino Misto (η = 0,96)</button>
+                        </div>
+                    </div>
+
+                    <!-- Controles de Velocidade e Tempo -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold uppercase text-zinc-500" id="sim-cardio-speed-label">Velocidade Corrida</label>
+                                <span id="sim-cardio-speed-val" class="text-xs font-mono font-bold text-rose-600">10.0 km/h</span>
+                            </div>
+                            <input type="range" id="sim-cardio-speed" min="4.0" max="18.0" step="0.5" value="10.0" oninput="updateSobreCardioSim()" class="w-full accent-rose-600 cursor-pointer">
+                        </div>
+
+                        <div id="sim-cardio-walk-group" class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold uppercase text-zinc-500">Velocidade Caminhada</label>
+                                <span id="sim-cardio-walk-val" class="text-xs font-mono font-bold text-indigo-600">5.5 km/h</span>
+                            </div>
+                            <input type="range" id="sim-cardio-walk" min="3.0" max="7.5" step="0.5" value="5.5" oninput="updateSobreCardioSim()" class="w-full accent-indigo-600 cursor-pointer">
+                        </div>
+
+                        <div id="sim-cardio-ratio-group" class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold uppercase text-zinc-500">Proporção Corrida</label>
+                                <span id="sim-cardio-ratio-val" class="text-xs font-mono font-bold text-emerald-600">60%</span>
+                            </div>
+                            <input type="range" id="sim-cardio-ratio" min="20" max="80" step="10" value="60" oninput="updateSobreCardioSim()" class="w-full accent-emerald-600 cursor-pointer">
+                        </div>
+
+                        <div class="bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold uppercase text-zinc-500">Duração da Sessão</label>
+                                <span id="sim-cardio-dur-val" class="text-xs font-mono font-bold text-zinc-900">30 min</span>
+                            </div>
+                            <input type="range" id="sim-cardio-dur" min="10" max="90" step="5" value="30" oninput="updateSobreCardioSim()" class="w-full accent-black cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Barra Visual Proporcional de Tempo -->
+                    <div id="sim-cardio-bar-container" class="space-y-1.5">
+                        <div class="flex justify-between text-[11px] font-mono text-zinc-500">
+                            <span>🏃 Bloco de Corrida: <strong id="sim-cardio-run-min-text">18 min</strong></span>
+                            <span>🚶 Bloco de Caminhada: <strong id="sim-cardio-walk-min-text">12 min</strong></span>
+                        </div>
+                        <div class="h-3 w-full bg-indigo-200 rounded-full overflow-hidden flex">
+                            <div id="sim-cardio-run-bar" class="h-full bg-rose-500 transition-all duration-200" style="width: 60%"></div>
+                            <div id="sim-cardio-walk-bar" class="h-full bg-indigo-500 transition-all duration-200" style="width: 40%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Resultados Estimados -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                            <span class="text-[10px] font-mono uppercase text-emerald-700 font-bold">Velocidade Efetiva Corrigida</span>
+                            <div id="sim-cardio-res-speed" class="text-2xl font-mono font-extrabold text-emerald-950 mt-1">7.87 km/h</div>
+                            <span id="sim-cardio-res-speed-sub" class="text-[10px] font-mono text-zinc-500">Com correção biomecânica η = 0,96</span>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-center">
+                            <span class="text-[10px] font-mono uppercase text-sky-700 font-bold">Distância Percorrida Estimada</span>
+                            <div id="sim-cardio-res-dist" class="text-2xl font-mono font-extrabold text-sky-950 mt-1">3.94 km</div>
+                            <span class="text-[10px] font-mono text-zinc-500">Volume computado na semana</span>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-purple-50 border border-purple-200 text-center">
+                            <span class="text-[10px] font-mono uppercase text-purple-700 font-bold">Pace Médio Efetivo</span>
+                            <div id="sim-cardio-res-pace" class="text-2xl font-mono font-extrabold text-purple-950 mt-1">7:37 min/km</div>
+                            <span class="text-[10px] font-mono text-zinc-500">Ritmo médio por quilômetro</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- 4. PAINEL DE TIMERS & RELÓGIOS EM SEGUNDO PLANO -->
+            <!-- ============================================================= -->
+            <div id="sobre-panel-timer" class="hidden space-y-6">
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2 text-indigo-600 font-mono text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="timer" class="w-4 h-4"></i>
+                        <span>4. Cronômetro Independente, Regressivo & Segundo Plano</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-zinc-900">Como funcionam os relógios do HaQt</h3>
+                    <p class="text-sm text-zinc-600 leading-relaxed">
+                        Os temporizadores do HaQt foram inspirados na One UI do Samsung Galaxy A34. Cada modalidade possui relógios independentes para você cronometrar seu descanso entre séries ou marcar sua corrida sem perder a contagem ao trocar de tela.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-zinc-800">💻 Na guia do Notebook</span>
+                            <p class="text-xs text-zinc-600 leading-relaxed">
+                                Quando você muda de aba ou minimiza o navegador, o título da guia exibe a contagem ao vivo (ex: <code>(03:45) HaQt</code>) para que você não precise alternar para verificar o tempo.
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-zinc-800">📱 No Celular (Notificação & Vibração)</span>
+                            <p class="text-xs text-zinc-600 leading-relaxed">
+                                Notificação contínua mantida na barra de status. Ao zerar o tempo, o celular vibra e dispara um alarme sonoro via Web Audio API mesmo com o aparelho bloqueado.
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-zinc-800">⌨️ Digitação Contínua</span>
+                            <p class="text-xs text-zinc-600 leading-relaxed">
+                                Você não precisa digitar ":". Basta digitar os números seguidos (ex: <code>0500</code> vira <code>00:05:00</code>) e os valores preenchem automaticamente as casas de horas, minutos e segundos.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- 5. PAINEL DE AGENDA & SINCRONIZAÇÃO EM NUVEM PRIVADA -->
+            <!-- ============================================================= -->
+            <div id="sobre-panel-nuvem" class="hidden space-y-6">
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2 text-indigo-600 font-mono text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="cloud" class="w-4 h-4"></i>
+                        <span>5. Agenda Semanal & Sincronização Privada (GitHub Gist)</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-zinc-900">Seus dados sempre com você, sem intermediários</h3>
+                    <p class="text-sm text-zinc-600 leading-relaxed">
+                        Nenhum servidor externo armazena seus hábitos. Seus registros ficam gravados no armazenamento local seguro (<code>SafeStorage</code>). Para sincronizar entre múltiplos dispositivos (ex: seu notebook e celular), o HaQt utiliza a API de <strong>GitHub Gists privados</strong>.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-zinc-800">Como funciona o Sync via Gist?</span>
+                            <p class="text-xs text-zinc-600 leading-relaxed">
+                                Você gera um Personal Access Token pessoal no GitHub (com escopo único <code>gist</code>) e insere no modal da nuvem. O HaQt cria um arquivo secreto <code>habitquant_data.json</code> na sua conta e atualiza automaticamente em segundo plano.
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-1.5">
+                            <span class="text-[11px] font-mono font-bold uppercase text-zinc-800">Exportação .ICS & CSV</span>
+                            <p class="text-xs text-zinc-600 leading-relaxed">
+                                Você pode exportar sua grade de treinos diretamente para o Google Agenda, Apple Calendar ou Outlook com um clique em <code>Exportar .ICS</code> ou baixar seu histórico completo em formato CSV para análise no Excel ou Python.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- 6. PAINEL DE TUTORIAL PASSO A PASSO -->
+            <!-- ============================================================= -->
+            <div id="sobre-panel-tutorial" class="hidden space-y-6">
+                <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2 text-indigo-600 font-mono text-xs font-bold uppercase tracking-wider">
+                        <i data-lucide="compass" class="w-4 h-4"></i>
+                        <span>6. Guia Prático Passo a Passo (Como começar)</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-zinc-900">Tutorial de 5 minutos para dominar o HaQt</h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 pt-2">
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col justify-between space-y-3">
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center font-mono">1</div>
+                                <h4 class="text-xs font-bold text-zinc-900">Perfil & Metas</h4>
+                                <p class="text-[11px] text-zinc-600 leading-relaxed">Defina seu nome e avatar no topo esquerdo e ajuste sua meta de horas semanais para treino e sono.</p>
+                            </div>
+                            <button type="button" onclick="openProfileModal()" class="w-full py-1.5 rounded-xl bg-white border border-zinc-300 text-xs font-semibold text-zinc-800 hover:bg-zinc-100 transition">Abrir Perfil</button>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col justify-between space-y-3">
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center font-mono">2</div>
+                                <h4 class="text-xs font-bold text-zinc-900">Monte a Agenda</h4>
+                                <p class="text-[11px] text-zinc-600 leading-relaxed">Na aba Agenda, clique nos horários dos dias para fixar seus blocos de Upper, Lower ou Cardio.</p>
+                            </div>
+                            <button type="button" onclick="navigateTo('calendar')" class="w-full py-1.5 rounded-xl bg-white border border-zinc-300 text-xs font-semibold text-zinc-800 hover:bg-zinc-100 transition">Ver Agenda</button>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col justify-between space-y-3">
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center font-mono">3</div>
+                                <h4 class="text-xs font-bold text-zinc-900">Registre o Treino</h4>
+                                <p class="text-[11px] text-zinc-600 leading-relaxed">Na Atividade Física, lance cargas e repetições em Força ou use o painel de Aeróbico para corrida/caminhada.</p>
+                            </div>
+                            <button type="button" onclick="navigateTo('atv_fisica')" class="w-full py-1.5 rounded-xl bg-white border border-zinc-300 text-xs font-semibold text-zinc-800 hover:bg-zinc-100 transition">Ir para Treino</button>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col justify-between space-y-3">
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center font-mono">4</div>
+                                <h4 class="text-xs font-bold text-zinc-900">Lance o Sono</h4>
+                                <p class="text-[11px] text-zinc-600 leading-relaxed">Toda manhã, digite os 4 horários da noite no Diário do Sono para alimentar o cálculo de regularidade e eficiência.</p>
+                            </div>
+                            <button type="button" onclick="navigateTo('sono')" class="w-full py-1.5 rounded-xl bg-white border border-zinc-300 text-xs font-semibold text-zinc-800 hover:bg-zinc-100 transition">Ir para Sono</button>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col justify-between space-y-3">
+                            <div class="space-y-1">
+                                <div class="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center font-mono">5</div>
+                                <h4 class="text-xs font-bold text-zinc-900">Analise Métricas</h4>
+                                <p class="text-[11px] text-zinc-600 leading-relaxed">Acompanhe a correlação entre noites bem dormidas e seu volume de carga levantado na academia.</p>
+                            </div>
+                            <button type="button" onclick="navigateTo('metrics')" class="w-full py-1.5 rounded-xl bg-white border border-zinc-300 text-xs font-semibold text-zinc-800 hover:bg-zinc-100 transition">Ver Métricas</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- MODAL DO DIÁRIO DO SONO -->
@@ -702,21 +1212,21 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário de Deitar</label>
-                        <input type="text" id="sleep-journal-bed" inputmode="numeric" maxlength="5" placeholder="23:00" value="23:00" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        <input type="text" id="sleep-journal-bed" inputmode="numeric" maxlength="5" placeholder="23:00" value="23:00" onfocus="this.select()" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Dormiu</label>
-                        <input type="text" id="sleep-journal-slept" inputmode="numeric" maxlength="5" placeholder="23:30" value="23:30" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        <input type="text" id="sleep-journal-slept" inputmode="numeric" maxlength="5" placeholder="23:30" value="23:30" onfocus="this.select()" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Acordou</label>
-                        <input type="text" id="sleep-journal-wake" inputmode="numeric" maxlength="5" placeholder="07:00" value="07:00" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        <input type="text" id="sleep-journal-wake" inputmode="numeric" maxlength="5" placeholder="07:00" value="07:00" onfocus="this.select()" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase text-zinc-500 mb-1">Horário que Levantou</label>
-                        <input type="text" id="sleep-journal-getup" inputmode="numeric" maxlength="5" placeholder="07:30" value="07:30" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
+                        <input type="text" id="sleep-journal-getup" inputmode="numeric" maxlength="5" placeholder="07:30" value="07:30" onfocus="this.select()" oninput="handleSleepTimeMask(this, event)" onblur="handleSleepTimeBlur(this)" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-base sm:text-sm font-mono font-bold text-center text-zinc-900 focus:bg-white focus:border-indigo-500 transition">
                     </div>
                 </div>
                 <p class="text-[11px] font-mono text-zinc-400">Horas: 00 a 24 • Minutos: 00 a 59. Digite apenas os números.</p>
@@ -900,11 +1410,17 @@
                 </div>
 
                 <div>
+                </div>
+
+                <div id="atv-edit-exercise-section">
                     <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Exercício / Variação (Lista do Card)</label>
                     <div id="atv-edit-exercise-container" class="space-y-1.5"></div>
                 </div>
 
                 <div>
+                </div>
+
+                <div id="atv-edit-role-section">
                     <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Classificação no Card</label>
                     <div class="flex gap-1.5">
                         <button type="button" id="btn-edit-role-main" onclick="setEditAtvRole('main')" class="flex-1 py-2 px-2 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-[11px] font-semibold transition">
@@ -919,7 +1435,21 @@
                     </p>
                 </div>
 
-                <div class="grid grid-cols-1 gap-2.5 pt-1">
+                <!-- SE FOR CARDIO: CLASSIFICAÇÃO APENAS NOS TIPOS (SEM PRINCIPAL/SUBSTITUTO) -->
+                <div id="atv-edit-cardio-type-section" class="hidden space-y-1.5">
+                    <label class="block text-[10px] font-bold uppercase text-emerald-700">Tipo de Atividade Aeróbica</label>
+                    <select id="atv-edit-cardio-modality" onchange="onEditAtvCardioModalityChange()" class="w-full bg-emerald-50/70 border border-emerald-200 rounded-xl px-3 py-2 text-xs font-bold text-zinc-900 focus:bg-white">
+                        <option value="Corrida">🏃 Corrida</option>
+                        <option value="Caminhada">🚶 Caminhada</option>
+                        <option value="Misto (Caminhada + Corrida)">🔄 Misto (Caminhada + Corrida)</option>
+                        <option value="Bike / Ciclismo">🚴 Bike / Ciclismo</option>
+                        <option value="Esteira Inclinada">⚡ Esteira Inclinada</option>
+                        <option value="Escada / Elíptico">🪜 Escada / Elíptico</option>
+                    </select>
+                </div>
+
+                <!-- PARÂMETROS DE FORÇA -->
+                <div id="atv-edit-strength-params" class="space-y-2.5 pt-1">
                     <div>
                         <label id="atv-edit-weight-label" class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Carga (kg)</label>
                         <input type="text" id="atv-edit-weight" inputmode="numeric" oninput="handleWeightInputMask(this)" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center" placeholder="0,00">
@@ -940,9 +1470,54 @@
                         </div>
                     </div>
 
-                    <div id="atv-edit-cardio-group" class="hidden">
-                        <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Duração</label>
-                        <input type="text" id="atv-edit-duration" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900 text-center" placeholder="Ex: 20 min ou 15-20 min">
+                </div>
+
+                <!-- PARÂMETROS NECESSÁRIOS DE CARDIO (CONFORME TELA DE AERÓBICO) -->
+                <div id="atv-edit-cardio-params" class="hidden space-y-2.5 pt-1">
+                    <!-- Se NÃO for Misto: Velocidade (km/h) + Duração (min) -->
+                    <div id="atv-edit-cardio-simple-fields" class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Velocidade (km/h)</label>
+                            <input type="text" id="atv-edit-cardio-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onEditAtvCardioInputChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center" placeholder="Ex: 9,50">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Duração / Intervalo (min)</label>
+                            <input type="text" id="atv-edit-cardio-duration" oninput="onEditAtvCardioInputChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900 text-center" placeholder="Ex: 20 min ou 15-20">
+                        </div>
+                    </div>
+
+                    <!-- Se FOR Misto: Vel. Corrida + Vel. Caminhada + Proporção + Duração Total -->
+                    <div id="atv-edit-cardio-mixed-fields" class="hidden space-y-2.5 bg-emerald-50/40 p-3 rounded-2xl border border-emerald-200/80">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-emerald-800 mb-1">🏃 Vel. Corrida (km/h)</label>
+                                <input type="text" id="atv-edit-mixed-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onEditAtvCardioInputChange()" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center" placeholder="Ex: 10,50">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-emerald-800 mb-1">🚶 Vel. Caminhada (km/h)</label>
+                                <input type="text" id="atv-edit-mixed-walk-speed" inputmode="numeric" oninput="handleWeightInputMask(this); onEditAtvCardioInputChange()" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-indigo-600 text-center" placeholder="Ex: 5,50">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Proporção (Corrida / Caminhada • η = 0,96)</label>
+                            <select id="atv-edit-mixed-ratio" onchange="onEditAtvCardioInputChange()" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900">
+                                <option value="0.50">50% Corrida / 50% Caminhada (Ex: 2 min : 2 min)</option>
+                                <option value="0.60" selected>60% Corrida / 40% Caminhada (Ex: 3 min : 2 min)</option>
+                                <option value="0.75">75% Corrida / 25% Caminhada (Ex: 3 min : 1 min)</option>
+                                <option value="0.40">40% Corrida / 60% Caminhada (Ex: 2 min : 3 min)</option>
+                                <option value="0.80">80% Corrida / 20% Caminhada (Ex: 4 min : 1 min)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Duração Total (min)</label>
+                            <input type="text" id="atv-edit-mixed-duration" oninput="onEditAtvCardioInputChange()" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-zinc-900 text-center" placeholder="Ex: 25 min">
+                        </div>
+                    </div>
+
+                    <div id="atv-edit-cardio-preview" class="text-[11px] font-mono text-center font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">Informe km/h + tempo</div>
+                </div>
+
+
                     </div>
                 </div>
 
@@ -953,7 +1528,7 @@
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-zinc-100">
                     <button type="button" onclick="closeAtvEditModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
-                    <button type="submit" class="px-5 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold">Salvar e Atualizar Card</button>
+                    <button type="submit" class="px-5 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-semibold">Salvar e Atualizar</button>
                 </div>
             </form>
         </div>

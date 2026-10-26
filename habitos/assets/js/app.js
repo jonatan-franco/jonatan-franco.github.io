@@ -38,7 +38,8 @@ const ROUTE_CONFIG = {
     sono:       { eyebrow: 'GRUPO',     title: 'Gestão do Sono' },
     timer:      { eyebrow: 'TIMER',     title: 'Timer' },
     metrics:    { eyebrow: 'ANÁLISE',   title: 'Métricas' },
-    calendar:   { eyebrow: 'AGENDA',    title: 'Calendário Semanal' }
+    calendar:   { eyebrow: 'AGENDA',    title: 'Calendário Semanal' },
+    sobre:      { eyebrow: 'GUIA & TUTORIAL', title: 'Sobre o HaQt' }
 };
 
 window.navigateTo = function(route) {
@@ -131,6 +132,7 @@ window.handleSleepTimeMask = function(el) {
         return;
     }
     let hh = parseInt(digits.slice(0, 2), 10);
+    if (hh > 24) { const h1 = parseInt(digits.slice(0, 1), 10); let m1 = parseInt(digits.slice(1, 2), 10); if (digits.length === 2) { el.value = `0${h1}:${m1}`; return; } let m2 = parseInt(digits.slice(2, 3), 10); if (m1 > 5) m1 = 5; el.value = `0${h1}:${m1}${isNaN(m2) ? '' : m2}`; return; }
     if (hh > 24) hh = 24;
     const hhStr = String(hh).padStart(2, '0');
 
@@ -158,7 +160,7 @@ function normalizeSleepTimeValue(val) {
         hh = parseInt(digits, 10);
     } else if (digits.length === 3) {
         hh = parseInt(digits.slice(0, 2), 10);
-        mm = parseInt(digits.slice(2, 3), 10) * 10;
+        const f2 = parseInt(digits.slice(0, 2), 10); if (f2 > 24) { hh = parseInt(digits.slice(0, 1), 10); mm = parseInt(digits.slice(1, 3), 10); } else { hh = f2; mm = parseInt(digits.slice(2, 3), 10) * 10; }
     } else {
         hh = parseInt(digits.slice(0, 2), 10);
         mm = parseInt(digits.slice(2, 4), 10);
@@ -1295,6 +1297,9 @@ function renderAll(activeRoute) {
         if (typeof renderAtvFisicaInteractiveView === 'function') renderAtvFisicaInteractiveView();
     }
     if (current === 'calendar') renderCalendarView();
+    if (current === 'sobre') {
+        if (typeof initSobreSimulators === 'function') initSobreSimulators();
+    }
     refreshIcons();
 }
 
@@ -1417,3 +1422,228 @@ window.addEventListener('DOMContentLoaded', () => {
         if (document.visibilityState === 'visible') autoPullFromGist(false);
     });
 });
+
+
+// ============================================================================
+// GUIA & TUTORIAL DIDÁTICO INTERATIVO — SOBRE O HAQT
+// ============================================================================
+let sobreActiveTab = 'sono';
+let sobreCardioMode = 'mixed';
+
+window.setSobreTab = function(tabId) {
+    sobreActiveTab = tabId;
+    const tabs = ['sono', 'forca', 'cardio', 'timer', 'nuvem', 'tutorial'];
+    tabs.forEach(t => {
+        const btn = document.getElementById('btn-sobre-tab-' + t);
+        const panel = document.getElementById('sobre-panel-' + t);
+        const isActive = t === tabId;
+        if (btn) {
+            btn.className = isActive
+                ? "px-4 py-2.5 rounded-2xl bg-black text-white text-xs font-bold transition shadow-xs shrink-0 flex items-center gap-2"
+                : "px-4 py-2.5 rounded-2xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition shadow-xs shrink-0 flex items-center gap-2";
+        }
+        if (panel) {
+            panel.classList.toggle('hidden', !isActive);
+        }
+    });
+    refreshIcons();
+};
+
+function parseTimeToMinutes(str) {
+    if (!str) return 0;
+    const [hh, mm] = str.split(':').map(Number);
+    return ((hh || 0) * 60) + (mm || 0);
+}
+
+window.updateSobreSleepSim = function() {
+    const bedStr = document.getElementById('sim-sleep-bed')?.value || '23:00';
+    const sleptStr = document.getElementById('sim-sleep-slept')?.value || '23:30';
+    const wakeStr = document.getElementById('sim-sleep-wake')?.value || '07:00';
+    const getupStr = document.getElementById('sim-sleep-getup')?.value || '07:30';
+
+    const bedMin = parseTimeToMinutes(bedStr);
+    const sleptMin = parseTimeToMinutes(sleptStr);
+    const wakeMin = parseTimeToMinutes(wakeStr);
+    const getupMin = parseTimeToMinutes(getupStr);
+
+    let tibMin = getupMin - bedMin;
+    if (tibMin < 0) tibMin += 24 * 60;
+
+    let tstMin = wakeMin - sleptMin;
+    if (tstMin < 0) tstMin += 24 * 60;
+
+    const wMin = Math.max(0, tibMin - tstMin);
+    const eff = tibMin > 0 ? (tstMin / tibMin) * 100 : 0;
+    const betaW = tibMin > 0 ? (wMin / tibMin) * 100 : 0;
+    const rvs = tstMin > 0 ? (wMin / tstMin) : 0;
+
+    const elTib = document.getElementById('sim-sleep-res-tib');
+    const elTst = document.getElementById('sim-sleep-res-tst');
+    const elW = document.getElementById('sim-sleep-res-w');
+    const elEff = document.getElementById('sim-sleep-res-eff');
+    const elBeta = document.getElementById('sim-sleep-res-beta');
+    const elRvs = document.getElementById('sim-sleep-res-rvs');
+    const elDiag = document.getElementById('sim-sleep-diagnostic-text');
+
+    if (elTib) elTib.textContent = `${(tibMin / 60).toFixed(1)}h`;
+    if (elTst) elTst.textContent = `${(tstMin / 60).toFixed(1)}h`;
+    if (elW) elW.textContent = `${(wMin / 60).toFixed(1)}h (${Math.round(wMin)}m)`;
+    if (elEff) elEff.textContent = `${eff.toFixed(1)}%`;
+    if (elBeta) elBeta.textContent = `${betaW.toFixed(1)}%`;
+    if (elRvs) elRvs.textContent = rvs.toFixed(3);
+
+    if (elDiag) {
+        if (eff >= 85 && rvs <= 0.15) {
+            elDiag.innerHTML = `<strong class="text-emerald-700">🌟 Qualidade Excelente!</strong> Eficiência de sono de <strong>${eff.toFixed(1)}%</strong> (acima do limiar clínico de 85%). A Razão Vigília-Sono (ρ_RVS = ${rvs.toFixed(3)}) indica menos de 9 minutos acordado na cama para cada hora de sono. Sono reparador e altamente eficiente.`;
+        } else if (eff < 80) {
+            elDiag.innerHTML = `<strong class="text-amber-700">⚠️ Eficiência Reduzida (${eff.toFixed(1)}%).</strong> Você está passando <strong>${(wMin / 60).toFixed(1)}h acordado na cama</strong>. Em TCC-I (Terapia Cognitivo-Comportamental para Insônia), recomenda-se restringir o tempo de leito para consolidar o sono e reduzir a frustração noturna.`;
+        } else if (betaW > 18) {
+            elDiag.innerHTML = `<strong class="text-purple-700">⏰ Fragmentação Noturna (β_W = ${betaW.toFixed(1)}%).</strong> Quase 1/5 do seu tempo na cama foi em vigília. Avalie a higiene do sono (telas, cafeína tardia ou temperatura do quarto).`;
+        } else {
+            elDiag.innerHTML = `<strong class="text-indigo-700">✓ Padrão Estável.</strong> Eficiência dentro da faixa de normalidade (${eff.toFixed(1)}%) com vigília controlada.`;
+        }
+    }
+};
+
+window.setSobreSleepPreset = function(preset) {
+    const bed = document.getElementById('sim-sleep-bed');
+    const slept = document.getElementById('sim-sleep-slept');
+    const wake = document.getElementById('sim-sleep-wake');
+    const getup = document.getElementById('sim-sleep-getup');
+
+    if (preset === 'otimo') {
+        if (bed) bed.value = '23:00';
+        if (slept) slept.value = '23:30';
+        if (wake) wake.value = '07:00';
+        if (getup) getup.value = '07:30';
+    } else if (preset === 'insonia') {
+        if (bed) bed.value = '22:30';
+        if (slept) slept.value = '00:30';
+        if (wake) wake.value = '06:30';
+        if (getup) getup.value = '07:30';
+    } else if (preset === 'precoce') {
+        if (bed) bed.value = '23:00';
+        if (slept) slept.value = '23:15';
+        if (wake) wake.value = '05:00';
+        if (getup) getup.value = '07:00';
+    }
+    window.updateSobreSleepSim();
+};
+
+window.updateSobreForceSim = function() {
+    const loadEl = document.getElementById('sim-force-load');
+    const repsEl = document.getElementById('sim-force-reps');
+    const setsEl = document.getElementById('sim-force-sets');
+
+    const load = parseFloat(loadEl?.value || '80');
+    const reps = parseInt(repsEl?.value || '8', 10);
+    const sets = parseInt(setsEl?.value || '4', 10);
+
+    const lblLoad = document.getElementById('sim-force-load-val');
+    const lblReps = document.getElementById('sim-force-reps-val');
+    const lblSets = document.getElementById('sim-force-sets-val');
+
+    if (lblLoad) lblLoad.textContent = `${load.toFixed(1).replace('.0', '')} kg`;
+    if (lblReps) lblReps.textContent = `${reps} reps`;
+    if (lblSets) lblSets.textContent = `${sets} séries`;
+
+    const oneRm = load * (1 + reps / 30);
+    const totalVol = sets * reps * load;
+    const load10rm = oneRm / (1 + 10 / 30);
+
+    const res1rm = document.getElementById('sim-force-res-1rm');
+    const resVol = document.getElementById('sim-force-res-vol');
+    const res10rm = document.getElementById('sim-force-res-10rm');
+
+    if (res1rm) res1rm.textContent = `${oneRm.toFixed(1)} kg`;
+    if (resVol) resVol.textContent = `${Math.round(totalVol).toLocaleString('pt-BR')} kg`;
+    if (res10rm) res10rm.textContent = `${load10rm.toFixed(1)} kg`;
+};
+
+window.setSobreCardioMode = function(mode) {
+    sobreCardioMode = mode === 'simple' ? 'simple' : 'mixed';
+
+    const btnSimple = document.getElementById('btn-sobre-cardio-simple');
+    const btnMixed = document.getElementById('btn-sobre-cardio-mixed');
+    const walkGroup = document.getElementById('sim-cardio-walk-group');
+    const ratioGroup = document.getElementById('sim-cardio-ratio-group');
+    const barCont = document.getElementById('sim-cardio-bar-container');
+    const lblSpeed = document.getElementById('sim-cardio-speed-label');
+    const subSpeed = document.getElementById('sim-cardio-res-speed-sub');
+
+    if (sobreCardioMode === 'simple') {
+        if (btnSimple) btnSimple.className = "px-3 py-1.5 rounded-xl bg-black text-white text-xs font-bold transition";
+        if (btnMixed) btnMixed.className = "px-3 py-1.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 text-xs font-semibold transition";
+        if (walkGroup) walkGroup.classList.add('hidden');
+        if (ratioGroup) ratioGroup.classList.add('hidden');
+        if (barCont) barCont.classList.add('hidden');
+        if (lblSpeed) lblSpeed.textContent = "Velocidade Contínua (km/h)";
+        if (subSpeed) subSpeed.textContent = "Ritmo contínuo sem transições";
+    } else {
+        if (btnSimple) btnSimple.className = "px-3 py-1.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 text-xs font-semibold transition";
+        if (btnMixed) btnMixed.className = "px-3 py-1.5 rounded-xl bg-black text-white text-xs font-bold transition";
+        if (walkGroup) walkGroup.classList.remove('hidden');
+        if (ratioGroup) ratioGroup.classList.remove('hidden');
+        if (barCont) barCont.classList.remove('hidden');
+        if (lblSpeed) lblSpeed.textContent = "Velocidade Corrida (km/h)";
+        if (subSpeed) subSpeed.textContent = "Com correção biomecânica η = 0,96";
+    }
+    window.updateSobreCardioSim();
+};
+
+window.updateSobreCardioSim = function() {
+    const speed = parseFloat(document.getElementById('sim-cardio-speed')?.value || '10.0');
+    const walk = parseFloat(document.getElementById('sim-cardio-walk')?.value || '5.5');
+    const ratio = parseInt(document.getElementById('sim-cardio-ratio')?.value || '60', 10);
+    const dur = parseInt(document.getElementById('sim-cardio-dur')?.value || '30', 10);
+
+    const lblSpeed = document.getElementById('sim-cardio-speed-val');
+    const lblWalk = document.getElementById('sim-cardio-walk-val');
+    const lblRatio = document.getElementById('sim-cardio-ratio-val');
+    const lblDur = document.getElementById('sim-cardio-dur-val');
+
+    if (lblSpeed) lblSpeed.textContent = `${speed.toFixed(1)} km/h`;
+    if (lblWalk) lblWalk.textContent = `${walk.toFixed(1)} km/h`;
+    if (lblRatio) lblRatio.textContent = `${ratio}%`;
+    if (lblDur) lblDur.textContent = `${dur} min`;
+
+    let effSpeed = speed;
+    if (sobreCardioMode === 'mixed') {
+        const pRun = ratio / 100;
+        const pWalk = 1 - pRun;
+        effSpeed = (pRun * speed + pWalk * walk) * 0.96;
+
+        const runMin = Math.round(dur * pRun);
+        const walkMin = Math.max(0, dur - runMin);
+
+        const txtRun = document.getElementById('sim-cardio-run-min-text');
+        const txtWalk = document.getElementById('sim-cardio-walk-min-text');
+        const barRun = document.getElementById('sim-cardio-run-bar');
+        const barWalk = document.getElementById('sim-cardio-walk-bar');
+
+        if (txtRun) txtRun.textContent = `${runMin} min`;
+        if (txtWalk) txtWalk.textContent = `${walkMin} min`;
+        if (barRun) barRun.style.width = `${ratio}%`;
+        if (barWalk) barWalk.style.width = `${100 - ratio}%`;
+    }
+
+    const distKm = (effSpeed * dur) / 60;
+    const paceDecimal = effSpeed > 0 ? (60 / effSpeed) : 0;
+    const paceMin = Math.floor(paceDecimal);
+    const paceSec = Math.round((paceDecimal - paceMin) * 60);
+    const paceStr = `${paceMin}:${String(paceSec).padStart(2, '0')} min/km`;
+
+    const resSpeed = document.getElementById('sim-cardio-res-speed');
+    const resDist = document.getElementById('sim-cardio-res-dist');
+    const resPace = document.getElementById('sim-cardio-res-pace');
+
+    if (resSpeed) resSpeed.textContent = `${effSpeed.toFixed(2).replace('.', ',')} km/h`;
+    if (resDist) resDist.textContent = `${distKm.toFixed(2).replace('.', ',')} km`;
+    if (resPace) resPace.textContent = paceStr;
+};
+
+window.initSobreSimulators = function() {
+    window.updateSobreSleepSim();
+    window.updateSobreForceSim();
+    window.updateSobreCardioSim();
+};

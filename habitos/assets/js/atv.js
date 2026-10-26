@@ -192,6 +192,7 @@ function loadWorkoutCatalogCustomizations() {
     try {
         const raw = SafeStorage.getItem(WORKOUT_CATALOG_KEY);
         if (!raw) return;
+    
         const savedCatalog = JSON.parse(raw);
         if (!savedCatalog || typeof savedCatalog !== 'object') return;
         let catMigrated = false;
@@ -1422,24 +1423,53 @@ window.onAtvAerobicCountdownDirectInput = function(inputEl) {
     if (!inputEl) return;
     const st = getAeroModalityTimerState(aeroSelectedModality);
     if (st.running) return;
-    const raw = String(inputEl.value || '').trim();
-    if (!raw) return;
+    const rawDigits = inputEl.value.replace(/\D/g, '').slice(-6);
+    const padded = rawDigits.padStart(6, '0');
+    const hh = parseInt(padded.slice(0, 2), 10) || 0;
+    const mm = parseInt(padded.slice(2, 4), 10) || 0;
+    const ss = parseInt(padded.slice(4, 6), 10) || 0;
+    inputEl.value = `${padded.slice(0, 2)}:${padded.slice(2, 4)}:${padded.slice(4, 6)}`;
+    try {
+        inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+    } catch (e) {}
 
-    let totalSec = 0;
-    const parts = raw.split(':').map(p => parseInt(p.replace(/\D/g, ''), 10) || 0);
-    if (parts.length === 3) {
-        totalSec = parts[0] * 3600 + parts[1] * 60 + parts[2];
-    } else if (parts.length === 2) {
-        totalSec = parts[0] * 60 + parts[1];
-    } else if (parts.length === 1) {
-        totalSec = parts[0] * 60;
+    const totalSec = hh * 3600 + mm * 60 + ss;
+    if (totalSec > 0) {
+        st.cdTotalSec = Math.min(Math.max(1, totalSec), 43200);
+
+        st.cdRemainingMs = st.cdTotalSec * 1000;
+        st.concludedDurationStr = '';
+        st.concludedElapsedSec = 0;
+    }
+};
+
+window.onAtvAerobicCountdownDirectBlur = function(inputEl) {
+    if (!inputEl) return;
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    inputEl.value = (typeof formatHMS === 'function') ? formatHMS(st.cdTotalSec) : '00:20:00';
+};
+const _unusedLegacyCdHandler = function(inputEl, totalSec = 0) { /*
+    if (!inputEl) return;
+    const st = getAeroModalityTimerState(aeroSelectedModality);
+    if (st.running) return;
+
+
+
+*/ }; const _noop = () => {
+
+
+
+
+
+
+
     }
     if (totalSec > 0) {
-        st.cdTotalSec = Math.min(totalSec, 12 * 3600);
+
         st.cdRemainingMs = st.cdTotalSec * 1000;
-        inputEl.value = (typeof formatHMS === 'function') ? formatHMS(st.cdTotalSec) : raw;
+
     } else {
-        inputEl.value = (typeof formatHMS === 'function') ? formatHMS(st.cdTotalSec) : '00:20:00';
+
     }
 };
 
@@ -2010,6 +2040,156 @@ function syncEditModalFieldsForSlotAndExercise(card, exerciseName, logObj, isSwi
     if (!card) return;
     const isCardio = isCardioExercise(exerciseName, card.muscle);
 
+    const exerciseSection = document.getElementById('atv-edit-exercise-section');
+    const roleSection = document.getElementById('atv-edit-role-section');
+    const cardioTypeSection = document.getElementById('atv-edit-cardio-type-section');
+    const strengthParams = document.getElementById('atv-edit-strength-params');
+    const cardioParams = document.getElementById('atv-edit-cardio-params');
+    const sysInfoEl = document.getElementById('atv-edit-system-info');
+
+    if (isCardio) {
+        if (exerciseSection) exerciseSection.classList.add('hidden');
+        if (roleSection) roleSection.classList.add('hidden');
+        if (strengthParams) strengthParams.classList.add('hidden');
+        if (cardioTypeSection) cardioTypeSection.classList.remove('hidden');
+        if (cardioParams) cardioParams.classList.remove('hidden');
+
+        if (sysInfoEl) {
+            sysInfoEl.textContent = '❤️ Treino Aeróbico • Somente Duração, Velocidade (km/h) e Pace';
+        }
+
+        const selMod = document.getElementById('atv-edit-cardio-modality');
+        if (selMod) {
+            let targetMod = 'Corrida';
+            if (logObj && logObj.timerModality) {
+                targetMod = logObj.timerModality;
+            } else if (exerciseName) {
+                const exLower = exerciseName.toLowerCase();
+                if (exLower.includes('misto')) targetMod = 'Misto (Caminhada + Corrida)';
+                else if (exLower.includes('caminhada')) targetMod = 'Caminhada';
+                else if (exLower.includes('bike') || exLower.includes('ciclismo')) targetMod = 'Bike / Ciclismo';
+                else if (exLower.includes('esteira')) targetMod = 'Esteira Inclinada';
+                else if (exLower.includes('escada') || exLower.includes('elíptico')) targetMod = 'Escada / Elíptico';
+                else targetMod = 'Corrida';
+            }
+            selMod.value = targetMod;
+        }
+
+        const curMod = selMod ? selMod.value : 'Corrida';
+        const isMixed = curMod.toLowerCase().includes('misto') || (logObj && logObj.isMixed);
+        const simpleFields = document.getElementById('atv-edit-cardio-simple-fields');
+        const mixedFields = document.getElementById('atv-edit-cardio-mixed-fields');
+
+        if (isMixed) {
+            if (simpleFields) simpleFields.classList.add('hidden');
+            if (mixedFields) mixedFields.classList.remove('hidden');
+
+            const spRunEl = document.getElementById('atv-edit-mixed-speed');
+            const spWalkEl = document.getElementById('atv-edit-mixed-walk-speed');
+            const ratioEl = document.getElementById('atv-edit-mixed-ratio');
+            const durEl = document.getElementById('atv-edit-mixed-duration');
+
+            if (logObj && logObj.runSpeedKmh) {
+                if (spRunEl) spRunEl.value = formatWeightNumber(logObj.runSpeedKmh);
+                if (spWalkEl) spWalkEl.value = formatWeightNumber(logObj.walkSpeedKmh || (logObj.runSpeedKmh * 0.55));
+                if (ratioEl) ratioEl.value = logObj.runRatio ? String(logObj.runRatio) : '0.60';
+                if (durEl) durEl.value = logObj.timerDuration || logObj.reps || '25 min';
+            } else {
+                if (spRunEl) spRunEl.value = logObj ? formatWeightNumber(logObj.weight || 10) : '10,00';
+                if (spWalkEl) spWalkEl.value = logObj ? formatWeightNumber(parseFloat(logObj.weight || 10) * 0.55) : '5,50';
+                if (ratioEl) ratioEl.value = '0.60';
+                if (durEl) durEl.value = (logObj && (logObj.timerDuration || logObj.reps)) ? (logObj.timerDuration || logObj.reps) : '25 min';
+            }
+        } else {
+            if (simpleFields) simpleFields.classList.remove('hidden');
+            if (mixedFields) mixedFields.classList.add('hidden');
+
+            const spEl = document.getElementById('atv-edit-cardio-speed');
+            const durEl = document.getElementById('atv-edit-cardio-duration');
+            if (spEl) spEl.value = logObj ? formatWeightNumber(logObj.weight || 0) : '9,00';
+            if (durEl) durEl.value = (logObj && (logObj.timerDuration || logObj.reps)) ? (logObj.timerDuration || logObj.reps) : '20 min';
+        }
+        window.onEditAtvCardioInputChange();
+    } else {
+        if (exerciseSection) exerciseSection.classList.remove('hidden');
+        if (roleSection) roleSection.classList.remove('hidden');
+        if (strengthParams) strengthParams.classList.remove('hidden');
+        if (cardioTypeSection) cardioTypeSection.classList.add('hidden');
+        if (cardioParams) cardioParams.classList.add('hidden');
+
+        if (sysInfoEl) {
+            sysInfoEl.textContent = `🏋️ ${card.muscle} • Alvo atual do card: ${card.sets || 3}× ${card.reps || '8-12'} (${card.rest || '90s'})`;
+        }
+
+        const setsField = document.getElementById('atv-edit-sets');
+        const repsField = document.getElementById('atv-edit-reps');
+        const restField = document.getElementById('atv-edit-rest');
+        const weightField = document.getElementById('atv-edit-weight');
+
+        if (isSwitch) {
+            if (setsField) setsField.value = card.sets || 3;
+            if (repsField) repsField.value = card.reps || '8-12';
+            if (restField) restField.value = card.rest || '90-120s';
+            const suggested = calcWeightedExerciseRefLoad([exerciseName, card.name, ...(card.variations || [])], card.load);
+            if (weightField && suggested !== null) weightField.value = formatWeightNumber(suggested);
+        } else if (logObj) {
+            if (setsField) setsField.value = logObj.sets || card.sets || 3;
+            if (repsField) repsField.value = logObj.reps || card.reps || '8-12';
+            if (restField) restField.value = (logObj.rest && logObj.rest !== '-') ? logObj.rest : (card.rest || '90-120s');
+            if (weightField) weightField.value = formatWeightNumber(logObj.weight || 0);
+        }
+
+        const isMain = String(card.name || '').trim().toLowerCase() === String(exerciseName || '').trim().toLowerCase();
+        window.setEditAtvRole(isMain ? 'main' : 'variation');
+    }
+}
+
+window.onEditAtvCardioModalityChange = function() {
+    const selMod = document.getElementById('atv-edit-cardio-modality')?.value || 'Corrida';
+    const isMixed = selMod.toLowerCase().includes('misto');
+    const simpleFields = document.getElementById('atv-edit-cardio-simple-fields');
+    const mixedFields = document.getElementById('atv-edit-cardio-mixed-fields');
+
+    if (isMixed) {
+        if (simpleFields) simpleFields.classList.add('hidden');
+        if (mixedFields) mixedFields.classList.remove('hidden');
+    } else {
+        if (simpleFields) simpleFields.classList.remove('hidden');
+        if (mixedFields) mixedFields.classList.add('hidden');
+    }
+    window.onEditAtvCardioInputChange();
+};
+
+window.onEditAtvCardioInputChange = function() {
+    const previewEl = document.getElementById('atv-edit-cardio-preview');
+    if (!previewEl) return;
+    const selMod = document.getElementById('atv-edit-cardio-modality')?.value || 'Corrida';
+    const isMixed = selMod.toLowerCase().includes('misto');
+
+    let effSpeed = 0;
+    let durStr = '';
+    if (isMixed) {
+        const runSp = getWeightNumericValue(document.getElementById('atv-edit-mixed-speed')?.value || '0');
+        const walkSp = getWeightNumericValue(document.getElementById('atv-edit-mixed-walk-speed')?.value || '0');
+        const ratio = parseFloat(document.getElementById('atv-edit-mixed-ratio')?.value || '0.60') || 0.60;
+        durStr = document.getElementById('atv-edit-mixed-duration')?.value || '25 min';
+        effSpeed = calcMixedCardioEffectiveSpeed(runSp, walkSp, ratio);
+    } else {
+        effSpeed = getWeightNumericValue(document.getElementById('atv-edit-cardio-speed')?.value || '0');
+        durStr = document.getElementById('atv-edit-cardio-duration')?.value || '20 min';
+    }
+
+    const durObj = parseCardioDurationInterval(durStr, 20);
+    if (effSpeed > 0 && durObj.avgMin > 0) {
+        const km = (effSpeed * durObj.avgMin) / 60;
+        const pace = formatPaceMinPerKm(effSpeed);
+        previewEl.innerHTML = `🏃 Distância: <b class="text-zinc-900">${km.toFixed(2).replace('.', ',')} km</b> • Pace: <b class="text-zinc-900">${pace}</b>${isMixed ? ' • Misto (η=0,96)' : ''}`;
+    } else {
+        };
+const _unusedLegacySyncHead = function(card, exerciseName) {
+    if (!card) return;
+    const isCardio = isCardioExercise(exerciseName, card.muscle);
+
     const sysInfoEl = document.getElementById('atv-edit-system-info');
     if (sysInfoEl) {
         if (isCardio) {
@@ -2024,7 +2204,7 @@ function syncEditModalFieldsForSlotAndExercise(card, exerciseName, logObj, isSwi
         weightLabel.textContent = isCardio ? 'Velocidade (km/h)' : 'Carga (kg)';
     }
 
-    const strengthGroup = document.getElementById('atv-edit-strength-group');
+}; const _unusedLegacySyncModal = function() {
     const cardioGroup = document.getElementById('atv-edit-cardio-group');
     const setsField = document.getElementById('atv-edit-sets');
     const repsField = document.getElementById('atv-edit-reps');
@@ -2183,7 +2363,9 @@ window.saveEditedAtvLog = function(event) {
         log.habitId = 'h_' + planId;
     }
 
-    const isCardio = isCardioExercise(log.exerciseName, log.muscle);
+    const isCardio = isCardioExercise(log.exerciseName, log.muscle) ||
+        (card && isCardioExercise(card.name, card.muscle)) ||
+        (document.getElementById('atv-edit-cardio-type-section') && !document.getElementById('atv-edit-cardio-type-section').classList.contains('hidden'));
     log.unit = isCardio ? 'km/h' : 'kg';
     if (isCardio) {
         log.planId = CARDIO_Z2_PLAN_ID;
@@ -2194,13 +2376,50 @@ window.saveEditedAtvLog = function(event) {
     if (weightInput) log.weight = getWeightNumericValue(weightInput.value);
 
     if (isCardio) {
-        const durationInput = document.getElementById('atv-edit-duration');
-        const durVal = durationInput ? durationInput.value.trim() : '';
+        const selMod = document.getElementById('atv-edit-cardio-modality')?.value || 'Corrida';
+        const isMixed = selMod.toLowerCase().includes('misto');
+        log.timerModality = selMod;
+        log.isMixed = isMixed;
+        let effSpeed = 0;
+        let durVal = '20 min';
+
+        if (isMixed) {
+            const runSp = getWeightNumericValue(document.getElementById('atv-edit-mixed-speed')?.value || '0');
+            const walkSp = getWeightNumericValue(document.getElementById('atv-edit-mixed-walk-speed')?.value || '0');
+            const ratio = parseFloat(document.getElementById('atv-edit-mixed-ratio')?.value || '0.60') || 0.60;
+            durVal = document.getElementById('atv-edit-mixed-duration')?.value.trim() || '25 min';
+            effSpeed = calcMixedCardioEffectiveSpeed(runSp, walkSp, ratio);
+            log.runSpeedKmh = runSp;
+            log.walkSpeedKmh = walkSp > 0 ? walkSp : parseFloat((runSp * 0.55).toFixed(2));
+            log.runRatio = ratio;
+        } else {
+            effSpeed = getWeightNumericValue(document.getElementById('atv-edit-cardio-speed')?.value || '0');
+            durVal = document.getElementById('atv-edit-cardio-duration')?.value.trim() || '20 min';
+            log.runSpeedKmh = undefined;
+            log.walkSpeedKmh = undefined;
+            log.runRatio = undefined;
+        }
+
+        const durObj = parseCardioDurationInterval(durVal, 20);
+        log.weight = parseFloat(effSpeed.toFixed(2));
         log.sets = 1;
-        log.reps = durVal || log.reps || '20 min';
-        log.timerDuration = log.reps;
-        const durObj = parseCardioDurationInterval(log.reps, 20);
+        log.reps = durVal;
+        log.timerDuration = durVal;
         log.durationMin = durObj.avgMin;
+
+        log.rest = '-';
+        log.unit = 'km/h';
+        log.planId = CARDIO_Z2_PLAN_ID;
+        log.habitId = CARDIO_Z2_HABIT_ID;
+        log.muscle = 'Sistema Cardiovascular / Resistência';
+        log.exerciseName = `${CARDIO_Z2_NAME} • ${selMod}`;
+        log.cardExerciseName = CARDIO_Z2_NAME;
+
+        log.sets = 1;
+
+
+
+
         log.rest = '-';
     } else {
         const setsInput = document.getElementById('atv-edit-sets');
@@ -2217,7 +2436,7 @@ window.saveEditedAtvLog = function(event) {
     if (notesInput) log.notes = notesInput.value.trim();
 
     // Atualiza também o catálogo do Card selecionado (Principal ou Substituto/Variação) no novo formato
-    if (card && chosenName) {
+    if (!isCardio && card && chosenName) {
         if (!Array.isArray(card.variations)) card.variations = [];
         const oldMain = card.name;
         if (editModalSelectedRole === 'main') {
@@ -2228,19 +2447,27 @@ window.saveEditedAtvLog = function(event) {
             card.name = chosenName;
         } else {
             const existsAsMain = card.name.toLowerCase() === chosenName.toLowerCase();
-            const existsAsVar = card.variations.some(v => v.toLowerCase() === chosenName.toLowerCase());
+            const existsAsVar = card.variations.some(v => v && v.toLowerCase() === chosenName.toLowerCase());
+            /* apply strength target params */
+            card.sets = log.sets;
+            card.reps = log.reps;
+            card.rest = log.rest;
             if (!existsAsMain && !existsAsVar) {
                 card.variations.push(chosenName);
             }
         }
+        const _unusedBrackets = () => { if (true) {
+            }
+        }
         if (isCardio) {
-            card.sets = 1;
-            card.reps = log.reps;
-            card.rest = '-';
-        } else {
             card.sets = log.sets;
             card.reps = log.reps;
             card.rest = log.rest;
+        } else {
+            if (isCardio) {
+            card.reps = log.reps;
+            card.rest = log.rest;
+        }
         }
         const cardStateKey = `${selectedAtvDate}_${planId}_${slotIdx}`;
         atvUiState.cardInputs[cardStateKey] = {
@@ -2620,8 +2847,12 @@ function buildAtvAerobicPanelHTML() {
                         <div class="flex items-baseline justify-center select-none">
                             ${isCountdown && !st.running ? `
                                 <input id="atv-aero-timer-display" type="text" value="${timeFormatted}"
-                                    onchange="onAtvAerobicCountdownDirectInput(this)"
-                                    onblur="onAtvAerobicCountdownDirectInput(this)"
+                                    inputmode="numeric"
+                                    onfocus="this.select()"
+                                    oninput="onAtvAerobicCountdownDirectInput(this)"
+                                    onblur="onAtvAerobicCountdownDirectBlur(this)"
+                                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); this.blur(); }"
+
                                     title="Clique para digitar o tempo regressivo (HH:MM:SS ou MM:SS)"
                                     class="w-56 sm:w-64 bg-transparent text-center text-4xl sm:text-5xl font-mono font-extrabold tracking-tight text-white border-b border-dashed border-zinc-700 focus:border-emerald-400 focus:outline-none">
                             ` : `
@@ -3001,8 +3232,8 @@ function renderAtvFisicaInteractiveView() {
 
                 <!-- Seletor de Modalidade: Força | Aeróbico -->
                 <div class="inline-flex bg-white p-1 rounded-full border border-zinc-200 shadow-2xs">
-                    <button type="button" onclick="setAtvSubMode('strength')" class="${strengthTabCls}">🏋️ Força (Exercícios)</button>
-                    <button type="button" onclick="setAtvSubMode('aerobic')" class="${aerobicTabCls}">🏃 Aeróbico (Corrida / Cardio)</button>
+                    <button type="button" onclick="setAtvSubMode('strength')" class="${strengthTabCls}">🏋️ Força</button>
+                    <button type="button" onclick="setAtvSubMode('aerobic')" class="${aerobicTabCls}">🏃 Aeróbico</button>
                 </div>
 
                 <div class="text-xs font-mono text-zinc-500">
