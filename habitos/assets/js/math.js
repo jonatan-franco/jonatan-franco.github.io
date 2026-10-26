@@ -2,7 +2,7 @@
  * Modelo:
  *   TST = TIB - W   onde   W = SOL + WASO + TASAFA = TIB - TST
  *   Var(TST) = Var(TIB) + Var(W) - 2*Cov(TIB, W)
- *   β_W = Cov(TIB, W) / Var(TIB)
+ *   β_W = Cov(TIB, W) / Var(W) (coeficiente angular da regressão TIB ~ W)
  *   RVS² = Var(TST) / Var(TIB) = 1 + Var(W)/Var(TIB) - 2*β_W
  *   RVS (ρ) = sqrt(Var(TST) / Var(TIB))
  */
@@ -72,10 +72,10 @@ function calcSleepRVS(sleepArr, bedArr) {
         };
     }
 
-    const betaW = covTIBW / varTIB;
+    const betaW = varW > 1e-9 ? (covTIBW / varW) : null;
     const betaTST = 1 - betaW;
-    const rvsSquared = Math.max(0, 1 + (varW / varTIB) - (2 * betaW));
-    const rvs = Math.sqrt(rvsSquared);
+    const rvs = varTIB > 1e-9 ? Math.sqrt(Math.max(0, varTST / varTIB)) : 0; const rvsSquared = rvs * rvs;
+    // rvs = sqrt(varTST / varTIB)
 
     return {
         valid: true,
