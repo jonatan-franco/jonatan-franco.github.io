@@ -112,13 +112,7 @@ function applyDataMigrations() {
             }
         }
     });
-    if (!window.isRegisteredSyncUser()) {
-        // Sem identificação + Git Sync ativos: remove planos pré-cadastrados
-        habits = habits.filter(h => h.category === 'sono');
-        if (habits.length === 0) {
-            habits = JSON.parse(JSON.stringify(defaultHabits));
-        }
-    }
+    // Preserva hábitos cadastrados e semeados localmente
     // Corrige eventual registro de sono salvo com data do dia seguinte devido ao antigo toISOString() UTC após 21h
     if (sleepJournal && typeof sleepJournal === 'object') {
         const todayStr = formatLocalISO(new Date());

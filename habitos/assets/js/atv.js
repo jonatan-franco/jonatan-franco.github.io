@@ -527,7 +527,6 @@ function trigger100PercentCelebrationBall() {
 /* Semeia os hábitos do plano de treino uma única vez por dispositivo (apenas para usuário com identificação e Git Sync ativos) */
 function ensureWorkoutPlanHabits() {
     loadWorkoutCatalogCustomizations();
-    if (typeof window.isRegisteredSyncUser === 'function' && !window.isRegisteredSyncUser()) return;
     let seeded = [];
     try { seeded = JSON.parse(SafeStorage.getItem(PLAN_SEED_KEY) || '[]') || []; } catch (e) { seeded = []; }
     let changed = false;
@@ -1448,30 +1447,6 @@ window.onAtvAerobicCountdownDirectBlur = function(inputEl) {
     const st = getAeroModalityTimerState(aeroSelectedModality);
     inputEl.value = (typeof formatHMS === 'function') ? formatHMS(st.cdTotalSec) : '00:20:00';
 };
-const _unusedLegacyCdHandler = function(inputEl, totalSec = 0) { /*
-    if (!inputEl) return;
-    const st = getAeroModalityTimerState(aeroSelectedModality);
-    if (st.running) return;
-
-
-
-*/ }; const _noop = () => {
-
-
-
-
-
-
-
-    }
-    if (totalSec > 0) {
-
-        st.cdRemainingMs = st.cdTotalSec * 1000;
-
-    } else {
-
-    }
-};
 
 window.toggleAtvAeroMixedPhase = function(targetPhase) {
     const st = getAeroModalityTimerState(aeroSelectedModality);
@@ -2185,60 +2160,9 @@ window.onEditAtvCardioInputChange = function() {
         const pace = formatPaceMinPerKm(effSpeed);
         previewEl.innerHTML = `🏃 Distância: <b class="text-zinc-900">${km.toFixed(2).replace('.', ',')} km</b> • Pace: <b class="text-zinc-900">${pace}</b>${isMixed ? ' • Misto (η=0,96)' : ''}`;
     } else {
-        };
-const _unusedLegacySyncHead = function(card, exerciseName) {
-    if (!card) return;
-    const isCardio = isCardioExercise(exerciseName, card.muscle);
-
-    const sysInfoEl = document.getElementById('atv-edit-system-info');
-    if (sysInfoEl) {
-        if (isCardio) {
-            sysInfoEl.textContent = `❤️ ${card.muscle} • Somente Duração + Velocidade (km/h)`;
-        } else {
-            sysInfoEl.textContent = `🏋️ ${card.muscle} • Alvo atual do card: ${card.sets || 3}× ${card.reps || '8-12'} (${card.rest || '90s'})`;
-        }
+        previewEl.textContent = 'Informe km/h + tempo';
     }
-
-    const weightLabel = document.getElementById('atv-edit-weight-label');
-    if (weightLabel) {
-        weightLabel.textContent = isCardio ? 'Velocidade (km/h)' : 'Carga (kg)';
-    }
-
-}; const _unusedLegacySyncModal = function() {
-    const cardioGroup = document.getElementById('atv-edit-cardio-group');
-    const setsField = document.getElementById('atv-edit-sets');
-    const repsField = document.getElementById('atv-edit-reps');
-    const restField = document.getElementById('atv-edit-rest');
-    const durationField = document.getElementById('atv-edit-duration');
-
-    if (isCardio) {
-        if (strengthGroup) strengthGroup.classList.add('hidden');
-        if (cardioGroup) cardioGroup.classList.remove('hidden');
-        if (durationField) {
-            if (isSwitch) {
-                durationField.value = card.reps || '20 min';
-            } else if (logObj) {
-                durationField.value = logObj.timerDuration || logObj.reps || card.reps || '20 min';
-            }
-        }
-    } else {
-        if (strengthGroup) strengthGroup.classList.remove('hidden');
-        if (cardioGroup) cardioGroup.classList.add('hidden');
-        if (isSwitch) {
-            if (setsField) setsField.value = card.sets || 3;
-            if (repsField) repsField.value = card.reps || '8-12';
-            if (restField) restField.value = card.rest || '90-120s';
-        } else if (logObj) {
-            if (setsField) setsField.value = logObj.sets || card.sets || 3;
-            if (repsField) repsField.value = logObj.reps || card.reps || '8-12';
-            if (restField) restField.value = (logObj.rest && logObj.rest !== '-') ? logObj.rest : (card.rest || '90-120s');
-        }
-    }
-
-    // Define se é Principal ou Substituto neste card
-    const isMain = String(card.name || '').trim().toLowerCase() === String(exerciseName || '').trim().toLowerCase();
-    window.setEditAtvRole(isMain ? 'main' : 'variation');
-}
+};
 
 window.onEditAtvMuscleSlotChange = function() {
     const { card } = getSelectedEditCardSlot();
@@ -3083,7 +3007,7 @@ function renderAtvFisicaInteractiveView() {
     // Item 2: se for selecionado cardiovascular, aparecer somente Duração, sem REPS e nem Séries
     // Item 3: campos vazios para preenchimento
     const customExerciseCardHTML = `
-        <div class="${isSyncUser ? 'w-[315px] sm:w-[350px] shrink-0 snap-center bg-zinc-50/90 border-2 border-dashed border-zinc-300' : 'w-full max-w-md bg-white border border-zinc-200 shadow-xs'} rounded-3xl p-5 flex flex-col justify-between space-y-3">
+        <div class="w-[315px] sm:w-[350px] shrink-0 snap-center bg-zinc-50/90 border-2 border-dashed border-zinc-300 rounded-3xl p-5 flex flex-col justify-between space-y-3">
             <form onsubmit="submitCustomAtvLog(event)" class="space-y-3">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-zinc-100 border border-zinc-200 flex items-center justify-center text-lg shrink-0">
@@ -3155,7 +3079,7 @@ function renderAtvFisicaInteractiveView() {
 
     const completionBallHTML = buildCompletionBallHTML(currentWorkout, selectedAtvDate);
 
-    const strengthSectionHTML = isSyncUser ? `
+    const strengthSectionHTML = `
             <!-- 2. SELETOR DE ATIVIDADE (UPPER / LOWER A / B) + BOLA VERDE 100% COMPLETO -->
             <div class="bg-white border border-zinc-200 rounded-3xl p-5 shadow-sm space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -3193,10 +3117,6 @@ function renderAtvFisicaInteractiveView() {
                         ${customExerciseCardHTML}
                     </div>
                 </div>
-            </div>
-    ` : `
-            <div class="bg-zinc-50/70 border border-zinc-200 rounded-3xl p-5 shadow-sm flex flex-col items-center">
-                ${customExerciseCardHTML}
             </div>
     `;
 
