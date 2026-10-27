@@ -483,7 +483,8 @@ function calcWeeklyLoadMetrics() {
 /* Verifica se em uma data ISO o usuário cumpriu 100% das atividades registradas */
 function isDay100Percent(dateIso, dayOfWeekIdx) {
     // 1. Sono: deve ter registro no Diário do Sono com sono > 0
-    const entry = calcSleepJournalEntry(sleepJournal[dateIso]);
+    const sleepEntry = (typeof sleepJournal === 'object' && sleepJournal !== null) ? sleepJournal[dateIso] : null;
+    const entry = calcSleepJournalEntry(sleepEntry);
     const hasSleep = entry.sleptH > 0;
 
     // 2. Atividade Física:
@@ -494,23 +495,22 @@ function isDay100Percent(dateIso, dayOfWeekIdx) {
         else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
     } catch (e) { logs = {}; }
 
-    const hasWorkout = Array.isArray(logs[dateIso]) && logs[dateIso].length > 0;
-
-    // Se houver treinos na agenda para este dia da semana:
     let dowIdx = dayOfWeekIdx;
     if (dowIdx === undefined) {
         const d = new Date(dateIso + 'T12:00:00');
         dowIdx = (d.getDay() + 6) % 7;
     }
-    const hasEventsInCalendar = Array.isArray(calendarEvents) && calendarEvents.length > 0;
-    const isWorkoutScheduled = hasEventsInCalendar ? calendarEvents.some(ev => ev.dayIndex === dowIdx) : true;
 
-    if (isWorkoutScheduled) {
-        return hasSleep && hasWorkout;
-    } else {
-        // Dia de descanso na agenda: sono completo garante 100%
-        return hasSleep;
-    }
+    const hasWorkoutLog = Array.isArray(logs[dateIso]) && logs[dateIso].length > 0;
+    const hasHabitCheck = typeof habits !== 'undefined' && Array.isArray(habits) && habits.some(h =>
+        h && h.category === 'atv_fisica' && Array.isArray(h.checks) && h.checks[dowIdx] === true &&
+        (typeof weekDays !== 'undefined' && weekDays[dowIdx] && weekDays[dowIdx].iso === dateIso)
+    );
+
+    const hasWorkout = hasWorkoutLog || hasHabitCheck;
+
+    // Um dia só é 100% completo se cumprir ambas as atividades monitoradas (Sono e Atividade Física)
+    return hasSleep && hasWorkout;
 }
 
 /* Calcula o streak de dias consecutivos com 100% das atividades */
@@ -539,24 +539,49 @@ function calcConsecutiveFullDaysStreak() {
     const sortedDates = Array.from(allDatesSet).sort();
     let maxStreak = 0;
     let runningStreak = 0;
+    let prevDateObj = null;
 
     sortedDates.forEach(dateStr => {
-        if (isDay100Percent(dateStr)) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const curDateObj = new Date(y, m - 1, d, 12, 0, 0);
+        const is100 = isDay100Percent(dateStr);
+
+        if (prevDateObj) {
+            const diffDays = Math.round((curDateObj - prevDateObj) / 86400000);
+            if (diffDays > 1) {
+                runningStreak = 0; // Se houve salto entre datas no histórico, o streak é quebrado
+            }
+        }
+
+        if (is100) {
             runningStreak++;
             if (runningStreak > maxStreak) maxStreak = runningStreak;
         } else {
             runningStreak = 0;
         }
+        prevDateObj = curDateObj;
     });
 
-    // Streak atual terminando no dia de hoje
+    // Streak atual terminando no dia de hoje (ou ontem se hoje ainda não foi registrado)
     const todayIso = weekDays[todayIndex !== -1 ? todayIndex : 0].iso;
+    const [ty, tm, td] = todayIso.split('-').map(Number);
+    let checkDate = new Date(ty, tm - 1, td, 12, 0, 0);
     let curCheck = 0;
-    for (let i = sortedDates.length - 1; i >= 0; i--) {
-        const dStr = sortedDates[i];
-        if (dStr > todayIso) continue;
-        if (isDay100Percent(dStr)) curCheck++;
-        else break;
+
+    const today100 = isDay100Percent(todayIso, todayIndex !== -1 ? todayIndex : undefined);
+    if (!today100) {
+        // Se hoje ainda não atingiu 100%, verifica o streak consecutivo que vinha até ontem
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    while (true) {
+        const checkIso = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+        if (isDay100Percent(checkIso)) {
+            curCheck++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+            break;
+        }
     }
     const currentStreak = curCheck;
 

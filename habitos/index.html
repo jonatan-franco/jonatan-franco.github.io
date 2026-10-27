@@ -201,23 +201,31 @@
 
             <!-- B) GRÁFICO DE SONO (LARGURA TOTAL COM SELETOR DE MODO E ±DP) -->
             <div class="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
                     <div>
                         <span class="text-[11px] font-mono uppercase font-bold text-indigo-600">SONO: CAMA VS. DORMIDO</span>
                         <h3 class="text-base font-bold text-zinc-900 mt-0.5">Análise de Sono</h3>
                         <p class="text-xs text-zinc-500" id="dash-sleep-source">Horas por noite, tempo de cama e eficiência diária.</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-1 bg-zinc-100 p-1 rounded-full text-xs">
-                        <button type="button" onclick="setDashSleepChartMode('all')" id="sleep-mode-btn-all" class="px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition">Cama vs Dormido</button>
-                        <button type="button" onclick="setDashSleepChartMode('slept')" id="sleep-mode-btn-slept" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Apenas Sono</button>
-                        <button type="button" onclick="setDashSleepChartMode('bed')" id="sleep-mode-btn-bed" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Apenas Cama</button>
-                        <button type="button" onclick="setDashSleepChartMode('eff')" id="sleep-mode-btn-eff" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Eficiência</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-1 bg-zinc-100 p-1 rounded-full text-xs">
+                            <button type="button" onclick="setDashSleepChartPeriod('week')" id="sleep-period-btn-week" class="px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition">Semana</button>
+                            <button type="button" onclick="setDashSleepChartPeriod('15d')" id="sleep-period-btn-15d" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">15d</button>
+                            <button type="button" onclick="setDashSleepChartPeriod('30d')" id="sleep-period-btn-30d" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">30d</button>
+                            <button type="button" onclick="setDashSleepChartPeriod('all')" id="sleep-period-btn-all" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Tudo</button>
+                        </div>
+                        <div class="flex items-center gap-1 bg-zinc-100 p-1 rounded-full text-xs">
+                            <button type="button" onclick="setDashSleepChartMode('all')" id="sleep-mode-btn-all" class="px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition">Cama vs Dormido</button>
+                            <button type="button" onclick="setDashSleepChartMode('slept')" id="sleep-mode-btn-slept" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Apenas Sono</button>
+                            <button type="button" onclick="setDashSleepChartMode('bed')" id="sleep-mode-btn-bed" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Apenas Cama</button>
+                            <button type="button" onclick="setDashSleepChartMode('eff')" id="sleep-mode-btn-eff" class="px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition">Eficiência</button>
+                        </div>
                     </div>
                 </div>
                 <div class="relative h-80 w-full">
                     <canvas id="dashSleepChart"></canvas>
                     <div id="dash-sleep-empty" class="hidden absolute inset-0 items-center justify-center text-center text-xs text-zinc-400 bg-white/80">
-                        Sem registros de sono nesta semana.<br>Adicione registros no Diário do Sono na aba Gestão do Sono.
+                        Sem registros de sono no período selecionado.<br>Adicione registros no Diário do Sono na aba Gestão do Sono.
                     </div>
                 </div>
             </div>

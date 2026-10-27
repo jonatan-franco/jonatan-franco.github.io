@@ -446,6 +446,7 @@ function renderMetricsView() {
 /* ===== Dashboard (somente leitura) ===== */
 let dashSleepChartInstance = null;
 let dashSleepChartMode = 'all'; // 'all' | 'slept' | 'bed' | 'eff'
+let dashSleepChartPeriod = 'week'; // 'week' | '15d' | '30d' | 'all'
 
 // Modo de interação customizado para o gráfico de sono:
 // Dispara o tooltip de Média e Faixa ±DP sempre que o cursor passar em cima da faixa (mesmo entre barras),
@@ -550,33 +551,205 @@ window.setDashSleepChartMode = function(mode) {
     renderDashboardCharts();
 };
 
+window.setDashSleepChartPeriod = function(period) {
+    dashSleepChartPeriod = period;
+    ['week', '15d', '30d', 'all'].forEach(p => {
+        const btn = document.getElementById('sleep-period-btn-' + p);
+        if (btn) {
+            btn.className = p === period
+                ? "px-3 py-1.5 rounded-full bg-black text-white font-semibold shadow-xs transition"
+                : "px-3 py-1.5 rounded-full text-zinc-600 hover:text-black transition";
+        }
+    });
+    renderDashboardCharts();
+};
+
+function getSleepChartData(period) {
+    if (period === 'week' || !period) {
+        const s = calcSleepWeekSeries();
+        const xLabels = weekDays.map(d => d.shortName);
+        const weekActive = typeof s.weekActiveDays === 'number' ? s.weekActiveDays : s.activeDays;
+        const wMeanSlept = typeof s.weekMeanSlept === 'number' ? s.weekMeanSlept : s.meanSlept;
+        const wSdSlept = typeof s.weekSdSlept === 'number' ? s.weekSdSlept : s.sdSlept;
+        const wMeanBed = typeof s.weekMeanBed === 'number' ? s.weekMeanBed : s.meanBed;
+        const wSdBed = typeof s.weekSdBed === 'number' ? s.weekSdBed : s.sdBed;
+        const wMeanEff = typeof s.weekMeanEff === 'number' ? s.weekMeanEff : s.meanDailyEfficiency;
+        const wSdEff = typeof s.weekSdEff === 'number' ? s.weekSdEff : s.sdDailyEff;
+
+        return {
+            xLabels,
+            slept: s.slept,
+            bed: s.bed,
+            eff: s.eff,
+            activeDays: weekActive,
+            meanSlept: wMeanSlept,
+            sdSlept: wSdSlept,
+            meanBed: wMeanBed,
+            sdBed: wSdBed,
+            meanEff: wMeanEff,
+            sdEff: wSdEff,
+            source: s.source
+        };
+    }
+
+    const today = new Date();
+    const todayIso = (typeof getLocalISODate === 'function') ? getLocalISODate() : formatLocalISO(today);
+
+    let dateList = [];
+    if (period === '15d' || period === '30d') {
+        const count = period === '15d' ? 15 : 30;
+        for (let i = count - 1; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i, 12, 0, 0);
+            dateList.push(formatLocalISO(d));
+        }
+    } else if (period === 'all') {
+        const allKeys = Object.keys(sleepJournal || {}).filter(k => {
+            const e = sleepJournal[k];
+            return e && e.bed && e.bed !== '—';
+        });
+        weekDays.forEach(d => { if (!isFutureDay(d.index)) allKeys.push(d.iso); });
+        allKeys.sort();
+
+        if (allKeys.length === 0) {
+            dateList = weekDays.map(d => d.iso);
+        } else {
+            const firstIso = allKeys[0];
+            const [y, m, d] = firstIso.split('-').map(Number);
+            let cur = new Date(y, m - 1, d, 12, 0, 0);
+            const [ty, tm, td] = todayIso.split('-').map(Number);
+            const end = new Date(ty, tm - 1, td, 12, 0, 0);
+
+            const diffDays = Math.round((end - cur) / 86400000);
+            if (diffDays < 6) {
+                cur.setDate(end.getDate() - 6);
+            }
+
+            while (cur <= end) {
+                dateList.push(formatLocalISO(cur));
+                cur.setDate(cur.getDate() + 1);
+            }
+        }
+    }
+
+    const xLabels = dateList.map(iso => {
+        const parts = iso.split('-');
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}` : iso;
+    });
+
+    const slept = [];
+    const bed = [];
+    const eff = [];
+    let sumSlept = 0, sumBed = 0, sumDailyEff = 0, validEffDays = 0, activeDays = 0;
+
+    dateList.forEach(iso => {
+        let entry = (sleepJournal && sleepJournal[iso]) ? calcSleepJournalEntry(sleepJournal[iso]) : null;
+        let sH = (entry && entry.sleptH > 0) ? entry.sleptH : 0;
+        let bH = (entry && entry.bedH > 0) ? entry.bedH : 0;
+
+        if (sH === 0 && bH === 0) {
+            const wIdx = weekDays.findIndex(d => d.iso === iso);
+            if (wIdx !== -1) {
+                const sleepHabit = typeof habits !== 'undefined' && Array.isArray(habits) ? habits.find(h => h.category === 'sono') : null;
+                if (sleepHabit) {
+                    sH = sleepHabit.dailyHours ? (sleepHabit.dailyHours[wIdx] || 0) : 0;
+                    bH = sleepHabit.bedtimeHours ? (sleepHabit.bedtimeHours[wIdx] || 0) : sH;
+                }
+            }
+        }
+
+        slept.push(sH);
+        bed.push(bH);
+
+        const dayEff = bH > 0 ? (sH / bH) * 100 : (sH > 0 ? 100 : 0);
+        eff.push(dayEff);
+
+        if (sH > 0 || bH > 0) {
+            activeDays++;
+            sumSlept += sH;
+            sumBed += bH;
+            if (bH > 0) {
+                sumDailyEff += dayEff;
+                validEffDays++;
+            }
+        }
+    });
+
+    const meanSlept = activeDays > 0 ? sumSlept / activeDays : 0;
+    const meanBed = activeDays > 0 ? sumBed / activeDays : 0;
+    const meanEff = validEffDays > 0 ? sumDailyEff / validEffDays : 0;
+
+    let varSlept = 0, varBed = 0, varEff = 0;
+    if (activeDays > 0) {
+        for (let i = 0; i < dateList.length; i++) {
+            if (slept[i] > 0 || bed[i] > 0) {
+                varSlept += Math.pow(slept[i] - meanSlept, 2);
+                varBed += Math.pow(bed[i] - meanBed, 2);
+            }
+            if (bed[i] > 0) {
+                varEff += Math.pow(eff[i] - meanEff, 2);
+            }
+        }
+        varSlept = varSlept / activeDays;
+        varBed = varBed / activeDays;
+        varEff = validEffDays > 0 ? varEff / validEffDays : 0;
+    }
+
+    const sdSlept = Math.sqrt(varSlept);
+    const sdBed = Math.sqrt(varBed);
+    const sdEff = Math.sqrt(varEff);
+
+    return {
+        xLabels,
+        slept,
+        bed,
+        eff,
+        activeDays,
+        meanSlept,
+        sdSlept,
+        meanBed,
+        sdBed,
+        meanEff,
+        sdEff,
+        source: 'journal'
+    };
+}
+
 function renderDashboardCharts() {
     if (typeof Chart === 'undefined') return;
-    const xLabels = weekDays.map(d => d.shortName);
 
     const sleepCanvas = document.getElementById('dashSleepChart');
     if (!sleepCanvas) return;
 
-    const s = calcSleepWeekSeries();
-    const weekActive = typeof s.weekActiveDays === 'number' ? s.weekActiveDays : s.activeDays;
-    const wMeanSlept = typeof s.weekMeanSlept === 'number' ? s.weekMeanSlept : s.meanSlept;
-    const wSdSlept = typeof s.weekSdSlept === 'number' ? s.weekSdSlept : s.sdSlept;
-    const wMeanBed = typeof s.weekMeanBed === 'number' ? s.weekMeanBed : s.meanBed;
-    const wSdBed = typeof s.weekSdBed === 'number' ? s.weekSdBed : s.sdBed;
-    const wMeanEff = typeof s.weekMeanEff === 'number' ? s.weekMeanEff : s.meanDailyEfficiency;
-    const wSdEff = typeof s.weekSdEff === 'number' ? s.weekSdEff : s.sdDailyEff;
+    const s = getSleepChartData(dashSleepChartPeriod);
+    const xLabels = s.xLabels;
+    const N = xLabels.length;
+
+    const weekActive = s.activeDays;
+    const wMeanSlept = s.meanSlept;
+    const wSdSlept = s.sdSlept;
+    const wMeanBed = s.meanBed;
+    const wSdBed = s.sdBed;
+    const wMeanEff = s.meanEff;
+    const wSdEff = s.sdEff;
 
     const empty = document.getElementById('dash-sleep-empty');
     if (empty) {
         empty.classList.toggle('hidden', weekActive > 0);
         empty.classList.toggle('flex', weekActive === 0);
+        const periodText = dashSleepChartPeriod === 'week' ? 'nesta semana'
+            : dashSleepChartPeriod === '15d' ? 'nos últimos 15 dias'
+            : dashSleepChartPeriod === '30d' ? 'nos últimos 30 dias'
+            : 'no período selecionado';
+        empty.innerHTML = `Sem registros de sono ${periodText}.<br>Adicione registros no Diário do Sono na aba Gestão do Sono.`;
     }
 
     const src = document.getElementById('dash-sleep-source');
     if (src) {
-        src.textContent = s.source === 'journal' ? 'Horas por noite e eficiência (%) — fonte: Diário do Sono.'
-            : s.source === 'habit' ? 'Horas por noite e eficiência (%) — fonte: atividade "Sono".'
-            : 'Horas por noite e eficiência (%).';
+        const periodLabel = dashSleepChartPeriod === 'week' ? 'semana corrente'
+            : dashSleepChartPeriod === '15d' ? 'últimos 15 dias'
+            : dashSleepChartPeriod === '30d' ? 'últimos 30 dias'
+            : 'todo o período registrado';
+        src.textContent = `Horas por noite e eficiência (%) • ${periodLabel} • fonte: Diário do Sono.`;
     }
 
     const toNull = arr => arr.map(v => v > 0 ? parseFloat(v.toFixed(2)) : null);
@@ -594,24 +767,24 @@ function renderDashboardCharts() {
     let datasets = [];
     let scales = {};
     let bandMeta = null;
-    // O desvio-padrão do gráfico de análise de sono é calculado com base na semana analisada (weekDays)
     const hasSleepSdBand = weekActive >= 2 && wSdSlept > 0;
+    const barRadius = N > 15 ? 4 : 6;
 
     if (dashSleepChartMode === 'slept') {
-        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
+        const meanLine = Array(N).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
         const meanLabel = `Média (μ=${wMeanSlept.toFixed(1)}h)`;
         const upperVal = parseFloat((wMeanSlept + wSdSlept).toFixed(2));
         const lowerVal = parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2));
         bandMeta = { mean: wMeanSlept, sd: wSdSlept, upper: upperVal, lower: lowerVal, hasBand: hasSleepSdBand, unit: 'h' };
 
         datasets = [
-            { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 8, order: 2 },
+            { type: 'bar', label: `Tempo Dormido (h)`, data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: barRadius, order: 2 },
             { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 0, _isMeanLine: true, _meanColor: '#312e81', _meanText: `${wMeanSlept.toFixed(1)}h` }
         ];
 
         if (hasSleepSdBand) {
-            const plusSdLine = Array(7).fill(upperVal);
-            const minusSdLine = Array(7).fill(lowerVal);
+            const plusSdLine = Array(N).fill(upperVal);
+            const minusSdLine = Array(N).fill(lowerVal);
             datasets.push(
                 { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 1, _hideFromLegend: true },
                 { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdSlept.toFixed(2)}h (${lowerVal.toFixed(2)}h a ${upperVal.toFixed(2)}h)` }
@@ -624,20 +797,20 @@ function renderDashboardCharts() {
         };
     } else if (dashSleepChartMode === 'bed') {
         const hasBedSdBand = weekActive >= 2 && wSdBed > 0;
-        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanBed.toFixed(2)) : null);
+        const meanLine = Array(N).fill(weekActive > 0 ? parseFloat(wMeanBed.toFixed(2)) : null);
         const meanLabel = `Média Cama (μ=${wMeanBed.toFixed(1)}h)`;
         const upperVal = parseFloat((wMeanBed + wSdBed).toFixed(2));
         const lowerVal = parseFloat(Math.max(0, wMeanBed - wSdBed).toFixed(2));
         bandMeta = { mean: wMeanBed, sd: wSdBed, upper: upperVal, lower: lowerVal, hasBand: hasBedSdBand, unit: 'h' };
 
         datasets = [
-            { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: 8, order: 2 },
+            { type: 'bar', label: `Tempo de Cama (h)`, data: toNull(s.bed), backgroundColor: '#818cf8', borderRadius: barRadius, order: 2 },
             { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 0, _isMeanLine: true, _meanColor: '#312e81', _meanText: `${wMeanBed.toFixed(1)}h` }
         ];
 
         if (hasBedSdBand) {
-            const plusSdLine = Array(7).fill(upperVal);
-            const minusSdLine = Array(7).fill(lowerVal);
+            const plusSdLine = Array(N).fill(upperVal);
+            const minusSdLine = Array(N).fill(lowerVal);
             datasets.push(
                 { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 1, _hideFromLegend: true },
                 { type: 'line', label: `Faixa ±DP (±${wSdBed.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(129, 140, 248, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(129, 140, 248, 0.14)', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdBed.toFixed(2)}h (${lowerVal.toFixed(2)}h a ${upperVal.toFixed(2)}h)` }
@@ -650,20 +823,20 @@ function renderDashboardCharts() {
         };
     } else if (dashSleepChartMode === 'eff') {
         const hasEffSdBand = weekActive >= 2 && wSdEff > 0;
-        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanEff.toFixed(1)) : null);
+        const meanLine = Array(N).fill(weekActive > 0 ? parseFloat(wMeanEff.toFixed(1)) : null);
         const meanLabel = `Média Eficiência (μ=${wMeanEff.toFixed(1)}%)`;
         const upperVal = parseFloat(Math.min(100, wMeanEff + wSdEff).toFixed(1));
         const lowerVal = parseFloat(Math.max(0, wMeanEff - wSdEff).toFixed(1));
         bandMeta = { mean: wMeanEff, sd: wSdEff, upper: upperVal, lower: lowerVal, hasBand: hasEffSdBand, unit: '%' };
 
         datasets = [
-            { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: 8, order: 2 },
+            { type: 'bar', label: `Eficiência (%)`, data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), backgroundColor: '#a855f7', borderRadius: barRadius, order: 2 },
             { type: 'line', label: meanLabel, data: meanLine, borderColor: '#6b21a8', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 0, _isMeanLine: true, _meanColor: '#6b21a8', _meanText: `${wMeanEff.toFixed(1)}%` }
         ];
 
         if (hasEffSdBand) {
-            const plusSdLine = Array(7).fill(upperVal);
-            const minusSdLine = Array(7).fill(lowerVal);
+            const plusSdLine = Array(N).fill(upperVal);
+            const minusSdLine = Array(N).fill(lowerVal);
             datasets.push(
                 { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, order: 1, _hideFromLegend: true },
                 { type: 'line', label: `Faixa ±DP (±${wSdEff.toFixed(1)}%)`, data: minusSdLine, borderColor: 'rgba(168, 85, 247, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(168, 85, 247, 0.14)', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdEff.toFixed(1)}% (${lowerVal.toFixed(1)}% a ${upperVal.toFixed(1)}%)` }
@@ -675,21 +848,21 @@ function renderDashboardCharts() {
             y: { min: 0, max: 100, grid: { color: '#f4f4f5' }, title: { display: true, text: 'Eficiência (%)' }, ticks: { callback: v => v + '%' } }
         };
     } else {
-        // Modo 'all': Cama vs Dormido com Eficiência e faixa ±DP baseada na semana analisada
-        const meanLine = Array(7).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
+        // Modo 'all': Cama vs Dormido com Eficiência e faixa ±DP
+        const meanLine = Array(N).fill(weekActive > 0 ? parseFloat(wMeanSlept.toFixed(2)) : null);
         const meanLabel = `Média Sono (μ=${wMeanSlept.toFixed(1)}h)`;
         const upperVal = parseFloat((wMeanSlept + wSdSlept).toFixed(2));
         const lowerVal = parseFloat(Math.max(0, wMeanSlept - wSdSlept).toFixed(2));
         bandMeta = { mean: wMeanSlept, sd: wSdSlept, upper: upperVal, lower: lowerVal, hasBand: hasSleepSdBand, unit: 'h' };
 
         datasets = [
-            { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
+            { type: 'line', label: 'Eficiência (%)', data: toNull(s.eff).map(v => v === null ? null : Math.round(v)), borderColor: '#a855f7', backgroundColor: '#a855f7', borderWidth: 2.5, pointRadius: N > 15 ? 2.5 : 4, tension: 0.35, spanGaps: true, yAxisID: 'y1', order: 0 },
             { type: 'line', label: meanLabel, data: meanLine, borderColor: '#312e81', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, yAxisID: 'y', order: 1, _isMeanLine: true, _meanColor: '#312e81', _meanText: `${wMeanSlept.toFixed(1)}h` }
         ];
 
         if (hasSleepSdBand) {
-            const plusSdLine = Array(7).fill(upperVal);
-            const minusSdLine = Array(7).fill(lowerVal);
+            const plusSdLine = Array(N).fill(upperVal);
+            const minusSdLine = Array(N).fill(lowerVal);
             datasets.push(
                 { type: 'line', label: `_upper_dp`, data: plusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, yAxisID: 'y', order: 1, _hideFromLegend: true },
                 { type: 'line', label: `Faixa ±DP (±${wSdSlept.toFixed(2)}h)`, data: minusSdLine, borderColor: 'rgba(99, 102, 241, 0.45)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, pointHoverRadius: 0, fill: '-1', backgroundColor: 'rgba(99, 102, 241, 0.14)', yAxisID: 'y', order: 1, _isBandLine: true, _bandTooltip: `Faixa ±DP: ±${wSdSlept.toFixed(2)}h (${lowerVal.toFixed(2)}h a ${upperVal.toFixed(2)}h)` }
@@ -697,8 +870,8 @@ function renderDashboardCharts() {
         }
 
         datasets.push(
-            { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: 6, yAxisID: 'y', order: 2 },
-            { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y', order: 2 }
+            { type: 'bar', label: 'Tempo de cama (h)', data: toNull(s.bed), backgroundColor: '#c7d2fe', borderRadius: barRadius, yAxisID: 'y', order: 2 },
+            { type: 'bar', label: 'Tempo dormido (h)', data: toNull(s.slept), backgroundColor: '#6366f1', borderRadius: barRadius, yAxisID: 'y', order: 2 }
         );
 
         scales = {
@@ -740,7 +913,6 @@ function renderDashboardCharts() {
                                 .map(item => {
                                     const ds = chart.data.datasets[item.datasetIndex];
                                     if (ds && ds._isMeanLine) {
-                                        // Retira o retângulo e deixa apenas o tracejado desenhado pelo sleepLegendDashPlugin
                                         return {
                                             ...item,
                                             fillStyle: 'rgba(0,0,0,0)',
