@@ -55,10 +55,10 @@ const WORKOUT_PLAN = [
             { name: 'Puxada Alta', muscle: 'Costas (Dorsal - largura)', variations: ['Puxada triângulo', 'Barra fixa assistida (Graviton)'], sets: 3, reps: '8-12', rest: '90-120s' },
             { name: 'Desenvolvimento Halteres', muscle: 'Deltoide Anterior e Tríceps', variations: ['Desenvolvimento máquina articulada', 'Desenvolvimento no Smith'], sets: 3, reps: '8-12', rest: '90-120s' },
             { name: 'Remada Baixa', muscle: 'Costas (Espessura / Meio das costas)', variations: ['Remada curvada com pegada pronada', 'Remada articulada'], sets: 3, reps: '8-12', rest: '90-120s' },
-            { name: 'Supino Inclinado Halteres', muscle: 'Peitoral (ênfase clavicular/superior)', variations: ['Supino Reto Halteres', 'Supino Inclinado Smith', 'Máquina articulada inclinada', 'Crucifixo / Peck Deck'], sets: 3, reps: '8-12', rest: '90-120s' },
-            { name: 'Elevação Lateral', muscle: 'Deltoide Lateral', variations: ['Elevação lateral na polia/cabo', 'Elevação lateral máquina'], sets: 3, reps: '10-15', rest: '60-90s' },
-            { name: 'Tríceps Corda', muscle: 'Tríceps braquial', variations: ['Tríceps testa com halteres', 'Tríceps francês na polia'], sets: 3, reps: '10-15', rest: '60-90s' },
-            { name: 'Bíceps Martelo', muscle: 'Bíceps e Braquiorradial', variations: ['Rosca martelo na corda (polia)', 'Rosca Scott máquina/barra W', 'Rosca direta com halteres/barra'], sets: 3, reps: '10-15', rest: '60-90s' },
+            { name: 'Supino Reto Halteres', muscle: 'Peitoral (ênfase esternocostal/média)', variations: ['Supino reto com barra', 'Supino máquina articulada', 'Crucifixo / Peck Deck'], sets: 3, reps: '8-12', rest: '90-120s' },
+            { name: 'Elevação Lateral na Polia', muscle: 'Deltoide Lateral', variations: ['Elevação lateral máquina', 'Elevação lateral com halteres'], sets: 3, reps: '10-15', rest: '60-90s' },
+            { name: 'Tríceps Francês na Polia', muscle: 'Tríceps braquial', variations: ['Tríceps testa com halteres', 'Tríceps pulley barra reta/W', 'Tríceps corda'], sets: 3, reps: '10-15', rest: '60-90s' },
+            { name: 'Rosca Direta Barra W / Halteres', muscle: 'Bíceps e Braquiorradial', variations: ['Rosca Scott máquina/barra W', 'Rosca inclinada 45° com halteres', 'Rosca martelo na corda (polia)'], sets: 3, reps: '10-15', rest: '60-90s' },
             { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
         ]
     },
@@ -209,6 +209,24 @@ function loadWorkoutCatalogCustomizations() {
                 w.exercises = savedCatalog[w.planId];
             }
             // Garante que agrupamentos musculares padrão (ex: Peitoral, Tríceps e Bíceps no Upper B) não fiquem faltando em catálogos salvos anteriormente
+            // e que o Upper B tenha exercícios principais distintos do Upper A
+            if (w.planId === 'upper_b') {
+                const upperBDistinctMap = {
+                    'Supino Inclinado Halteres': { name: 'Supino Reto Halteres', muscle: 'Peitoral (ênfase esternocostal/média)', variations: ['Supino reto com barra', 'Supino máquina articulada', 'Crucifixo / Peck Deck'] },
+                    'Elevação Lateral': { name: 'Elevação Lateral na Polia', muscle: 'Deltoide Lateral', variations: ['Elevação lateral máquina', 'Elevação lateral com halteres'] },
+                    'Tríceps Corda': { name: 'Tríceps Francês na Polia', muscle: 'Tríceps braquial', variations: ['Tríceps testa com halteres', 'Tríceps pulley barra reta/W', 'Tríceps corda'] },
+                    'Bíceps Martelo': { name: 'Rosca Direta Barra W / Halteres', muscle: 'Bíceps e Braquiorradial', variations: ['Rosca Scott máquina/barra W', 'Rosca inclinada 45° com halteres', 'Rosca martelo na corda (polia)'] }
+                };
+                w.exercises.forEach(ex => {
+                    if (ex && upperBDistinctMap[ex.name]) {
+                        const repl = upperBDistinctMap[ex.name];
+                        ex.name = repl.name;
+                        ex.muscle = repl.muscle;
+                        ex.variations = [...repl.variations];
+                        catMigrated = true;
+                    }
+                });
+            }
             const defaultExList = DEFAULT_WORKOUT_PLAN_EXERCISES[w.planId] || [];
             defaultExList.forEach(defEx => {
                 if (isCardioExercise(defEx.name, defEx.muscle)) return;
@@ -560,8 +578,10 @@ function ensureWorkoutPlanHabits() {
     WORKOUT_PLAN.forEach(workout => {
         const existingHabit = habits.find(h => h.planId === workout.planId || h.name === workout.name);
         if (existingHabit) {
-            if (!Array.isArray(existingHabit.exercises) || existingHabit.exercises.length < workout.exercises.length) {
-                existingHabit.exercises = JSON.parse(JSON.stringify(workout.exercises));
+            const currentJson = JSON.stringify(existingHabit.exercises || []);
+            const targetJson = JSON.stringify(workout.exercises || []);
+            if (currentJson !== targetJson) {
+                existingHabit.exercises = JSON.parse(targetJson);
                 changed = true;
             }
         }
