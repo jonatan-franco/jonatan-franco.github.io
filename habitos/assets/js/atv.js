@@ -55,7 +55,10 @@ const WORKOUT_PLAN = [
             { name: 'Puxada Alta', muscle: 'Costas (Dorsal - largura)', variations: ['Puxada triângulo', 'Barra fixa assistida (Graviton)'], sets: 3, reps: '8-12', rest: '90-120s' },
             { name: 'Desenvolvimento Halteres', muscle: 'Deltoide Anterior e Tríceps', variations: ['Desenvolvimento máquina articulada', 'Desenvolvimento no Smith'], sets: 3, reps: '8-12', rest: '90-120s' },
             { name: 'Remada Baixa', muscle: 'Costas (Espessura / Meio das costas)', variations: ['Remada curvada com pegada pronada', 'Remada articulada'], sets: 3, reps: '8-12', rest: '90-120s' },
+            { name: 'Supino Inclinado Halteres', muscle: 'Peitoral (ênfase clavicular/superior)', variations: ['Supino Reto Halteres', 'Supino Inclinado Smith', 'Máquina articulada inclinada', 'Crucifixo / Peck Deck'], sets: 3, reps: '8-12', rest: '90-120s' },
             { name: 'Elevação Lateral', muscle: 'Deltoide Lateral', variations: ['Elevação lateral na polia/cabo', 'Elevação lateral máquina'], sets: 3, reps: '10-15', rest: '60-90s' },
+            { name: 'Tríceps Corda', muscle: 'Tríceps braquial', variations: ['Tríceps testa com halteres', 'Tríceps francês na polia'], sets: 3, reps: '10-15', rest: '60-90s' },
+            { name: 'Bíceps Martelo', muscle: 'Bíceps e Braquiorradial', variations: ['Rosca martelo na corda (polia)', 'Rosca Scott máquina/barra W', 'Rosca direta com halteres/barra'], sets: 3, reps: '10-15', rest: '60-90s' },
             { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
         ]
     },
@@ -185,6 +188,11 @@ function isCardioExercise(exName, muscle) {
 }
 
 /* Carrega e salva customizações do catálogo de exercícios (principais e substitutos/variações) */
+const DEFAULT_WORKOUT_PLAN_EXERCISES = {};
+WORKOUT_PLAN.forEach(w => {
+    DEFAULT_WORKOUT_PLAN_EXERCISES[w.planId] = JSON.parse(JSON.stringify(w.exercises));
+});
+
 let isWorkoutCatalogLoaded = false;
 function loadWorkoutCatalogCustomizations() {
     if (isWorkoutCatalogLoaded) return;
@@ -200,6 +208,25 @@ function loadWorkoutCatalogCustomizations() {
             if (Array.isArray(savedCatalog[w.planId]) && savedCatalog[w.planId].length > 0) {
                 w.exercises = savedCatalog[w.planId];
             }
+            // Garante que agrupamentos musculares padrão (ex: Peitoral, Tríceps e Bíceps no Upper B) não fiquem faltando em catálogos salvos anteriormente
+            const defaultExList = DEFAULT_WORKOUT_PLAN_EXERCISES[w.planId] || [];
+            defaultExList.forEach(defEx => {
+                if (isCardioExercise(defEx.name, defEx.muscle)) return;
+                const alreadyHasGroup = w.exercises.some(ex =>
+                    (ex.muscle && defEx.muscle && ex.muscle.toLowerCase() === defEx.muscle.toLowerCase()) ||
+                    (ex.name && defEx.name && ex.name.toLowerCase() === defEx.name.toLowerCase())
+                );
+                if (!alreadyHasGroup) {
+                    const cardioIdx = w.exercises.findIndex(ex => isCardioExercise(ex.name, ex.muscle));
+                    const cloneDef = JSON.parse(JSON.stringify(defEx));
+                    if (cardioIdx !== -1) {
+                        w.exercises.splice(cardioIdx, 0, cloneDef);
+                    } else {
+                        w.exercises.push(cloneDef);
+                    }
+                    catMigrated = true;
+                }
+            });
             let hasCardio = false;
             w.exercises.forEach(ex => {
                 if (isCardioExercise(ex.name, ex.muscle)) {
@@ -531,9 +558,15 @@ function ensureWorkoutPlanHabits() {
     try { seeded = JSON.parse(SafeStorage.getItem(PLAN_SEED_KEY) || '[]') || []; } catch (e) { seeded = []; }
     let changed = false;
     WORKOUT_PLAN.forEach(workout => {
+        const existingHabit = habits.find(h => h.planId === workout.planId || h.name === workout.name);
+        if (existingHabit) {
+            if (!Array.isArray(existingHabit.exercises) || existingHabit.exercises.length < workout.exercises.length) {
+                existingHabit.exercises = JSON.parse(JSON.stringify(workout.exercises));
+                changed = true;
+            }
+        }
         if (seeded.includes(workout.planId)) return;
-        const alreadyExists = habits.some(h => h.planId === workout.planId || h.name === workout.name);
-        if (!alreadyExists) {
+        if (!existingHabit) {
             habits.push({
                 id: 'h_' + workout.planId,
                 planId: workout.planId,
