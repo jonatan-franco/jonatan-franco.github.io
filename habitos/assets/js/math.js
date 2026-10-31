@@ -842,6 +842,107 @@ function calcAdvancedAnalytics() {
         }
     });
 
+    // Inclui também novos exercícios criados ou editados no catálogo dos cards (WORKOUT_PLAN / customMeta) na análise do 1RM
+    if (typeof loadWorkoutCatalogCustomizations === 'function') {
+        try { loadWorkoutCatalogCustomizations(); } catch (e) {}
+    }
+    if (typeof WORKOUT_PLAN !== 'undefined' && Array.isArray(WORKOUT_PLAN)) {
+        const parseRepsHelper = (repsRaw) => {
+            const s = String(repsRaw || '10');
+            const mr = s.match(/(\d+)\s*[-–]\s*(\d+)/);
+            if (mr) return (parseFloat(mr[1]) + parseFloat(mr[2])) / 2;
+            const ms = s.match(/(\d+)/);
+            return ms ? parseFloat(ms[1]) : 10;
+        };
+        const todayIsoStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        WORKOUT_PLAN.forEach(w => {
+            if (!w || !Array.isArray(w.exercises)) return;
+            w.exercises.forEach(card => {
+                if (!card) return;
+                const isCardioCard = typeof isCardioExercise === 'function' && isCardioExercise(card.name, card.muscle);
+                if (isCardioCard) return;
+
+                const muscleCat = categorizeMuscleGroup(card.muscle, card.name);
+                const customMetaObj = (card.customMeta && typeof card.customMeta === 'object') ? card.customMeta : {};
+
+                // 1. Qualquer exercício criado ou editado registrado em customMeta
+                Object.keys(customMetaObj).forEach(customExName => {
+                    const cleanName = String(customExName || '').trim();
+                    if (!cleanName) return;
+                    const cm = customMetaObj[customExName] || {};
+                    const loadW = parseFloat(cm.load) || parseFloat(card.load) || 0;
+                    const setsN = parseInt(cm.sets, 10) || parseInt(card.sets, 10) || 3;
+                    const repsN = parseRepsHelper(cm.reps || card.reps || '10');
+                    const epley1RM = loadW > 0 ? loadW * (1 + Math.min(repsN, 20) / 30) : 0;
+                    const vol = loadW > 0 ? setsN * repsN * loadW : 0;
+                    const refDate = cm.updatedAt || todayIsoStr;
+
+                    if (!prMap.has(cleanName)) {
+                        prMap.set(cleanName, {
+                            name: cleanName,
+                            muscleCategory: muscleCat,
+                            muscleGroup: muscleCat,
+                            sessions: loadW > 0 ? 1 : 0,
+                            sessionsCount: loadW > 0 ? 1 : 0,
+                            firstDate: refDate,
+                            firstWeight: loadW,
+                            lastDate: refDate,
+                            lastWeight: loadW,
+                            currentWeight: loadW,
+                            maxWeight: loadW,
+                            maxWeightDate: refDate,
+                            best1RM: epley1RM,
+                            maxSessionVolume: vol,
+                            maxVolume: vol,
+                            maxVolumeDate: refDate
+                        });
+                    } else if (loadW > 0) {
+                        const rec = prMap.get(cleanName);
+                        if (epley1RM > rec.best1RM) rec.best1RM = epley1RM;
+                        if (loadW > rec.maxWeight) {
+                            rec.maxWeight = loadW;
+                            rec.maxWeightDate = refDate;
+                        }
+                        if (vol > rec.maxVolume) {
+                            rec.maxVolume = vol;
+                            rec.maxSessionVolume = vol;
+                            rec.maxVolumeDate = refDate;
+                        }
+                    }
+                });
+
+                // 2. Se o próprio card teve sua carga/parâmetros editados e o exercício principal ainda não está no prMap
+                const mainName = String(card.name || '').trim();
+                const cardLoad = parseFloat(card.load) || 0;
+                if (mainName && cardLoad > 0 && !prMap.has(mainName)) {
+                    const setsN = parseInt(card.sets, 10) || 3;
+                    const repsN = parseRepsHelper(card.reps || '10');
+                    const epley1RM = cardLoad * (1 + Math.min(repsN, 20) / 30);
+                    const vol = setsN * repsN * cardLoad;
+                    prMap.set(mainName, {
+                        name: mainName,
+                        muscleCategory: muscleCat,
+                        muscleGroup: muscleCat,
+                        sessions: 1,
+                        sessionsCount: 1,
+                        firstDate: todayIsoStr,
+                        firstWeight: cardLoad,
+                        lastDate: todayIsoStr,
+                        lastWeight: cardLoad,
+                        currentWeight: cardLoad,
+                        maxWeight: cardLoad,
+                        maxWeightDate: todayIsoStr,
+                        best1RM: epley1RM,
+                        maxSessionVolume: vol,
+                        maxVolume: vol,
+                        maxVolumeDate: todayIsoStr
+                    });
+                }
+            });
+        });
+    }
+
     const exercisePRs = Array.from(prMap.values()).map(r => {
         const progressionPct = r.firstWeight > 0 ? ((r.lastWeight - r.firstWeight) / r.firstWeight) * 100 : 0;
         return { ...r, progressionPct };

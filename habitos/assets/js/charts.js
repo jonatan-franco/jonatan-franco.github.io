@@ -408,9 +408,13 @@ function renderMetricsView() {
                     } else if (ex.progressionPct < -0.05) {
                         progBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">${ex.progressionPct.toFixed(1)}%</span>`;
                     }
-                } else {
+                } else if (ex.sessionsCount === 1) {
                     progBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono text-zinc-400 bg-zinc-50 border border-zinc-200">1ª sessão</span>`;
+                } else {
+                    progBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono text-amber-700 bg-amber-50 border border-amber-200">Novo / Editado</span>`;
                 }
+
+                const rmDisplay = ex.best1RM > 0 ? `${rmFmt} kg` : '— (informe carga)';
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-zinc-50/80 transition">
@@ -428,7 +432,7 @@ function renderMetricsView() {
                             <span class="block text-[10px] font-normal text-zinc-400">${formatDateBrShort(ex.maxWeightDate)}</span>
                         </td>
                         <td class="py-3.5 px-3 text-center font-mono font-bold text-amber-700 bg-amber-50/40">
-                            ${rmFmt} kg
+                            ${rmDisplay}
                         </td>
                         <td class="py-3.5 px-5 text-right font-mono text-xs font-semibold text-zinc-800">
                             ${volFmt} kg
@@ -1235,9 +1239,91 @@ function renderDashLoadZoomChart(evoData) {
     dashLoadZoomChartInstance = new Chart(canvas.getContext('2d'), buildLoadEvolutionChartConfig(evo, targetVal));
 }
 
+let isLoadZoomSwipeInitialized = false;
+let loadZoomTouchStartY = 0;
+let loadZoomTouchStartX = 0;
+let loadZoomTouchCurrentY = 0;
+let loadZoomIsDragging = false;
+
+function initLoadZoomSwipeToDismiss() {
+    if (isLoadZoomSwipeInitialized) return;
+    const modal = document.getElementById('dash-load-zoom-modal');
+    const card = document.getElementById('dash-load-zoom-card');
+    if (!modal || !card) return;
+    isLoadZoomSwipeInitialized = true;
+
+    card.addEventListener('touchstart', function(e) {
+        if (!e.touches || e.touches.length !== 1) return;
+        const target = e.target;
+        // Evita interceptar interações em selects ou botões
+        if (target && (target.tagName === 'SELECT' || target.tagName === 'OPTION')) {
+            loadZoomIsDragging = false;
+            return;
+        }
+        loadZoomTouchStartY = e.touches[0].clientY;
+        loadZoomTouchStartX = e.touches[0].clientX;
+        loadZoomTouchCurrentY = loadZoomTouchStartY;
+        loadZoomIsDragging = true;
+        card.style.transition = 'none';
+    }, { passive: true });
+
+    card.addEventListener('touchmove', function(e) {
+        if (!loadZoomIsDragging || !e.touches || e.touches.length !== 1) return;
+        const curY = e.touches[0].clientY;
+        const curX = e.touches[0].clientX;
+        const dy = curY - loadZoomTouchStartY;
+        const dx = Math.abs(curX - loadZoomTouchStartX);
+
+        // Apenas arraste predominantemente vertical para baixo
+        if (dy > 8 && dy > dx * 1.15) {
+            loadZoomTouchCurrentY = curY;
+            if (e.cancelable) e.preventDefault();
+            const dampedY = Math.min(340, dy * 0.85);
+            const opacity = Math.max(0.25, 1 - (dy / 380));
+            card.style.transform = `translateY(${dampedY}px)`;
+            card.style.opacity = String(opacity);
+        } else if (dy <= 0) {
+            loadZoomTouchCurrentY = loadZoomTouchStartY;
+            card.style.transform = '';
+            card.style.opacity = '';
+        }
+    }, { passive: false });
+
+    const finishSwipe = function() {
+        if (!loadZoomIsDragging) return;
+        loadZoomIsDragging = false;
+        const dy = loadZoomTouchCurrentY - loadZoomTouchStartY;
+        card.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+
+        if (dy > 75) {
+            card.style.transform = 'translateY(100%)';
+            card.style.opacity = '0';
+            setTimeout(() => {
+                card.style.transform = '';
+                card.style.opacity = '';
+                closeLoadChartZoomModal();
+            }, 160);
+        } else {
+            card.style.transform = '';
+            card.style.opacity = '';
+        }
+        loadZoomTouchStartY = 0;
+        loadZoomTouchCurrentY = 0;
+    };
+
+    card.addEventListener('touchend', finishSwipe, { passive: true });
+    card.addEventListener('touchcancel', finishSwipe, { passive: true });
+}
+
 window.openLoadChartZoomModal = function() {
     const modal = document.getElementById('dash-load-zoom-modal');
     if (!modal) return;
+    initLoadZoomSwipeToDismiss();
+    const card = document.getElementById('dash-load-zoom-card');
+    if (card) {
+        card.style.transform = '';
+        card.style.opacity = '';
+    }
     const evo = calcLoadEvolution30d();
     populateDashLoadChartSelect(evo, false);
     const mainSel = document.getElementById('dash-load-chart-target');
@@ -1259,6 +1345,11 @@ window.openLoadChartZoomModal = function() {
 window.closeLoadChartZoomModal = function() {
     const modal = document.getElementById('dash-load-zoom-modal');
     if (!modal) return;
+    const card = document.getElementById('dash-load-zoom-card');
+    if (card) {
+        card.style.transform = '';
+        card.style.opacity = '';
+    }
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 

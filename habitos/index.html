@@ -1589,8 +1589,13 @@
 
     <!-- MODAL DE AMPLIAÇÃO DO GRÁFICO DE EVOLUÇÃO DE CARGA (POP-UP COM FUNDO EMBAÇADO) -->
     <div id="dash-load-zoom-modal" onclick="if (event.target === this) closeLoadChartZoomModal()" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden items-center justify-center z-50 p-3 sm:p-6">
-        <div class="bg-white border border-zinc-200 rounded-3xl max-w-6xl w-full p-5 sm:p-7 space-y-4 shadow-2xl">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 border-b border-zinc-100 pb-4">
+        <div id="dash-load-zoom-card" class="bg-white border border-zinc-200 rounded-3xl max-w-6xl w-full p-5 sm:p-7 space-y-4 shadow-2xl transition-transform duration-200">
+            <!-- Barra de arraste mobile (arraste para baixo para fechar) -->
+            <div id="dash-load-zoom-drag-bar" class="sm:hidden flex flex-col items-center justify-center pt-1 pb-2 -mt-2 cursor-grab active:cursor-grabbing select-none touch-none">
+                <div class="w-12 h-1.5 rounded-full bg-zinc-300"></div>
+                <span class="text-[10px] font-mono text-zinc-400 mt-1">Arraste para baixo para sair</span>
+            </div>
+            <div id="dash-load-zoom-header" class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 border-b border-zinc-100 pb-4">
                 <div>
                     <span class="text-[10px] font-mono uppercase tracking-widest text-rose-600 font-bold">VISUALIZAÇÃO AMPLIADA • ÚLTIMOS 30 DIAS</span>
                     <h3 class="text-base sm:text-lg font-bold text-zinc-900 mt-0.5">Acompanhamento de Volume de Carga (kg)</h3>

@@ -312,6 +312,7 @@ let atvUiState = {
     selectedAtvDate: '',
     selectedWorkoutPlanId: 'upper_a',
     atvSubMode: 'strength',
+    historyPeriod: 'day', // 'day' | '15d' | 'all'
     hidePreviousWorkouts: false,
     carouselScrollLeft: 0,
     cardInputs: {},
@@ -322,6 +323,7 @@ let atvUiState = {
         sets: '',
         reps: '',
         rest: '',
+        load: '',
         duration: ''
     },
     aerobicInputs: {
@@ -358,6 +360,7 @@ function loadAtvUiState() {
                     selectedAtvDate,
                     selectedWorkoutPlanId,
                     atvSubMode,
+                    historyPeriod: (parsed.historyPeriod === '15d' || parsed.historyPeriod === 'all') ? parsed.historyPeriod : 'day',
                     hidePreviousWorkouts: !!parsed.hidePreviousWorkouts,
                     carouselScrollLeft: Number(parsed.carouselScrollLeft) || 0,
                     cardInputs: cleanCardInputs,
@@ -368,6 +371,7 @@ function loadAtvUiState() {
                         sets: '',
                         reps: '',
                         rest: '',
+                        load: '',
                         duration: ''
                     },
                     aerobicInputs: {
@@ -697,6 +701,10 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
     const exEl = document.getElementById(`atv-card-ex-${cardIndex}`);
     const weightEl = document.getElementById(`atv-card-weight-${cardIndex}`);
     const notesEl = document.getElementById(`atv-card-notes-${cardIndex}`);
+    const setsEl = document.getElementById(`atv-card-sets-${cardIndex}`);
+    const repsEl = document.getElementById(`atv-card-reps-${cardIndex}`);
+    const restEl = document.getElementById(`atv-card-rest-${cardIndex}`);
+    const rpeEl = document.getElementById(`atv-card-rpe-${cardIndex}`);
 
     const workout = WORKOUT_PLAN.find(w => w.planId === selectedWorkoutPlanId) || WORKOUT_PLAN[0];
     const ex = workout && workout.exercises ? workout.exercises[cardIndex] : null;
@@ -705,6 +713,60 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
     if (ex) {
         const isCardio = isCardioExercise(chosenName, ex.muscle);
         const unitShort = isCardio ? 'km/h' : 'kg';
+
+        // Atualiza os parâmetros editáveis do card (Séries, REPS/Duração, Descanso) ao editar na execução
+        let catalogUpdated = false;
+        if (!isCardio && setsEl) {
+            const parsedSets = parseInt(setsEl.value, 10);
+            if (!isNaN(parsedSets) && parsedSets > 0 && ex.sets !== parsedSets) {
+                ex.sets = parsedSets;
+                catalogUpdated = true;
+            }
+        }
+        if (repsEl) {
+            const cleanReps = repsEl.value.trim();
+            if (cleanReps && ex.reps !== cleanReps) {
+                ex.reps = cleanReps;
+                catalogUpdated = true;
+            }
+        }
+        if (!isCardio && restEl) {
+            const cleanRest = restEl.value.trim();
+            if (cleanRest && ex.rest !== cleanRest) {
+                ex.rest = cleanRest;
+                catalogUpdated = true;
+            }
+        }
+        if (!isCardio && weightEl) {
+            const wNum = getWeightNumericValue(weightEl.value);
+            if (wNum > 0) {
+                ex.load = parseFloat(wNum.toFixed(2));
+                if (!ex.customMeta || typeof ex.customMeta !== 'object') ex.customMeta = {};
+                ex.customMeta[chosenName] = {
+                    sets: ex.sets || 3,
+                    reps: ex.reps || '8-12',
+                    rest: ex.rest || '90s',
+                    load: ex.load,
+                    updatedAt: selectedAtvDate || getLocalISODate()
+                };
+                catalogUpdated = true;
+            }
+        }
+        if (catalogUpdated) {
+            saveWorkoutCatalogCustomizations();
+        }
+
+        const setsBadgeEl = document.getElementById(`atv-card-target-badge-${cardIndex}`);
+        if (setsBadgeEl) {
+            setsBadgeEl.textContent = isCardio
+                ? `⏱️ ${ex.reps || '15-20 min'}`
+                : `🎯 ${ex.sets || 3}× ${ex.reps || '8-12'}`;
+        }
+        const restBadgeEl = document.getElementById(`atv-card-rest-badge-${cardIndex}`);
+        if (restBadgeEl && !isCardio) {
+            restBadgeEl.textContent = `⏱️ ${ex.rest || '90s'}`;
+        }
+
         const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name], ex.load);
         const refFormatted = refVal !== null ? formatWeightNumber(refVal) : '';
 
@@ -730,6 +792,9 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
                     refBadgeEl.classList.add('hidden');
                 }
             }
+            if (weightEl && refFormatted) {
+                weightEl.value = refFormatted;
+            }
             const weightLabelEl = document.getElementById(`atv-card-weight-label-${cardIndex}`);
             if (weightLabelEl) {
                 weightLabelEl.textContent = isCardio ? 'Velocidade (km/h)' : 'Carga (kg)';
@@ -739,6 +804,10 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
 
     atvUiState.cardInputs[key] = {
         exercise: chosenName,
+        sets: setsEl ? setsEl.value : (ex ? String(ex.sets || 3) : '3'),
+        reps: repsEl ? repsEl.value : (ex ? String(ex.reps || '8-12') : '8-12'),
+        rest: restEl ? restEl.value : (ex ? String(ex.rest || '90s') : '90s'),
+        rpe: rpeEl ? rpeEl.value : '',
         weight: weightEl ? weightEl.value : '',
         notes: notesEl ? notesEl.value : ''
     };
@@ -785,6 +854,7 @@ window.onAtvCustomFieldChange = function(slotChanged = false) {
         sets: document.getElementById('atv-custom-sets')?.value || '',
         reps: document.getElementById('atv-custom-reps')?.value || '',
         rest: document.getElementById('atv-custom-rest')?.value || '',
+        load: document.getElementById('atv-custom-load')?.value || '',
         duration: document.getElementById('atv-custom-duration')?.value || ''
     };
 
@@ -820,6 +890,16 @@ window.setAtvSubMode = function(mode) {
 /* Ocultar / Mostrar últimos treinos no Histórico */
 window.toggleAtvHidePreviousWorkouts = function() {
     atvUiState.hidePreviousWorkouts = !atvUiState.hidePreviousWorkouts;
+    saveAtvUiState();
+    const historyContainer = document.getElementById('atv-history-section');
+    if (historyContainer) {
+        historyContainer.innerHTML = buildAtvHistorySectionInnerHTML();
+    }
+};
+
+/* Alternar período do Histórico de Exercícios: 'day' | '15d' | 'all' */
+window.setAtvHistoryPeriod = function(period) {
+    atvUiState.historyPeriod = (period === '15d' || period === 'all') ? period : 'day';
     saveAtvUiState();
     const historyContainer = document.getElementById('atv-history-section');
     if (historyContainer) {
@@ -993,14 +1073,53 @@ window.submitAtvCardLog = function(cardIndex) {
     const exSelect = document.getElementById(`atv-card-ex-${cardIndex}`);
     const chosenName = exSelect ? exSelect.value.trim() : ex.name;
 
+    const setsInput = document.getElementById(`atv-card-sets-${cardIndex}`);
+    const repsInput = document.getElementById(`atv-card-reps-${cardIndex}`);
+    const restInput = document.getElementById(`atv-card-rest-${cardIndex}`);
+    const rpeInput = document.getElementById(`atv-card-rpe-${cardIndex}`);
+
     const weightInput = document.getElementById(`atv-card-weight-${cardIndex}`);
     const weightVal = weightInput ? getWeightNumericValue(weightInput.value) : 0;
 
     const notesInput = document.getElementById(`atv-card-notes-${cardIndex}`);
-    const notesVal = notesInput ? notesInput.value.trim() : '';
+    const rawNotesVal = notesInput ? notesInput.value.trim() : '';
+    const rpeVal = rpeInput ? rpeInput.value.trim() : '';
+
+    let notesVal = rawNotesVal;
+    if (rpeVal) {
+        const rpeTag = /^rpe/i.test(rpeVal) ? rpeVal.toUpperCase() : `RPE ${rpeVal}`;
+        if (!notesVal) {
+            notesVal = rpeTag;
+        } else if (!notesVal.toLowerCase().includes('rpe')) {
+            notesVal = `${rpeTag} • ${notesVal}`;
+        }
+    }
 
     const isCardio = isCardioExercise(chosenName, ex.muscle);
     const habit = habits.find(h => h.planId === selectedWorkoutPlanId || h.name === workout.name);
+
+    const editedSets = !isCardio && setsInput ? (parseInt(setsInput.value, 10) || ex.sets || 3) : 1;
+    const editedReps = repsInput && repsInput.value.trim() ? repsInput.value.trim() : (ex.reps || (isCardio ? '20 min' : '10'));
+    const editedRest = !isCardio && restInput && restInput.value.trim() ? restInput.value.trim() : (isCardio ? '-' : (ex.rest || '90s'));
+
+    // Persiste os parâmetros editados no card em execução
+    ex.sets = isCardio ? 1 : editedSets;
+    ex.reps = editedReps;
+    ex.rest = isCardio ? '-' : editedRest;
+    if (!isCardio) {
+        if (weightVal > 0) {
+            ex.load = parseFloat(weightVal.toFixed(2));
+        }
+        if (!ex.customMeta || typeof ex.customMeta !== 'object') ex.customMeta = {};
+        ex.customMeta[chosenName] = {
+            sets: editedSets,
+            reps: editedReps,
+            rest: editedRest,
+            load: weightVal > 0 ? parseFloat(weightVal.toFixed(2)) : (ex.load || 0),
+            updatedAt: selectedAtvDate || getLocalISODate()
+        };
+    }
+    saveWorkoutCatalogCustomizations();
 
     if (!atvLogs[selectedAtvDate]) atvLogs[selectedAtvDate] = [];
 
@@ -1039,7 +1158,7 @@ window.submitAtvCardLog = function(cardIndex) {
                 existingCardio.durationMin = activeTimerMin;
                 existingCardio.timerDuration = formatTimerCountedDuration(activeTimerMin, activeTimerSec);
             }
-            existingCardio.reps = existingCardio.timerDuration || existingCardio.reps || ex.reps || '20 min';
+            existingCardio.reps = existingCardio.timerDuration || editedReps || existingCardio.reps || ex.reps || '20 min';
             existingCardio.notes = buildCardioNotesString(
                 existingCardio.weight,
                 existingCardio.durationMin || parseRepsNumber(existingCardio.reps),
@@ -1048,7 +1167,7 @@ window.submitAtvCardLog = function(cardIndex) {
             );
         } else {
             const timerDurStr = activeTimerMin > 0 ? formatTimerCountedDuration(activeTimerMin, activeTimerSec) : '';
-            const repDuration = timerDurStr || ex.reps || '20 min';
+            const repDuration = timerDurStr || editedReps || ex.reps || '20 min';
             const durMin = activeTimerMin > 0 ? activeTimerMin : parseRepsNumber(repDuration);
             atvLogs[selectedAtvDate].push({
                 id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -1063,6 +1182,7 @@ window.submitAtvCardLog = function(cardIndex) {
                 timerDuration: timerDurStr || '',
                 durationMin: durMin,
                 rest: '-',
+                rpe: rpeVal || undefined,
                 weight: parseFloat(weightVal.toFixed(2)),
                 unit: 'km/h',
                 notes: buildCardioNotesString(weightVal, durMin, timerDurStr, notesVal)
@@ -1075,9 +1195,10 @@ window.submitAtvCardLog = function(cardIndex) {
             planId: selectedWorkoutPlanId,
             exerciseName: chosenName,
             muscle: ex.muscle,
-            sets: ex.sets || 3,
-            reps: ex.reps || '10',
-            rest: ex.rest || '-',
+            sets: editedSets,
+            reps: editedReps,
+            rest: editedRest,
+            rpe: rpeVal || undefined,
             weight: parseFloat(weightVal.toFixed(2)),
             unit: 'kg',
             notes: notesVal
@@ -1086,6 +1207,7 @@ window.submitAtvCardLog = function(cardIndex) {
 
     if (weightInput) weightInput.value = '';
     if (notesInput) notesInput.value = '';
+    if (rpeInput) rpeInput.value = '';
 
     const track = document.getElementById('atv-carousel-track');
     if (track) atvUiState.carouselScrollLeft = track.scrollLeft;
@@ -1192,10 +1314,26 @@ window.submitCustomAtvLog = function(event) {
     const restRaw = restEl ? restEl.value.trim() : '';
     const rest = isCardioSlot ? '-' : (restRaw || targetCard.rest || '90-120s');
 
+    const loadEl = document.getElementById('atv-custom-load');
+    const loadVal = loadEl ? getWeightNumericValue(loadEl.value) : 0;
+
     const role = atvUiState.customInputs.role === 'main' ? 'main' : 'variation';
 
     if (!Array.isArray(targetCard.variations)) targetCard.variations = [];
     const oldMain = targetCard.name;
+    if (!targetCard.customMeta || typeof targetCard.customMeta !== 'object') {
+        targetCard.customMeta = {};
+    }
+    targetCard.customMeta[exName] = {
+        sets,
+        reps,
+        rest,
+        load: loadVal > 0 ? parseFloat(loadVal.toFixed(2)) : (targetCard.load || 0),
+        updatedAt: selectedAtvDate || getLocalISODate()
+    };
+    if (loadVal > 0 && !isCardioSlot) {
+        targetCard.load = parseFloat(loadVal.toFixed(2));
+    }
 
     if (role === 'main') {
         // Remove o novo nome das variações caso já existisse lá
@@ -1220,6 +1358,25 @@ window.submitCustomAtvLog = function(event) {
         targetCard.rest = rest;
     }
 
+    // Se o usuário já informou carga ao criar o exercício, registra também na data selecionada para já constar no histórico e na análise de 1RM
+    if (!isCardioSlot && loadVal > 0) {
+        if (!atvLogs[selectedAtvDate]) atvLogs[selectedAtvDate] = [];
+        const habit = habits.find(h => h.planId === workout.planId || h.name === workout.name);
+        atvLogs[selectedAtvDate].push({
+            id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            habitId: habit ? habit.id : ('h_' + workout.planId),
+            planId: workout.planId,
+            exerciseName: exName,
+            muscle: targetCard.muscle,
+            sets,
+            reps,
+            rest,
+            weight: parseFloat(loadVal.toFixed(2)),
+            unit: 'kg',
+            notes: ''
+        });
+    }
+
     // Atualiza também registros existentes para refletirem as atualizações do card
     syncRegisteredLogsWithCardUpdate(targetCard, oldMain);
 
@@ -1227,7 +1384,11 @@ window.submitCustomAtvLog = function(event) {
     const cardStateKey = `${selectedAtvDate}_${workout.planId}_${validSlotIdx}`;
     atvUiState.cardInputs[cardStateKey] = {
         ...(atvUiState.cardInputs[cardStateKey] || {}),
-        exercise: exName
+        exercise: exName,
+        sets: String(sets),
+        reps: String(reps),
+        rest: String(rest),
+        weight: loadVal > 0 ? formatWeightNumber(loadVal) : ''
     };
 
     // Mantém todos os campos do card de registro vazios para novo preenchimento
@@ -1237,6 +1398,7 @@ window.submitCustomAtvLog = function(event) {
         sets: '',
         reps: '',
         rest: '',
+        load: '',
         duration: ''
     };
 
@@ -2416,16 +2578,31 @@ window.saveEditedAtvLog = function(event) {
     if (!isCardio && card && chosenName) {
         if (!Array.isArray(card.variations)) card.variations = [];
         const oldMain = card.name;
+        if (!card.customMeta || typeof card.customMeta !== 'object') {
+            card.customMeta = {};
+        }
+        card.customMeta[chosenName] = {
+            sets: log.sets,
+            reps: log.reps,
+            rest: log.rest,
+            load: (parseFloat(log.weight) || 0) > 0 ? parseFloat(Number(log.weight).toFixed(2)) : (card.load || 0),
+            updatedAt: dateStr || selectedAtvDate || getLocalISODate()
+        };
+        if ((parseFloat(log.weight) || 0) > 0) {
+            card.load = parseFloat(Number(log.weight).toFixed(2));
+        }
         if (editModalSelectedRole === 'main') {
             card.variations = card.variations.filter(v => v.toLowerCase() !== chosenName.toLowerCase());
             if (oldMain && oldMain.toLowerCase() !== chosenName.toLowerCase()) {
                 card.variations = [oldMain, ...card.variations.filter(v => v.toLowerCase() !== oldMain.toLowerCase())];
             }
             card.name = chosenName;
+            card.sets = log.sets;
+            card.reps = log.reps;
+            card.rest = log.rest;
         } else {
             const existsAsMain = card.name.toLowerCase() === chosenName.toLowerCase();
             const existsAsVar = card.variations.some(v => v && v.toLowerCase() === chosenName.toLowerCase());
-            /* apply strength target params */
             card.sets = log.sets;
             card.reps = log.reps;
             card.rest = log.rest;
@@ -2433,23 +2610,13 @@ window.saveEditedAtvLog = function(event) {
                 card.variations.push(chosenName);
             }
         }
-        const _unusedBrackets = () => { if (true) {
-            }
-        }
-        if (isCardio) {
-            card.sets = log.sets;
-            card.reps = log.reps;
-            card.rest = log.rest;
-        } else {
-            if (isCardio) {
-            card.reps = log.reps;
-            card.rest = log.rest;
-        }
-        }
         const cardStateKey = `${selectedAtvDate}_${planId}_${slotIdx}`;
         atvUiState.cardInputs[cardStateKey] = {
             ...(atvUiState.cardInputs[cardStateKey] || {}),
-            exercise: chosenName
+            exercise: chosenName,
+            sets: String(log.sets),
+            reps: String(log.reps),
+            rest: String(log.rest)
         };
         saveWorkoutCatalogCustomizations();
     }
@@ -2534,100 +2701,161 @@ function buildAtvLogRowHTML(dateStr, log) {
 function buildAtvHistorySectionInnerHTML() {
     const isSyncUser = typeof window.isRegisteredSyncUser === 'function' && window.isRegisteredSyncUser();
     const isAeroOnly = atvSubMode === 'aerobic';
-    const rawCurrentLogs = atvLogs[selectedAtvDate] || [];
-    const currentLogs = isAeroOnly
-        ? rawCurrentLogs.filter(log => log && (log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle)))
-        : rawCurrentLogs;
+    const histPeriod = (atvUiState.historyPeriod === '15d' || atvUiState.historyPeriod === 'all') ? atvUiState.historyPeriod : 'day';
     const hidePrev = !!atvUiState.hidePreviousWorkouts;
 
+    const todayIso = getLocalISODate();
+    const cutoff15dDate = new Date();
+    cutoff15dDate.setDate(cutoff15dDate.getDate() - 14);
+    const cutoff15dIso = getLocalISODate(cutoff15dDate);
+
     let logsTableHTML = '';
-    let totalDayVolumeKg = 0;
-    let totalDayAeroKm = 0;
+    let totalPeriodVolumeKg = 0;
+    let totalPeriodAeroKm = 0;
+    let totalShownLogsCount = 0;
 
-    currentLogs.forEach(log => {
-        const isCardio = log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle);
-        if (isCardio) {
-            totalDayAeroKm += calcCardioEntryVolumeKm(log).avgKm;
-        } else {
-            totalDayVolumeKg += calcLogEntryVolume(log);
-        }
-        logsTableHTML += buildAtvLogRowHTML(selectedAtvDate, log);
-    });
+    let hasPreviousWorkout = false;
 
-    // Busca apenas os primeiros 3 exercícios do último treino anterior (respeitando filtro aeróbico quando na aba Aeróbico)
-    let recentPreviousRowsHTML = '';
-    let lastWorkoutDateFormatted = '';
-    const previousDates = Object.keys(atvLogs || {})
-        .filter(d => {
-            if (d >= selectedAtvDate || !Array.isArray(atvLogs[d]) || atvLogs[d].length === 0) return false;
-            if (isAeroOnly) {
-                return atvLogs[d].some(l => l && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle)));
-            }
-            return true;
-        })
-        .sort((a, b) => b.localeCompare(a));
+    if (histPeriod === '15d' || histPeriod === 'all') {
+        const allDatesDesc = Object.keys(atvLogs || {})
+            .filter(d => {
+                if (!Array.isArray(atvLogs[d]) || atvLogs[d].length === 0) return false;
+                if (histPeriod === '15d' && (d < cutoff15dIso || d > todayIso)) return false;
+                if (isAeroOnly) {
+                    return atvLogs[d].some(l => l && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle)));
+                }
+                return true;
+            })
+            .sort((a, b) => b.localeCompare(a));
 
-    const hasPreviousWorkout = previousDates.length > 0;
-    if (hasPreviousWorkout && !hidePrev) {
-        const lastDate = previousDates[0];
-        lastWorkoutDateFormatted = formatDateDDMMYYYY(lastDate);
-        const dayList = isAeroOnly
-            ? (atvLogs[lastDate] || []).filter(l => l && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle)))
-            : (atvLogs[lastDate] || []);
-        const firstThreeExercises = dayList.slice(0, 3);
-        firstThreeExercises.forEach(log => {
-            recentPreviousRowsHTML += buildAtvLogRowHTML(lastDate, log);
+        allDatesDesc.forEach(dateKey => {
+            const rawList = atvLogs[dateKey] || [];
+            const dayLogs = isAeroOnly
+                ? rawList.filter(log => log && (log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle)))
+                : rawList;
+            dayLogs.forEach(log => {
+                const isCardio = log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle);
+                if (isCardio) {
+                    totalPeriodAeroKm += calcCardioEntryVolumeKm(log).avgKm;
+                } else {
+                    totalPeriodVolumeKg += calcLogEntryVolume(log);
+                }
+                totalShownLogsCount++;
+                logsTableHTML += buildAtvLogRowHTML(dateKey, log);
+            });
         });
-    }
 
-    const emptyLabel = isAeroOnly
-        ? 'Nenhum exercício aeróbico registrado nesta data.<br>Utilize o painel aeróbico acima para registrar sua corrida, caminhada ou treino misto.'
-        : `Nenhum exercício registrado nesta data.<br>Utilize ${isSyncUser ? 'os cards acima' : 'o card acima'} para registrar suas cargas ou velocidades.`;
+        if (totalShownLogsCount === 0) {
+            const emptyPeriodTxt = histPeriod === '15d'
+                ? `Nenhum exercício ${isAeroOnly ? 'aeróbico ' : ''}registrado nos últimos 15 dias.`
+                : `Nenhum exercício ${isAeroOnly ? 'aeróbico ' : ''}registrado no histórico.`;
+            logsTableHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">${emptyPeriodTxt}</td></tr>`;
+        }
+    } else {
+        const rawCurrentLogs = atvLogs[selectedAtvDate] || [];
+        const currentLogs = isAeroOnly
+            ? rawCurrentLogs.filter(log => log && (log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle)))
+            : rawCurrentLogs;
 
-    const prevHeaderLabel = isAeroOnly
-        ? `🕒 Primeiros 3 Exercícios Aeróbicos do Último Treino (${lastWorkoutDateFormatted})`
-        : `🕒 Primeiros 3 Exercícios do Último Treino (${lastWorkoutDateFormatted})`;
+        currentLogs.forEach(log => {
+            const isCardio = log.unit === 'km/h' || isCardioExercise(log.exerciseName, log.muscle);
+            if (isCardio) {
+                totalPeriodAeroKm += calcCardioEntryVolumeKm(log).avgKm;
+            } else {
+                totalPeriodVolumeKg += calcLogEntryVolume(log);
+            }
+            totalShownLogsCount++;
+            logsTableHTML += buildAtvLogRowHTML(selectedAtvDate, log);
+        });
 
-    if (currentLogs.length === 0 && !recentPreviousRowsHTML) {
-        logsTableHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">${emptyLabel}</td></tr>`;
-    } else if (currentLogs.length === 0 && recentPreviousRowsHTML) {
-        logsTableHTML = `
-            <tr><td colspan="9" class="py-4 text-center text-zinc-400 text-xs border-b border-zinc-100">Nenhum registro ${isAeroOnly ? 'aeróbico ' : ''}em ${formatDateDDMMYYYY(selectedAtvDate)}. Abaixo estão os registros do último treino (${lastWorkoutDateFormatted}):</td></tr>
-            <tr class="bg-zinc-50/90 border-b border-zinc-200">
-                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">${prevHeaderLabel}</td>
-            </tr>
-            ${recentPreviousRowsHTML}`;
-    } else if (recentPreviousRowsHTML) {
-        logsTableHTML += `
-            <tr class="bg-zinc-50/90 border-b border-zinc-200">
-                <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">${prevHeaderLabel}</td>
-            </tr>
-            ${recentPreviousRowsHTML}`;
+        // Busca apenas os primeiros 3 exercícios do último treino anterior (respeitando filtro aeróbico quando na aba Aeróbico)
+        let recentPreviousRowsHTML = '';
+        let lastWorkoutDateFormatted = '';
+        const previousDates = Object.keys(atvLogs || {})
+            .filter(d => {
+                if (d >= selectedAtvDate || !Array.isArray(atvLogs[d]) || atvLogs[d].length === 0) return false;
+                if (isAeroOnly) {
+                    return atvLogs[d].some(l => l && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle)));
+                }
+                return true;
+            })
+            .sort((a, b) => b.localeCompare(a));
+
+        hasPreviousWorkout = previousDates.length > 0;
+        if (hasPreviousWorkout && !hidePrev) {
+            const lastDate = previousDates[0];
+            lastWorkoutDateFormatted = formatDateDDMMYYYY(lastDate);
+            const dayList = isAeroOnly
+                ? (atvLogs[lastDate] || []).filter(l => l && (l.unit === 'km/h' || isCardioExercise(l.exerciseName, l.muscle)))
+                : (atvLogs[lastDate] || []);
+            const firstThreeExercises = dayList.slice(0, 3);
+            firstThreeExercises.forEach(log => {
+                recentPreviousRowsHTML += buildAtvLogRowHTML(lastDate, log);
+            });
+        }
+
+        const emptyLabel = isAeroOnly
+            ? 'Nenhum exercício aeróbico registrado nesta data.<br>Utilize o painel aeróbico acima para registrar sua corrida, caminhada ou treino misto.'
+            : `Nenhum exercício registrado nesta data.<br>Utilize ${isSyncUser ? 'os cards acima' : 'o card acima'} para registrar suas cargas ou velocidades.`;
+
+        const prevHeaderLabel = isAeroOnly
+            ? `🕒 Primeiros 3 Exercícios Aeróbicos do Último Treino (${lastWorkoutDateFormatted})`
+            : `🕒 Primeiros 3 Exercícios do Último Treino (${lastWorkoutDateFormatted})`;
+
+        if (currentLogs.length === 0 && !recentPreviousRowsHTML) {
+            logsTableHTML = `<tr><td colspan="9" class="py-8 text-center text-zinc-400 text-xs">${emptyLabel}</td></tr>`;
+        } else if (currentLogs.length === 0 && recentPreviousRowsHTML) {
+            logsTableHTML = `
+                <tr><td colspan="9" class="py-4 text-center text-zinc-400 text-xs border-b border-zinc-100">Nenhum registro ${isAeroOnly ? 'aeróbico ' : ''}em ${formatDateDDMMYYYY(selectedAtvDate)}. Abaixo estão os registros do último treino (${lastWorkoutDateFormatted}):</td></tr>
+                <tr class="bg-zinc-50/90 border-b border-zinc-200">
+                    <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">${prevHeaderLabel}</td>
+                </tr>
+                ${recentPreviousRowsHTML}`;
+        } else if (recentPreviousRowsHTML) {
+            logsTableHTML += `
+                <tr class="bg-zinc-50/90 border-b border-zinc-200">
+                    <td colspan="9" class="py-2 px-3 text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">${prevHeaderLabel}</td>
+                </tr>
+                ${recentPreviousRowsHTML}`;
+        }
     }
 
     const formattedSelectedDate = formatDateDDMMYYYY(selectedAtvDate);
+    const periodSubtitle = histPeriod === '15d'
+        ? 'Últimos 15 dias'
+        : histPeriod === 'all'
+            ? 'Todo o Período'
+            : formattedSelectedDate;
+
+    const activePeriodBtnCls = "px-3 py-1.5 rounded-xl bg-black text-white text-xs font-semibold shadow-xs transition";
+    const inactivePeriodBtnCls = "px-3 py-1.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold shadow-xs transition";
 
     return `
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 pb-4">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 border-b border-zinc-100 pb-4">
             <div>
-                <span class="text-[10px] font-mono uppercase tracking-widest ${isAeroOnly ? 'text-emerald-600' : 'text-zinc-400'} font-bold">${isAeroOnly ? 'HISTÓRICO AERÓBICO DO DIA' : 'HISTÓRICO DO DIA'}</span>
-                <h3 class="text-base font-bold text-zinc-900">${isAeroOnly ? `Exercícios Aeróbicos Registrados (${formattedSelectedDate})` : `Exercícios Registrados (${formattedSelectedDate})`}</h3>
+                <span class="text-[10px] font-mono uppercase tracking-widest ${isAeroOnly ? 'text-emerald-600' : 'text-zinc-400'} font-bold">${isAeroOnly ? 'HISTÓRICO AERÓBICO' : 'HISTÓRICO DE EXERCÍCIOS'}</span>
+                <h3 class="text-base font-bold text-zinc-900">${isAeroOnly ? `Exercícios Aeróbicos Registrados (${periodSubtitle})` : `Exercícios Registrados (${periodSubtitle})`}</h3>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                ${hasPreviousWorkout ? `
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" onclick="setAtvHistoryPeriod('day')" class="${histPeriod === 'day' ? activePeriodBtnCls : inactivePeriodBtnCls}">Dia (${formattedSelectedDate})</button>
+                    <button type="button" onclick="setAtvHistoryPeriod('15d')" class="${histPeriod === '15d' ? activePeriodBtnCls : inactivePeriodBtnCls}">Últimos 15d</button>
+                    <button type="button" onclick="setAtvHistoryPeriod('all')" class="${histPeriod === 'all' ? activePeriodBtnCls : inactivePeriodBtnCls}">Todo o Período</button>
+                </div>
+                ${histPeriod === 'day' && hasPreviousWorkout ? `
                     <button type="button" onclick="toggleAtvHidePreviousWorkouts()" class="px-3 py-1.5 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 text-xs font-semibold transition">
                         ${hidePrev ? '👁️ Mostrar último treino (3 exerc.)' : '🙈 Ocultar últimos treinos'}
                     </button>
                 ` : ''}
-                ${currentLogs.length > 0 && !isAeroOnly && totalDayVolumeKg > 0 ? `
+                ${totalShownLogsCount > 0 && !isAeroOnly && totalPeriodVolumeKg > 0 ? `
                     <div class="flex items-center gap-2">
                         <span class="text-xs font-mono text-zinc-500">Volume Força:</span>
-                        <span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-950 font-mono font-bold text-xs">${totalDayVolumeKg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</span>
+                        <span class="px-3 py-1 rounded-xl bg-amber-100 text-amber-950 font-mono font-bold text-xs">${totalPeriodVolumeKg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg</span>
                     </div>` : ''}
-                ${currentLogs.length > 0 && totalDayAeroKm > 0 ? `
+                ${totalShownLogsCount > 0 && totalPeriodAeroKm > 0 ? `
                     <div class="flex items-center gap-2">
                         <span class="text-xs font-mono text-zinc-500">Volume Cardio:</span>
-                        <span class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-950 font-mono font-bold text-xs">🏃 ${totalDayAeroKm.toFixed(2).replace('.', ',')} km</span>
+                        <span class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-950 font-mono font-bold text-xs">🏃 ${totalPeriodAeroKm.toFixed(2).replace('.', ',')} km</span>
                     </div>` : ''}
             </div>
         </div>
@@ -2964,8 +3192,20 @@ function renderAtvFisicaInteractiveView() {
         const weightedRef = calcWeightedExerciseRefLoad([selectedExName, ex.name, ...(ex.variations || [])], ex.load);
         const suggestedLoad = weightedRef !== null ? formatWeightNumber(weightedRef) : '';
 
-        const weightValueToUse = savedCardState.weight || '';
+        const weightValueToUse = savedCardState.weight !== undefined && savedCardState.weight !== ''
+            ? savedCardState.weight
+            : (suggestedLoad || '');
         const notesValueToUse = savedCardState.notes || '';
+        const setsValueToUse = savedCardState.sets !== undefined && savedCardState.sets !== ''
+            ? savedCardState.sets
+            : String(ex.sets || 3);
+        const repsValueToUse = savedCardState.reps !== undefined && savedCardState.reps !== ''
+            ? savedCardState.reps
+            : String(ex.reps || (isCardio ? '15-20 min' : '8-12'));
+        const restValueToUse = savedCardState.rest !== undefined && savedCardState.rest !== ''
+            ? savedCardState.rest
+            : String(ex.rest || '90s');
+        const rpeValueToUse = savedCardState.rpe || '';
 
         // Na lista do dropdown do exercício, a ref da carga fica OCULTA e aparece só no título do exercício quando selecionado
         // Para o card de Cardio Zona 2, desassocia de Upper/Lower e mostra simplesmente 'Cardio Zona 2'
@@ -2985,18 +3225,52 @@ function renderAtvFisicaInteractiveView() {
         // Item 6: No card do sistema cardiovascular, retirar o ícone de alvo REPS e deixar apenas o ícone de tempo e algum que indique km/h
         const cardBadgesHTML = isCardio
             ? `
-                <span class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">⏱️ ${ex.reps || '15-20 min'}</span>
+                <span id="atv-card-target-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">⏱️ ${repsValueToUse || '15-20 min'}</span>
                 <span id="atv-card-ref-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold">🏃 ${suggestedLoad ? `ref: ${suggestedLoad} km/h` : 'km/h'}</span>
             `
             : `
-                <span class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">🎯 ${ex.sets}× ${ex.reps}</span>
-                <span class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-700">⏱️ ${ex.rest}</span>
+                <span id="atv-card-target-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">🎯 ${setsValueToUse}× ${repsValueToUse}</span>
+                <span id="atv-card-rest-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-700">⏱️ ${restValueToUse}</span>
                 <span id="atv-card-ref-badge-${idx}" class="${suggestedLoad ? '' : 'hidden '}px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 font-bold">ref: ${suggestedLoad} ${unitShort}</span>
             `;
 
+        const editableExecParamsHTML = isCardio
+            ? `
+                <div class="grid grid-cols-2 gap-1.5">
+                    <div>
+                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Duração / Alvo</label>
+                        <input type="text" id="atv-card-reps-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${repsValueToUse.replace(/"/g, '&quot;')}" placeholder="15-20 min" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold text-zinc-800 focus:bg-white focus:border-black transition">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">RPE (Esforço)</label>
+                        <input type="text" id="atv-card-rpe-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${rpeValueToUse.replace(/"/g, '&quot;')}" placeholder="Ex: 7" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold text-indigo-700 focus:bg-white focus:border-indigo-500 transition">
+                    </div>
+                </div>
+            `
+            : `
+                <div class="grid grid-cols-4 gap-1.5">
+                    <div>
+                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Séries</label>
+                        <input type="number" id="atv-card-sets-${idx}" min="1" max="20" oninput="onAtvCardFieldChange(${idx}, false)" value="${setsValueToUse.replace(/"/g, '&quot;')}" placeholder="3" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold text-zinc-900 focus:bg-white focus:border-black transition">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">REPS</label>
+                        <input type="text" id="atv-card-reps-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${repsValueToUse.replace(/"/g, '&quot;')}" placeholder="8-12" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold text-zinc-800 focus:bg-white focus:border-black transition">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Descanso</label>
+                        <input type="text" id="atv-card-rest-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${restValueToUse.replace(/"/g, '&quot;')}" placeholder="90s" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold text-zinc-700 focus:bg-white focus:border-black transition">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">RPE</label>
+                        <input type="text" id="atv-card-rpe-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${rpeValueToUse.replace(/"/g, '&quot;')}" placeholder="Ex: 8" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold text-indigo-700 focus:bg-white focus:border-indigo-500 transition">
+                    </div>
+                </div>
+            `;
+
         return `
-            <div class="w-[300px] sm:w-[335px] shrink-0 snap-center bg-white border border-zinc-200/90 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-zinc-300 transition">
-                <div class="space-y-3">
+            <div class="w-[310px] sm:w-[350px] shrink-0 snap-center bg-white border border-zinc-200/90 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-zinc-300 transition">
+                <div class="space-y-2.5">
                     <div class="flex items-start gap-3">
                         <div class="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center text-xl shrink-0">
                             ${muscleEmoji}
@@ -3018,14 +3292,16 @@ function renderAtvFisicaInteractiveView() {
                         </select>
                     </div>
 
+                    ${editableExecParamsHTML}
+
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label id="atv-card-weight-label-${idx}" class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">${inputLabelText}</label>
-                            <input type="text" id="atv-card-weight-${idx}" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvCardFieldChange(${idx}, false)" value="${weightValueToUse}" placeholder="0,00" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center focus:bg-white focus:border-rose-500 transition">
+                            <input type="text" id="atv-card-weight-${idx}" inputmode="numeric" onfocus="this.select()" oninput="handleWeightInputMask(this); onAtvCardFieldChange(${idx}, false)" value="${weightValueToUse}" placeholder="0,00" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center focus:bg-white focus:border-rose-500 transition">
                         </div>
                         <div>
                             <label class="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Observações</label>
-                            <input type="text" id="atv-card-notes-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${notesValueToUse.replace(/"/g, '&quot;')}" placeholder="Ex: RPE 8" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-800 focus:bg-white transition">
+                            <input type="text" id="atv-card-notes-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${notesValueToUse.replace(/"/g, '&quot;')}" placeholder="Ex: boa cadência" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-800 focus:bg-white transition">
                         </div>
                     </div>
                 </div>
@@ -3084,11 +3360,11 @@ function renderAtvFisicaInteractiveView() {
                     </select>
                 </div>
 
-                <!-- Campos para grupos musculares de Força (Séries, REPS, Descanso) - vazios para preenchimento -->
-                <div id="atv-custom-strength-fields" class="${isCustomCardioSelected ? 'hidden ' : ''}grid grid-cols-3 gap-1.5">
+                <!-- Campos para grupos musculares de Força (Séries, REPS, Descanso, Carga) - vazios para preenchimento -->
+                <div id="atv-custom-strength-fields" class="${isCustomCardioSelected ? 'hidden ' : ''}grid grid-cols-4 gap-1.5">
                     <div>
                         <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Séries</label>
-                        <input type="number" id="atv-custom-sets" oninput="onAtvCustomFieldChange(false)" value="${(ci.sets || '').replace(/"/g, '&quot;')}" min="1" max="20" placeholder="Ex: 3" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-bold">
+                        <input type="number" id="atv-custom-sets" oninput="onAtvCustomFieldChange(false)" value="${(ci.sets || '').replace(/"/g, '&quot;')}" min="1" max="20" placeholder="Ex: 3" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold">
                     </div>
                     <div>
                         <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">REPS</label>
@@ -3097,6 +3373,10 @@ function renderAtvFisicaInteractiveView() {
                     <div>
                         <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Descanso</label>
                         <input type="text" id="atv-custom-rest" oninput="onAtvCustomFieldChange(false)" value="${(ci.rest || '').replace(/"/g, '&quot;')}" placeholder="Ex: 90s" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Carga (kg)</label>
+                        <input type="text" id="atv-custom-load" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvCustomFieldChange(false)" value="${(ci.load || '').replace(/"/g, '&quot;')}" placeholder="0,00" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold text-rose-600">
                     </div>
                 </div>
 
