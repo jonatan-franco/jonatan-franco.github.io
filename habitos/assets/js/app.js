@@ -632,37 +632,27 @@ function renderDashboardView() {
         }
     }
 
-    /* 3. KPI: Maior Streak (100% das atividades) */
+    /* 3. KPI: Streak Configurável (Apenas Foguinho + Dias Consecutivos) */
     const hasAnyData = s.activeDays > 0 || loadM.activeDays > 0;
     const streakData = calcConsecutiveFullDaysStreak();
+    const streakCfg = typeof getStreakConfig === 'function' ? getStreakConfig() : { atvMode: 'pct', minAtvPct: 80, minSleepHours: 7.0 };
     const streakEl = document.getElementById('kpi-streak');
     const streakLeaderEl = document.getElementById('kpi-streak-leader');
     const streakLabelEl = document.getElementById('kpi-streak-label');
-    const streakDotsEl = document.getElementById('kpi-streak-dots');
+
+    const atvRuleText = streakCfg.atvMode === 'full_all'
+        ? 'Treino 100% (+Cardio)'
+        : `Atv ≥${streakCfg.minAtvPct}%`;
+    const sleepRuleText = `Sono ≥${String(streakCfg.minSleepHours).replace('.', ',')}h`;
 
     if (!hasAnyData) {
-        if (streakEl) streakEl.textContent = '—';
-        if (streakLeaderEl) streakLeaderEl.textContent = '—';
-        if (streakLabelEl) streakLabelEl.textContent = '100% de atividades:';
-        if (streakDotsEl) {
-            streakDotsEl.innerHTML = weekDays.map(d =>
-                `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono bg-white/40 text-zinc-400" title="${d.shortName}: —">${d.shortName.charAt(0)}</div>`
-            ).join('');
-        }
+        if (streakEl) streakEl.textContent = '🔥 0d';
+        if (streakLeaderEl) streakLeaderEl.textContent = 'Recorde: 0d';
+        if (streakLabelEl) streakLabelEl.textContent = `Meta: ${atvRuleText} • ${sleepRuleText}`;
     } else {
-        if (streakEl) streakEl.textContent = `🔥 ${streakData.maxStreak}d`;
-        if (streakLeaderEl) streakLeaderEl.textContent = `${streakData.fullDaysThisWeek}/7d na semana`;
-        if (streakLabelEl) streakLabelEl.textContent = '100% de atividades:';
-        if (streakDotsEl) {
-            streakDotsEl.innerHTML = weekDays.map((d, i) => {
-                if (isFutureDay(i)) {
-                    return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono bg-black/5 text-transparent" title="${d.shortName}: —">${d.shortName.charAt(0)}</div>`;
-                }
-                const done = streakData.weekStatus[i] === true;
-                const cls = done ? 'bg-zinc-900 text-white font-bold' : 'bg-white/60 text-zinc-500';
-                return `<div class="h-6 rounded-md flex items-center justify-center text-[9px] font-mono ${cls}" title="${d.shortName}: ${done ? '100% de atividades concluídas ✓' : 'Incompleto'}">${d.shortName.charAt(0)}</div>`;
-            }).join('');
-        }
+        if (streakEl) streakEl.textContent = `🔥 ${streakData.currentStreak}d`;
+        if (streakLeaderEl) streakLeaderEl.textContent = `Recorde: ${streakData.maxStreak}d`;
+        if (streakLabelEl) streakLabelEl.textContent = `Meta: ${atvRuleText} • ${sleepRuleText}`;
     }
 
     renderHeatmap(s, loadM);
@@ -1674,4 +1664,80 @@ window.initSobreSimulators = function() {
     window.updateSobreSleepSim();
     window.updateSobreForceSim();
     window.updateSobreCardioSim();
+};
+
+
+/* ------------------------------------------------------------------
+ * Modal de Configuração de Streak (Engrenagem do KPI de Streak)
+ * ------------------------------------------------------------------ */
+let streakModalCurrentAtvMode = 'pct';
+
+window.setStreakModalAtvMode = function(mode) {
+    streakModalCurrentAtvMode = mode === 'full_all' ? 'full_all' : 'pct';
+    const btnPct = document.getElementById('streak-mode-pct');
+    const btnFull = document.getElementById('streak-mode-full');
+    const pctBox = document.getElementById('streak-atv-pct-box');
+    const fullBox = document.getElementById('streak-atv-full-box');
+
+    if (btnPct && btnFull) {
+        btnPct.className = streakModalCurrentAtvMode === 'pct'
+            ? "flex-1 py-2 px-3 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
+            : "flex-1 py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-xs font-semibold transition";
+        btnFull.className = streakModalCurrentAtvMode === 'full_all'
+            ? "flex-1 py-2 px-3 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
+            : "flex-1 py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-xs font-semibold transition";
+    }
+    if (pctBox && fullBox) {
+        if (streakModalCurrentAtvMode === 'pct') {
+            pctBox.classList.remove('hidden');
+            fullBox.classList.add('hidden');
+        } else {
+            pctBox.classList.add('hidden');
+            fullBox.classList.remove('hidden');
+        }
+    }
+};
+
+window.openStreakConfigModal = function() {
+    const cfg = typeof getStreakConfig === 'function' ? getStreakConfig() : { atvMode: 'pct', minAtvPct: 80, minSleepHours: 7.0 };
+    window.setStreakModalAtvMode(cfg.atvMode);
+
+    const pctInput = document.getElementById('streak-atv-pct-input');
+    const sleepInput = document.getElementById('streak-sleep-min-hours');
+    if (pctInput) pctInput.value = cfg.minAtvPct;
+    if (sleepInput) sleepInput.value = cfg.minSleepHours;
+
+    const modal = document.getElementById('streak-config-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        if (typeof refreshIcons === 'function') refreshIcons();
+    }
+};
+
+window.closeStreakConfigModal = function() {
+    const modal = document.getElementById('streak-config-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
+window.saveStreakConfigFromModal = function() {
+    const pctInput = document.getElementById('streak-atv-pct-input');
+    const sleepInput = document.getElementById('streak-sleep-min-hours');
+
+    const minAtvPct = Math.min(100, Math.max(10, parseInt(pctInput ? pctInput.value : '80', 10) || 80));
+    const minSleepHours = Math.max(0, parseFloat(String(sleepInput ? sleepInput.value : '7.0').replace(',', '.')) || 0);
+
+    if (typeof saveStreakConfig === 'function') {
+        saveStreakConfig({
+            atvMode: streakModalCurrentAtvMode,
+            minAtvPct,
+            minSleepHours
+        });
+    }
+    window.closeStreakConfigModal();
+    if (typeof saveData === 'function') saveData();
+    else if (typeof renderDashboardView === 'function') renderDashboardView();
 };

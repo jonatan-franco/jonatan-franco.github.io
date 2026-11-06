@@ -156,24 +156,29 @@
                     <div class="flex justify-between items-start">
                         <div>
                             <span class="text-zinc-800 text-[11px] font-mono uppercase tracking-wider font-semibold">MAIOR STREAK</span>
-                            <div class="flex items-baseline gap-2 mt-1.5">
-                                <span class="text-3xl font-bold text-zinc-950 font-mono" id="kpi-streak">🔥 0d</span>
-                            </div>
                         </div>
-                        <div class="relative group cursor-help">
-                            <div class="w-10 h-10 rounded-full bg-white/60 hover:bg-white/90 flex items-center justify-center text-zinc-900 transition shadow-2xs">
-                                <i data-lucide="flame" class="w-5 h-5 text-orange-600"></i>
-                            </div>
-                            <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute right-0 top-12 w-64 sm:w-72 p-3.5 rounded-2xl bg-zinc-900 text-white text-[11px] leading-relaxed shadow-xl z-30 border border-zinc-700">
-                                <div class="font-bold text-orange-400 mb-1">🔥 O que é o Maior Streak?</div>
-                                <p class="text-zinc-200">É a sua maior sequência de <strong>dias consecutivos</strong> cumprindo <strong>100% das atividades</strong>.</p>
-                                <p class="text-zinc-400 mt-1.5 pt-1.5 border-t border-zinc-800"><strong>Como é calculado:</strong> o dia fecha em 100% quando há registro de <strong>Sono</strong> e de <strong>Atividade Física</strong> (em dias livres na Agenda, o registro de Sono garante os 100%).</p>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="openStreakConfigModal()" class="w-9 h-9 rounded-full bg-white/70 hover:bg-white flex items-center justify-center text-zinc-900 transition shadow-2xs" title="Configurar regras do Streak">
+                                <i data-lucide="settings" class="w-4 h-4 text-zinc-800"></i>
+                            </button>
+                            <div class="relative group cursor-help">
+                                <div class="w-9 h-9 rounded-full bg-white/60 hover:bg-white/90 flex items-center justify-center text-zinc-900 transition shadow-2xs">
+                                    <i data-lucide="flame" class="w-4 h-4 text-orange-600"></i>
+                                </div>
+                                <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute right-0 top-11 w-64 sm:w-72 p-3.5 rounded-2xl bg-zinc-900 text-white text-[11px] leading-relaxed shadow-xl z-30 border border-zinc-700">
+                                    <div class="font-bold text-orange-400 mb-1">🔥 O que é o Streak?</div>
+                                    <p class="text-zinc-200">Mostra a quantidade de <strong>dias consecutivos</strong> em que suas metas configuradas vêm sendo cumpridas.</p>
+                                    <p class="text-zinc-400 mt-1.5 pt-1.5 border-t border-zinc-800">Clique na <strong>engrenagem ⚙️</strong> ao lado para definir o critério de <strong>Atividade Física</strong> (% da meta ou completar todo o treino + cardio) e o mínimo de horas de <strong>Sono</strong>.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div id="kpi-streak-dots" class="grid grid-cols-7 gap-1 mt-3"></div>
-                    <div class="mt-3 pt-2.5 border-t border-black/10 text-xs text-zinc-800 flex justify-between font-mono">
-                        <span id="kpi-streak-label">100% de atividades</span><span id="kpi-streak-leader" class="font-semibold truncate max-w-[140px]">-</span>
+                    <div class="my-auto py-3 flex flex-col items-center justify-center text-center">
+                        <span class="text-4xl sm:text-5xl font-extrabold text-zinc-950 font-mono tracking-tight" id="kpi-streak">🔥 0d</span>
+                    </div>
+                    <div class="pt-2 border-t border-black/10 text-[11px] text-zinc-700 flex justify-between items-center font-mono">
+                        <span id="kpi-streak-label" class="truncate">Metas cumpridas</span>
+                        <span id="kpi-streak-leader" class="font-semibold shrink-0 ml-2">-</span>
                     </div>
                 </div>
             </div>
@@ -1710,6 +1715,167 @@
             <div class="flex justify-end pt-3 border-t border-zinc-100">
                 <button type="button" onclick="closeSiteSettingsModal()" class="px-6 py-2.5 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-bold transition">Concluído</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIGURAÇÃO DO STREAK -->
+    <div id="streak-config-modal" onclick="if (event.target === this) closeStreakConfigModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl my-auto">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <div>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">REGRAS DO STREAK 🔥</span>
+                    <h3 class="text-base font-bold text-zinc-900">Configurar Metas do Streak</h3>
+                    <p class="text-[11px] text-zinc-500 mt-0.5">Defina o que conta como dia cumprido na sua sequência.</p>
+                </div>
+                <button type="button" onclick="closeStreakConfigModal()" class="text-zinc-400 hover:text-black text-lg font-bold px-2">✕</button>
+            </div>
+
+            <form onsubmit="saveStreakConfigFromModal(event)" class="space-y-4">
+                <!-- 1. Critério de Atividade Física -->
+                <div class="space-y-2.5 bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                    <label class="block text-xs font-bold uppercase text-zinc-800 font-mono">🏋️ 1. Critério para Atividade Física</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" id="btn-streak-atv-pct" onclick="setStreakModalAtvMode('pct')" class="py-2.5 px-3 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs">
+                            📊 % da Atv. Física
+                        </button>
+                        <button type="button" id="btn-streak-atv-full" onclick="setStreakModalAtvMode('full_all')" class="py-2.5 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition">
+                            ✅ Todo o Exercício (+Cardio)
+                        </button>
+                    </div>
+
+                    <div id="streak-atv-pct-box" class="space-y-1.5 pt-1">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-zinc-600 font-medium">Porcentagem mínima concluída no dia:</span>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="streak-atv-pct-input" min="10" max="100" step="5" value="80" class="w-16 bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono font-bold text-center text-rose-600">
+                                <span class="text-xs font-mono font-bold text-zinc-700">%</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-zinc-500 leading-snug">Conta o dia se você atingir pelo menos essa % dos exercícios do treino do dia.</p>
+                    </div>
+
+                    <div id="streak-atv-full-box" class="hidden pt-1">
+                        <p class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 leading-snug">
+                            <strong>100% Completo:</strong> Exige concluir todos os exercícios de força do treino do dia (e também o <strong>Cardio</strong> nos dias de Upper A / Upper B; dias de Lower não possuem cardio).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 2. Critério de Sono -->
+                <div class="space-y-2 bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                    <label class="block text-xs font-bold uppercase text-zinc-800 font-mono">🌙 2. Critério para Sono</label>
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs text-zinc-700 font-medium">Dormir acima de (horas por noite):</span>
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" id="streak-sleep-min-hours" min="1" max="14" step="0.5" value="7.0" class="w-20 bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-sm font-mono font-bold text-center text-indigo-600">
+                            <span class="text-xs font-mono font-bold text-zinc-600">h</span>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-zinc-500 leading-snug">O dia conta quando as horas dormidas registradas no Diário do Sono forem ≥ esse valor.</p>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-zinc-100">
+                    <button type="button" onclick="closeStreakConfigModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-bold">Salvar Configuração</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIGURAÇÃO DO CARD DE EXERCÍCIO (ENGRENAGEM ⚙️ NO CARD) -->
+    <div id="atv-card-config-modal" onclick="if (event.target === this) closeAtvCardConfigModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white border border-zinc-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl my-auto">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                <div>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-rose-600 font-bold">CONFIGURAR CARD DE EXECUÇÃO ⚙️</span>
+                    <h3 class="text-base font-bold text-zinc-900" id="atv-card-cfg-title">Configurar Exercício do Card</h3>
+                    <p class="text-[11px] font-mono text-zinc-500 mt-0.5" id="atv-card-cfg-subtitle"></p>
+                </div>
+                <button type="button" onclick="closeAtvCardConfigModal()" class="text-zinc-400 hover:text-black text-lg font-bold px-2">✕</button>
+            </div>
+
+            <form onsubmit="saveAtvCardConfigModal(event)" class="space-y-3.5">
+                <input type="hidden" id="atv-card-cfg-plan-id">
+                <input type="hidden" id="atv-card-cfg-idx">
+
+                <!-- Substituir por exercício existente (ex: Upper A / outros treinos) sem precisar digitar -->
+                <div class="bg-zinc-50 p-3 rounded-2xl border border-zinc-200 space-y-2">
+                    <label class="block text-[10px] font-bold uppercase text-indigo-700 font-mono">🔄 Substituir por Exercício já Cadastrado (Upper A / Catálogo)</label>
+                    <select id="atv-card-cfg-reuse-select" onchange="onAtvCardConfigReuseSelect(this.value)" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900">
+                        <option value="">— Manter exercício atual ou escolher da lista —</option>
+                    </select>
+                    <p class="text-[10px] text-zinc-500 leading-snug">Ao escolher um exercício já existente (como do Upper A), o nome e a última carga são mantidos unificados nos gráficos e no 1RM.</p>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Nome do Exercício Exibido</label>
+                    <input type="text" id="atv-card-cfg-name" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white">
+                </div>
+
+                <div class="grid grid-cols-4 gap-2">
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Séries</label>
+                        <input type="number" id="atv-card-cfg-sets" min="1" max="20" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-bold text-zinc-900">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">REPS</label>
+                        <input type="text" id="atv-card-cfg-reps" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold text-zinc-900">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Descanso</label>
+                        <input type="text" id="atv-card-cfg-rest" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold text-zinc-900">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">RPE Alvo</label>
+                        <input type="text" id="atv-card-cfg-rpe" placeholder="Ex: 8" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-bold text-indigo-700">
+                    </div>
+                </div>
+
+                <!-- Carga de Referência ou Cálculo por Peso Corporal -->
+                <div class="space-y-2.5 bg-rose-50/40 p-3.5 rounded-2xl border border-rose-200/80">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-[10px] font-bold uppercase text-rose-800 font-mono">⚖️ Carga / Peso Corporal (Ex: Búlgaro)</label>
+                        <label class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-zinc-800 cursor-pointer">
+                            <input type="checkbox" id="atv-card-cfg-is-bw" onchange="onAtvCardCfgBodyweightToggle()" class="w-3.5 h-3.5 accent-black rounded">
+                            <span>Usa Peso Corporal</span>
+                        </label>
+                    </div>
+
+                    <div id="atv-card-cfg-bw-calc-box" class="hidden space-y-2 pt-1 border-t border-rose-200/60">
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[9px] font-bold uppercase text-zinc-600 mb-0.5">Peso Corporal (kg)</label>
+                                <input type="text" id="atv-card-cfg-bw-kg" inputmode="numeric" oninput="handleWeightInputMask(this); updateAtvCardCfgBwCalc()" placeholder="75,00" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-bold text-zinc-900">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold uppercase text-zinc-600 mb-0.5">Fator Biomec.</label>
+                                <select id="atv-card-cfg-bw-factor" onchange="updateAtvCardCfgBwCalc()" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-[11px] font-mono font-semibold text-zinc-900">
+                                    <option value="0.65">65% (Búlgaro/Afundo)</option>
+                                    <option value="0.75">75% (Flexão/Paralela)</option>
+                                    <option value="0.85">85% (Barra Fixa)</option>
+                                    <option value="0.50">50% (Core/Abdom.)</option>
+                                    <option value="1.00">100% (Peso Total)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold uppercase text-zinc-600 mb-0.5">Halter/Extra (kg)</label>
+                                <input type="text" id="atv-card-cfg-bw-extra" inputmode="numeric" oninput="handleWeightInputMask(this); updateAtvCardCfgBwCalc()" placeholder="0,00" class="w-full bg-white border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold text-zinc-900">
+                            </div>
+                        </div>
+                        <p id="atv-card-cfg-bw-preview" class="text-[10px] font-mono text-rose-700 font-semibold text-center">Carga Efetiva Calculada: — kg</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase text-zinc-500 mb-1">Carga de Referência / Atual (kg)</label>
+                        <input type="text" id="atv-card-cfg-load" inputmode="numeric" oninput="handleWeightInputMask(this)" placeholder="0,00" class="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-rose-600 text-center">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-zinc-100">
+                    <button type="button" onclick="closeAtvCardConfigModal()" class="px-4 py-2 bg-zinc-100 text-zinc-700 rounded-full text-xs font-semibold">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-black hover:bg-zinc-800 text-white rounded-full text-xs font-bold">Salvar no Card</button>
+                </div>
+            </form>
         </div>
     </div>
 

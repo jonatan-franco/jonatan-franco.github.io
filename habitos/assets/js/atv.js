@@ -43,8 +43,7 @@ const WORKOUT_PLAN = [
             { name: 'RDL', muscle: 'Isquiotibiais e Glúteos', variations: ['Stiff com barra', 'Mesa flexora (foco em isquiotibiais)'], sets: 3, reps: '8-12', rest: '2 min' },
             { name: 'Panturrilha em Pé', muscle: 'Panturrilha (Gastrocnêmio)', variations: ['Panturrilha no Leg Press', 'Panturrilha unilateral com halter'], sets: 3, reps: '12-15', rest: '60-90s' },
             { name: 'Cadeira Extensora', muscle: 'Quadríceps (ênfase reto femoral)', variations: ['Afundo com halteres', 'Sissy squat'], sets: 3, reps: '12-15', rest: '60-90s' },
-            { name: 'Abdominal na Polia Alta (Cable Crunch)', muscle: 'Reto Abdominal (ênfase superior e média)', variations: ['Crunch no solo com carga', 'Abdominal na máquina'], sets: 3, reps: '12-15', rest: '60-90s' },
-            { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
+            { name: 'Abdominal na Polia Alta (Cable Crunch)', muscle: 'Reto Abdominal (ênfase superior e média)', variations: ['Crunch no solo com carga', 'Abdominal na máquina'], sets: 3, reps: '12-15', rest: '60-90s' }
         ]
     },
     {
@@ -71,8 +70,7 @@ const WORKOUT_PLAN = [
             { name: 'Cadeira Flexora', muscle: 'Isquiotibiais (flexores de joelho)', variations: ['Mesa flexora deitada', 'Flexora unilateral em pé'], sets: 3, reps: '10-15', rest: '60-90s' },
             { name: 'Agachamento Búlgaro', muscle: 'Quadríceps e Glúteo Máximo', variations: ['Passada/Avanço com halteres', 'Afundo no Smith'], sets: 3, reps: '8-12', rest: '2 min' },
             { name: 'Panturrilha', muscle: 'Panturrilha', variations: ['Panturrilha sentado (Sóleo)', 'Panturrilha no Smith'], sets: 3, reps: '12-15', rest: '60-90s' },
-            { name: 'Elevação de Pernas na Barra Fixa / Paralelas (Hanging Leg Raise)', muscle: 'Reto Abdominal (ênfase infra-umbilical)', variations: ['Elevação de pernas no solo com elevação pélvica', 'Abdominal canivete'], sets: 3, reps: '12-15', rest: '60-90s' },
-            { ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] }
+            { name: 'Elevação de Pernas na Barra Fixa / Paralelas (Hanging Leg Raise)', muscle: 'Reto Abdominal (ênfase infra-umbilical)', variations: ['Elevação de pernas no solo com elevação pélvica', 'Abdominal canivete'], sets: 3, reps: '12-15', rest: '60-90s' }
         ]
     }
 ];
@@ -245,26 +243,35 @@ function loadWorkoutCatalogCustomizations() {
                     catMigrated = true;
                 }
             });
-            let hasCardio = false;
-            w.exercises.forEach(ex => {
-                if (isCardioExercise(ex.name, ex.muscle)) {
-                    hasCardio = true;
-                    if (ex.name.startsWith('Cardio Zona 2 (')) {
-                        ex.name = CARDIO_Z2_NAME;
-                        catMigrated = true;
-                    }
-                    if (!Array.isArray(ex.variations)) ex.variations = [];
-                    DEFAULT_CARDIO_Z2_EXERCISE.variations.forEach(v => {
-                        if (!ex.variations.some(ev => ev.toLowerCase() === v.toLowerCase())) {
-                            ex.variations.push(v);
+            const isLowerWorkout = w.planId === 'lower_a' || w.planId === 'lower_b';
+            if (isLowerWorkout) {
+                const beforeLen = w.exercises.length;
+                w.exercises = w.exercises.filter(ex => !isCardioExercise(ex.name, ex.muscle));
+                if (w.exercises.length !== beforeLen) {
+                    catMigrated = true;
+                }
+            } else {
+                let hasCardio = false;
+                w.exercises.forEach(ex => {
+                    if (isCardioExercise(ex.name, ex.muscle)) {
+                        hasCardio = true;
+                        if (ex.name.startsWith('Cardio Zona 2 (')) {
+                            ex.name = CARDIO_Z2_NAME;
                             catMigrated = true;
                         }
-                    });
+                        if (!Array.isArray(ex.variations)) ex.variations = [];
+                        DEFAULT_CARDIO_Z2_EXERCISE.variations.forEach(v => {
+                            if (!ex.variations.some(ev => ev.toLowerCase() === v.toLowerCase())) {
+                                ex.variations.push(v);
+                                catMigrated = true;
+                            }
+                        });
+                    }
+                });
+                if (!hasCardio) {
+                    w.exercises.push({ ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] });
+                    catMigrated = true;
                 }
-            });
-            if (!hasCardio) {
-                w.exercises.push({ ...DEFAULT_CARDIO_Z2_EXERCISE, variations: [...DEFAULT_CARDIO_Z2_EXERCISE.variations] });
-                catMigrated = true;
             }
         });
         if (catMigrated) saveWorkoutCatalogCustomizations();
@@ -462,17 +469,26 @@ function parseRepsNumber(repsStr) {
 }
 
 /* ------------------------------------------------------------------
- * Cálculo do peso/velocidade média de referência dos últimos treinos para um exercício,
- * dando peso maior (fator 2.5x vs 1.0x) para cargas feitas com > 2 repetições.
+ * Obtém a última carga/velocidade executada de referência para um exercício
+ * (prioriza a última execução do próprio exercício; caso não haja, usa a última do grupo do card ou fallbackLoad).
  * ------------------------------------------------------------------ */
 function calcWeightedExerciseRefLoad(exerciseNames, fallbackLoad) {
-    const namesSet = new Set(
-        (Array.isArray(exerciseNames) ? exerciseNames : [exerciseNames])
-            .filter(Boolean)
-            .map(n => String(n).trim().toLowerCase())
-    );
+    const namesArr = (Array.isArray(exerciseNames) ? exerciseNames : [exerciseNames])
+        .filter(Boolean)
+        .map(n => String(n).trim().toLowerCase());
+    if (namesArr.length === 0) {
+        if (fallbackLoad !== undefined && fallbackLoad !== null && !isNaN(fallbackLoad) && Number(fallbackLoad) > 0) {
+            return parseFloat(Number(fallbackLoad).toFixed(2));
+        }
+        return null;
+    }
 
-    const matchedEntries = [];
+    const primaryName = namesArr[0];
+    const namesSet = new Set(namesArr);
+
+    let lastPrimaryWeight = null;
+    let lastGroupWeight = null;
+
     const sortedDates = Object.keys(atvLogs || {}).sort();
     sortedDates.forEach(dateKey => {
         const list = atvLogs[dateKey];
@@ -481,25 +497,21 @@ function calcWeightedExerciseRefLoad(exerciseNames, fallbackLoad) {
             if (!item || !item.exerciseName) return;
             const w = parseFloat(item.weight) || 0;
             if (w <= 0) return;
-            if (namesSet.has(String(item.exerciseName).trim().toLowerCase())) {
-                matchedEntries.push(item);
+            const itemNameLower = String(item.exerciseName).trim().toLowerCase();
+            if (itemNameLower === primaryName) {
+                lastPrimaryWeight = w;
+            }
+            if (namesSet.has(itemNameLower)) {
+                lastGroupWeight = w;
             }
         });
     });
 
-    const recentEntries = matchedEntries.slice(-12);
-    if (recentEntries.length > 0) {
-        let weightedSum = 0;
-        let totalFactor = 0;
-        recentEntries.forEach(item => {
-            const reps = parseRepsNumber(item.reps);
-            const factor = reps > 2 ? 2.5 : 1.0;
-            weightedSum += (parseFloat(item.weight) || 0) * factor;
-            totalFactor += factor;
-        });
-        if (totalFactor > 0) {
-            return parseFloat((weightedSum / totalFactor).toFixed(2));
-        }
+    if (lastPrimaryWeight !== null) {
+        return parseFloat(Number(lastPrimaryWeight).toFixed(2));
+    }
+    if (lastGroupWeight !== null) {
+        return parseFloat(Number(lastGroupWeight).toFixed(2));
     }
 
     if (fallbackLoad !== undefined && fallbackLoad !== null && !isNaN(fallbackLoad) && Number(fallbackLoad) > 0) {
@@ -701,10 +713,6 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
     const exEl = document.getElementById(`atv-card-ex-${cardIndex}`);
     const weightEl = document.getElementById(`atv-card-weight-${cardIndex}`);
     const notesEl = document.getElementById(`atv-card-notes-${cardIndex}`);
-    const setsEl = document.getElementById(`atv-card-sets-${cardIndex}`);
-    const repsEl = document.getElementById(`atv-card-reps-${cardIndex}`);
-    const restEl = document.getElementById(`atv-card-rest-${cardIndex}`);
-    const rpeEl = document.getElementById(`atv-card-rpe-${cardIndex}`);
 
     const workout = WORKOUT_PLAN.find(w => w.planId === selectedWorkoutPlanId) || WORKOUT_PLAN[0];
     const ex = workout && workout.exercises ? workout.exercises[cardIndex] : null;
@@ -713,65 +721,38 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
     if (ex) {
         const isCardio = isCardioExercise(chosenName, ex.muscle);
         const unitShort = isCardio ? 'km/h' : 'kg';
-
-        // Atualiza os parâmetros editáveis do card (Séries, REPS/Duração, Descanso) ao editar na execução
-        let catalogUpdated = false;
-        if (!isCardio && setsEl) {
-            const parsedSets = parseInt(setsEl.value, 10);
-            if (!isNaN(parsedSets) && parsedSets > 0 && ex.sets !== parsedSets) {
-                ex.sets = parsedSets;
-                catalogUpdated = true;
-            }
-        }
-        if (repsEl) {
-            const cleanReps = repsEl.value.trim();
-            if (cleanReps && ex.reps !== cleanReps) {
-                ex.reps = cleanReps;
-                catalogUpdated = true;
-            }
-        }
-        if (!isCardio && restEl) {
-            const cleanRest = restEl.value.trim();
-            if (cleanRest && ex.rest !== cleanRest) {
-                ex.rest = cleanRest;
-                catalogUpdated = true;
-            }
-        }
-        if (!isCardio && weightEl) {
-            const wNum = getWeightNumericValue(weightEl.value);
-            if (wNum > 0) {
-                ex.load = parseFloat(wNum.toFixed(2));
-                if (!ex.customMeta || typeof ex.customMeta !== 'object') ex.customMeta = {};
-                ex.customMeta[chosenName] = {
-                    sets: ex.sets || 3,
-                    reps: ex.reps || '8-12',
-                    rest: ex.rest || '90s',
-                    load: ex.load,
-                    updatedAt: selectedAtvDate || getLocalISODate()
-                };
-                catalogUpdated = true;
-            }
-        }
-        if (catalogUpdated) {
-            saveWorkoutCatalogCustomizations();
-        }
-
-        const setsBadgeEl = document.getElementById(`atv-card-target-badge-${cardIndex}`);
-        if (setsBadgeEl) {
-            setsBadgeEl.textContent = isCardio
-                ? `⏱️ ${ex.reps || '15-20 min'}`
-                : `🎯 ${ex.sets || 3}× ${ex.reps || '8-12'}`;
-        }
-        const restBadgeEl = document.getElementById(`atv-card-rest-badge-${cardIndex}`);
-        if (restBadgeEl && !isCardio) {
-            restBadgeEl.textContent = `⏱️ ${ex.rest || '90s'}`;
-        }
-
-        const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name], ex.load);
+        const exCustomMeta = (ex.customMeta && ex.customMeta[chosenName]) ? ex.customMeta[chosenName] : {};
+        const fallbackLoadForSelected = exCustomMeta.load !== undefined ? exCustomMeta.load : ex.load;
+        const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name, ...(ex.variations || [])], fallbackLoadForSelected);
         const refFormatted = refVal !== null ? formatWeightNumber(refVal) : '';
 
         if (exerciseChanged) {
-            // A ref da carga fica oculta no dropdown e aparece só no título (e badge) quando selecionado
+            const curSets = exCustomMeta.sets || ex.sets || 3;
+            const curReps = exCustomMeta.reps || ex.reps || (isCardio ? '15-20 min' : '8-12');
+            const curRest = exCustomMeta.rest || ex.rest || '90s';
+            const curRpe = exCustomMeta.rpe || ex.rpe || '';
+            const isBwEx = !!(exCustomMeta.isBodyweight || ex.isBodyweight);
+
+            const setsBadgeEl = document.getElementById(`atv-card-target-badge-${cardIndex}`);
+            if (setsBadgeEl) {
+                setsBadgeEl.textContent = isCardio
+                    ? `⏱️ ${curReps}`
+                    : `🎯 ${curSets}× ${curReps}`;
+            }
+            const restBadgeEl = document.getElementById(`atv-card-rest-badge-${cardIndex}`);
+            if (restBadgeEl && !isCardio) {
+                restBadgeEl.textContent = `⏱️ ${curRest}`;
+            }
+            const rpeBadgeEl = document.getElementById(`atv-card-rpe-badge-${cardIndex}`);
+            if (rpeBadgeEl) {
+                if (curRpe) {
+                    rpeBadgeEl.textContent = `RPE ${curRpe}`;
+                    rpeBadgeEl.classList.remove('hidden');
+                } else {
+                    rpeBadgeEl.classList.add('hidden');
+                }
+            }
+
             const titleEl = document.getElementById(`atv-card-title-${cardIndex}`);
             if (titleEl) {
                 const baseCardTitle = isCardio
@@ -786,14 +767,14 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
                     refBadgeEl.textContent = refFormatted ? `🏃 ref: ${refFormatted} km/h` : '🏃 km/h';
                     refBadgeEl.classList.remove('hidden');
                 } else if (refFormatted) {
-                    refBadgeEl.textContent = `ref: ${refFormatted} ${unitShort}`;
+                    refBadgeEl.textContent = `${isBwEx ? '🤸 ' : ''}ref: ${refFormatted} ${unitShort}`;
                     refBadgeEl.classList.remove('hidden');
                 } else {
                     refBadgeEl.classList.add('hidden');
                 }
             }
-            if (weightEl && refFormatted) {
-                weightEl.value = refFormatted;
+            if (weightEl) {
+                weightEl.value = refFormatted || '';
             }
             const weightLabelEl = document.getElementById(`atv-card-weight-label-${cardIndex}`);
             if (weightLabelEl) {
@@ -803,15 +784,237 @@ window.onAtvCardFieldChange = function(cardIndex, exerciseChanged = false) {
     }
 
     atvUiState.cardInputs[key] = {
+        ...(atvUiState.cardInputs[key] || {}),
         exercise: chosenName,
-        sets: setsEl ? setsEl.value : (ex ? String(ex.sets || 3) : '3'),
-        reps: repsEl ? repsEl.value : (ex ? String(ex.reps || '8-12') : '8-12'),
-        rest: restEl ? restEl.value : (ex ? String(ex.rest || '90s') : '90s'),
-        rpe: rpeEl ? rpeEl.value : '',
         weight: weightEl ? weightEl.value : '',
         notes: notesEl ? notesEl.value : ''
     };
     saveAtvUiState();
+};
+
+/* ------------------------------------------------------------------
+ * Modal da Engrenagem ⚙️ de Configuração do Card de Execução
+ * ------------------------------------------------------------------ */
+window.openAtvCardConfigModal = function(cardIndex) {
+    loadWorkoutCatalogCustomizations();
+    const workout = WORKOUT_PLAN.find(w => w.planId === selectedWorkoutPlanId) || WORKOUT_PLAN[0];
+    const ex = workout && workout.exercises ? workout.exercises[cardIndex] : null;
+    if (!ex) return;
+
+    const modal = document.getElementById('atv-card-config-modal');
+    if (!modal) return;
+
+    const exSelect = document.getElementById(`atv-card-ex-${cardIndex}`);
+    const chosenName = exSelect ? exSelect.value : ex.name;
+    const isCardio = isCardioExercise(chosenName, ex.muscle);
+    const cm = (ex.customMeta && ex.customMeta[chosenName]) ? ex.customMeta[chosenName] : {};
+
+    const planField = document.getElementById('atv-card-cfg-plan-id');
+    const idxField = document.getElementById('atv-card-cfg-idx');
+    if (planField) planField.value = workout.planId;
+    if (idxField) idxField.value = String(cardIndex);
+
+    const titleEl = document.getElementById('atv-card-cfg-title');
+    const subEl = document.getElementById('atv-card-cfg-subtitle');
+    if (titleEl) titleEl.textContent = `Configurar Card • ${workout.name}`;
+    if (subEl) subEl.textContent = `${ex.muscle}`;
+
+    // Popula o select de substituição por exercícios já existentes (Upper A e outros treinos)
+    const reuseSel = document.getElementById('atv-card-cfg-reuse-select');
+    if (reuseSel) {
+        let opts = `<option value="">— Manter exercício atual ou escolher da lista —</option>`;
+        const seen = new Set();
+        WORKOUT_PLAN.forEach(w => {
+            (w.exercises || []).forEach(cEx => {
+                if (!cEx || isCardioExercise(cEx.name, cEx.muscle)) return;
+                [cEx.name, ...(cEx.variations || [])].forEach(nm => {
+                    const clean = String(nm || '').trim();
+                    if (!clean) return;
+                    const low = clean.toLowerCase();
+                    if (!seen.has(low)) {
+                        seen.add(low);
+                        const isSel = low === String(chosenName || '').trim().toLowerCase();
+                        opts += `<option value="${clean.replace(/"/g, '&quot;')}" ${isSel ? 'selected' : ''}>${w.name} • ${clean}</option>`;
+                    }
+                });
+            });
+        });
+        reuseSel.innerHTML = opts;
+    }
+
+    const nameField = document.getElementById('atv-card-cfg-name');
+    if (nameField) nameField.value = chosenName;
+
+    const setsField = document.getElementById('atv-card-cfg-sets');
+    const repsField = document.getElementById('atv-card-cfg-reps');
+    const restField = document.getElementById('atv-card-cfg-rest');
+    const rpeField = document.getElementById('atv-card-cfg-rpe');
+    const loadField = document.getElementById('atv-card-cfg-load');
+
+    if (setsField) setsField.value = cm.sets || ex.sets || (isCardio ? 1 : 3);
+    if (repsField) repsField.value = cm.reps || ex.reps || (isCardio ? '20 min' : '8-12');
+    if (restField) restField.value = cm.rest || ex.rest || (isCardio ? '-' : '90s');
+    if (rpeField) rpeField.value = cm.rpe || ex.rpe || '';
+
+    const fallbackLoad = cm.load !== undefined ? cm.load : ex.load;
+    const lastLoad = calcWeightedExerciseRefLoad([chosenName, ex.name, ...(ex.variations || [])], fallbackLoad);
+    if (loadField) loadField.value = lastLoad !== null ? formatWeightNumber(lastLoad) : '';
+
+    const isBw = !!(cm.isBodyweight || ex.isBodyweight || /b[uú]lgaro|barra fixa|flex[aã]o|paralela|canivete|abdom/i.test(chosenName) && !lastLoad);
+    const bwChk = document.getElementById('atv-card-cfg-is-bw');
+    const bwKgField = document.getElementById('atv-card-cfg-bw-kg');
+    const bwFactorField = document.getElementById('atv-card-cfg-bw-factor');
+    const bwExtraField = document.getElementById('atv-card-cfg-bw-extra');
+
+    const savedBw = SafeStorage.getItem('hq_user_bodyweight_kg') || '75,00';
+    if (bwChk) bwChk.checked = !!(cm.isBodyweight || ex.isBodyweight);
+    if (bwKgField) bwKgField.value = cm.bodyweightKg ? formatWeightNumber(cm.bodyweightKg) : savedBw;
+    if (bwFactorField) bwFactorField.value = cm.bwFactor ? String(cm.bwFactor) : '0.65';
+    if (bwExtraField) bwExtraField.value = cm.bwExtraLoad ? formatWeightNumber(cm.bwExtraLoad) : '';
+
+    window.onAtvCardCfgBodyweightToggle();
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+};
+
+window.closeAtvCardConfigModal = function() {
+    const modal = document.getElementById('atv-card-config-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
+window.onAtvCardConfigReuseSelect = function(chosenExName) {
+    if (!chosenExName) return;
+    const nameField = document.getElementById('atv-card-cfg-name');
+    if (nameField) nameField.value = chosenExName;
+
+    // Busca metadados e última carga executada do exercício escolhido (ex: Upper A)
+    const meta = findExerciseMeta(chosenExName);
+    const cm = (meta && meta.customMeta && meta.customMeta[chosenExName]) ? meta.customMeta[chosenExName] : {};
+    const setsField = document.getElementById('atv-card-cfg-sets');
+    const repsField = document.getElementById('atv-card-cfg-reps');
+    const restField = document.getElementById('atv-card-cfg-rest');
+    const rpeField = document.getElementById('atv-card-cfg-rpe');
+    const loadField = document.getElementById('atv-card-cfg-load');
+
+    if (setsField && (cm.sets || (meta && meta.sets))) setsField.value = cm.sets || meta.sets;
+    if (repsField && (cm.reps || (meta && meta.reps))) repsField.value = cm.reps || meta.reps;
+    if (restField && (cm.rest || (meta && meta.rest))) restField.value = cm.rest || meta.rest;
+    if (rpeField && (cm.rpe || (meta && meta.rpe))) rpeField.value = cm.rpe || meta.rpe || '';
+
+    const lastLoad = calcWeightedExerciseRefLoad([chosenExName], cm.load !== undefined ? cm.load : (meta ? meta.load : undefined));
+    if (loadField) loadField.value = lastLoad !== null ? formatWeightNumber(lastLoad) : '';
+};
+
+window.onAtvCardCfgBodyweightToggle = function() {
+    const bwChk = document.getElementById('atv-card-cfg-is-bw');
+    const bwBox = document.getElementById('atv-card-cfg-bw-calc-box');
+    if (!bwChk || !bwBox) return;
+    if (bwChk.checked) {
+        bwBox.classList.remove('hidden');
+        window.updateAtvCardCfgBwCalc();
+    } else {
+        bwBox.classList.add('hidden');
+    }
+};
+
+window.updateAtvCardCfgBwCalc = function() {
+    const bwChk = document.getElementById('atv-card-cfg-is-bw');
+    if (!bwChk || !bwChk.checked) return;
+    const bwKg = getWeightNumericValue(document.getElementById('atv-card-cfg-bw-kg')?.value || '0');
+    const factor = parseFloat(document.getElementById('atv-card-cfg-bw-factor')?.value || '0.65') || 0.65;
+    const extraKg = getWeightNumericValue(document.getElementById('atv-card-cfg-bw-extra')?.value || '0');
+
+    if (bwKg > 0) {
+        SafeStorage.setItem('hq_user_bodyweight_kg', formatWeightNumber(bwKg));
+    }
+    const effectiveLoad = parseFloat(((bwKg * factor) + extraKg).toFixed(2));
+    const previewEl = document.getElementById('atv-card-cfg-bw-preview');
+    const loadField = document.getElementById('atv-card-cfg-load');
+    if (previewEl) {
+        previewEl.textContent = effectiveLoad > 0
+            ? `Carga Efetiva Calculada: ${formatWeightNumber(effectiveLoad)} kg (${Math.round(factor * 100)}% de ${formatWeightNumber(bwKg)}kg${extraKg > 0 ? ` + ${formatWeightNumber(extraKg)}kg` : ''})`
+            : 'Informe seu peso corporal acima para calcular a carga efetiva';
+    }
+    if (loadField && effectiveLoad > 0) {
+        loadField.value = formatWeightNumber(effectiveLoad);
+    }
+};
+
+window.saveAtvCardConfigModal = function(event) {
+    if (event) event.preventDefault();
+    const planId = document.getElementById('atv-card-cfg-plan-id')?.value || selectedWorkoutPlanId;
+    const cardIdx = parseInt(document.getElementById('atv-card-cfg-idx')?.value || '0', 10);
+    const workout = WORKOUT_PLAN.find(w => w.planId === planId) || WORKOUT_PLAN[0];
+    const ex = workout && workout.exercises ? workout.exercises[cardIdx] : null;
+    if (!ex) return;
+
+    const newName = (document.getElementById('atv-card-cfg-name')?.value || '').trim() || ex.name;
+    const isCardio = isCardioExercise(newName, ex.muscle);
+    const newSets = isCardio ? 1 : (parseInt(document.getElementById('atv-card-cfg-sets')?.value || '3', 10) || 3);
+    const newReps = (document.getElementById('atv-card-cfg-reps')?.value || '').trim() || (isCardio ? '20 min' : '8-12');
+    const newRest = isCardio ? '-' : ((document.getElementById('atv-card-cfg-rest')?.value || '').trim() || '90s');
+    const newRpe = (document.getElementById('atv-card-cfg-rpe')?.value || '').trim();
+    const newLoadVal = getWeightNumericValue(document.getElementById('atv-card-cfg-load')?.value || '0');
+
+    const isBw = !!document.getElementById('atv-card-cfg-is-bw')?.checked;
+    const bwKg = getWeightNumericValue(document.getElementById('atv-card-cfg-bw-kg')?.value || '0');
+    const bwFactor = parseFloat(document.getElementById('atv-card-cfg-bw-factor')?.value || '0.65') || 0.65;
+    const bwExtra = getWeightNumericValue(document.getElementById('atv-card-cfg-bw-extra')?.value || '0');
+    if (bwKg > 0) {
+        SafeStorage.setItem('hq_user_bodyweight_kg', formatWeightNumber(bwKg));
+    }
+
+    const oldMain = ex.name;
+    if (!Array.isArray(ex.variations)) ex.variations = [];
+
+    // Se o usuário escolheu substituir ou renomear o exercício, define como principal do card e guarda o anterior nas variações
+    if (newName.toLowerCase() !== oldMain.toLowerCase()) {
+        ex.variations = ex.variations.filter(v => v.toLowerCase() !== newName.toLowerCase());
+        if (oldMain) {
+            ex.variations = [oldMain, ...ex.variations.filter(v => v.toLowerCase() !== oldMain.toLowerCase())];
+        }
+        ex.name = newName;
+    }
+
+    ex.sets = newSets;
+    ex.reps = newReps;
+    ex.rest = newRest;
+    ex.rpe = newRpe || undefined;
+    ex.isBodyweight = isBw;
+    if (newLoadVal > 0) {
+        ex.load = parseFloat(newLoadVal.toFixed(2));
+    }
+
+    if (!ex.customMeta || typeof ex.customMeta !== 'object') ex.customMeta = {};
+    ex.customMeta[newName] = {
+        sets: newSets,
+        reps: newReps,
+        rest: newRest,
+        rpe: newRpe || undefined,
+        load: newLoadVal > 0 ? parseFloat(newLoadVal.toFixed(2)) : (ex.load || 0),
+        isBodyweight: isBw,
+        bodyweightKg: isBw ? bwKg : undefined,
+        bwFactor: isBw ? bwFactor : undefined,
+        bwExtraLoad: isBw ? bwExtra : undefined,
+        updatedAt: selectedAtvDate || getLocalISODate()
+    };
+
+    const key = `${selectedAtvDate}_${workout.planId}_${cardIdx}`;
+    atvUiState.cardInputs[key] = {
+        ...(atvUiState.cardInputs[key] || {}),
+        exercise: newName,
+        weight: newLoadVal > 0 ? formatWeightNumber(newLoadVal) : (atvUiState.cardInputs[key]?.weight || '')
+    };
+
+    saveWorkoutCatalogCustomizations();
+    saveAtvUiState();
+    saveData(false, true);
+    closeAtvCardConfigModal();
+    renderAtvFisicaInteractiveView();
 };
 
 window.setAtvCustomRole = function(role) {
@@ -845,6 +1048,59 @@ function isSelectedCustomSlotCardio(slotVal) {
     return isCardioExercise(targetCard.name, targetCard.muscle);
 }
 
+window.onAtvCustomReuseSelect = function(chosenExName) {
+    if (!chosenExName) return;
+    const nameEl = document.getElementById('atv-custom-name');
+    if (nameEl) nameEl.value = chosenExName;
+
+    const meta = findExerciseMeta(chosenExName);
+    const cm = (meta && meta.customMeta && meta.customMeta[chosenExName]) ? meta.customMeta[chosenExName] : {};
+    const setsEl = document.getElementById('atv-custom-sets');
+    const repsEl = document.getElementById('atv-custom-reps');
+    const restEl = document.getElementById('atv-custom-rest');
+    const loadEl = document.getElementById('atv-custom-load');
+
+    if (setsEl && (cm.sets || (meta && meta.sets))) setsEl.value = cm.sets || meta.sets;
+    if (repsEl && (cm.reps || (meta && meta.reps))) repsEl.value = cm.reps || meta.reps;
+    if (restEl && (cm.rest || (meta && meta.rest))) restEl.value = cm.rest || meta.rest;
+
+    const lastLoad = calcWeightedExerciseRefLoad([chosenExName], cm.load !== undefined ? cm.load : (meta ? meta.load : undefined));
+    if (loadEl && lastLoad !== null) loadEl.value = formatWeightNumber(lastLoad);
+
+    window.onAtvCustomFieldChange(false);
+};
+
+window.onAtvCustomBodyweightToggle = function() {
+    const chk = document.getElementById('atv-custom-is-bw');
+    const box = document.getElementById('atv-custom-bw-box');
+    if (!chk || !box) return;
+    if (chk.checked) {
+        box.classList.remove('hidden');
+        window.updateAtvCustomBodyweightCalc();
+    } else {
+        box.classList.add('hidden');
+    }
+    window.onAtvCustomFieldChange(false);
+};
+
+window.updateAtvCustomBodyweightCalc = function() {
+    const chk = document.getElementById('atv-custom-is-bw');
+    if (!chk || !chk.checked) return;
+    const bwKg = getWeightNumericValue(document.getElementById('atv-custom-bw-kg')?.value || '0');
+    const factor = parseFloat(document.getElementById('atv-custom-bw-factor')?.value || '0.65') || 0.65;
+    const extraKg = getWeightNumericValue(document.getElementById('atv-custom-bw-extra')?.value || '0');
+
+    if (bwKg > 0) {
+        SafeStorage.setItem('hq_user_bodyweight_kg', formatWeightNumber(bwKg));
+    }
+    const effLoad = parseFloat(((bwKg * factor) + extraKg).toFixed(2));
+    const loadEl = document.getElementById('atv-custom-load');
+    if (loadEl && effLoad > 0) {
+        loadEl.value = formatWeightNumber(effLoad);
+    }
+    window.onAtvCustomFieldChange(false);
+};
+
 window.onAtvCustomFieldChange = function(slotChanged = false) {
     const slotVal = document.getElementById('atv-custom-muscle-slot')?.value || '0';
     atvUiState.customInputs = {
@@ -855,7 +1111,11 @@ window.onAtvCustomFieldChange = function(slotChanged = false) {
         reps: document.getElementById('atv-custom-reps')?.value || '',
         rest: document.getElementById('atv-custom-rest')?.value || '',
         load: document.getElementById('atv-custom-load')?.value || '',
-        duration: document.getElementById('atv-custom-duration')?.value || ''
+        duration: document.getElementById('atv-custom-duration')?.value || '',
+        isBodyweight: !!document.getElementById('atv-custom-is-bw')?.checked,
+        bodyweightKg: document.getElementById('atv-custom-bw-kg')?.value || '',
+        bwFactor: document.getElementById('atv-custom-bw-factor')?.value || '0.65',
+        bwExtraLoad: document.getElementById('atv-custom-bw-extra')?.value || ''
     };
 
     if (slotChanged) {
@@ -1034,7 +1294,9 @@ function refreshAtvHistoryAndCardBadges() {
             const chosenName = exSelect ? exSelect.value : ex.name;
             const chosenIsCardio = isCardioExercise(chosenName, ex.muscle);
             const unitShort = chosenIsCardio ? 'km/h' : 'kg';
-            const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name, ...(ex.variations || [])], ex.load);
+            const exCustomMeta = (ex.customMeta && ex.customMeta[chosenName]) ? ex.customMeta[chosenName] : null;
+            const fallbackLoad = (exCustomMeta && exCustomMeta.load !== undefined) ? exCustomMeta.load : ex.load;
+            const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name, ...(ex.variations || [])], fallbackLoad);
             const refFormatted = refVal !== null ? formatWeightNumber(refVal) : '';
             const titleEl = document.getElementById(`atv-card-title-${idx}`);
             if (titleEl) {
@@ -1049,7 +1311,8 @@ function refreshAtvHistoryAndCardBadges() {
                     refBadgeEl.textContent = refFormatted ? `🏃 ref: ${refFormatted} km/h` : '🏃 km/h';
                     refBadgeEl.classList.remove('hidden');
                 } else if (refFormatted) {
-                    refBadgeEl.textContent = `ref: ${refFormatted} ${unitShort}`;
+                    const bwPrefix = (exCustomMeta && exCustomMeta.isBodyweight) ? '🤸 ' : '';
+                    refBadgeEl.textContent = `${bwPrefix}ref: ${refFormatted} ${unitShort}`;
                     refBadgeEl.classList.remove('hidden');
                 } else {
                     refBadgeEl.classList.add('hidden');
@@ -1073,17 +1336,24 @@ window.submitAtvCardLog = function(cardIndex) {
     const exSelect = document.getElementById(`atv-card-ex-${cardIndex}`);
     const chosenName = exSelect ? exSelect.value.trim() : ex.name;
 
-    const setsInput = document.getElementById(`atv-card-sets-${cardIndex}`);
-    const repsInput = document.getElementById(`atv-card-reps-${cardIndex}`);
-    const restInput = document.getElementById(`atv-card-rest-${cardIndex}`);
-    const rpeInput = document.getElementById(`atv-card-rpe-${cardIndex}`);
+    const exCustomMeta = (ex.customMeta && ex.customMeta[chosenName]) ? ex.customMeta[chosenName] : {};
 
     const weightInput = document.getElementById(`atv-card-weight-${cardIndex}`);
-    const weightVal = weightInput ? getWeightNumericValue(weightInput.value) : 0;
+    let weightVal = weightInput ? getWeightNumericValue(weightInput.value) : 0;
+
+    // Se o usuário deixou o campo em branco mas há última carga ou peso corporal configurado, utiliza a referência
+    const isCardio = isCardioExercise(chosenName, ex.muscle);
+    if (!isCardio && weightVal <= 0) {
+        const fallbackLoad = exCustomMeta.load !== undefined ? exCustomMeta.load : ex.load;
+        const refVal = calcWeightedExerciseRefLoad([chosenName, ex.name, ...(ex.variations || [])], fallbackLoad);
+        if (refVal !== null && refVal > 0) {
+            weightVal = refVal;
+        }
+    }
 
     const notesInput = document.getElementById(`atv-card-notes-${cardIndex}`);
     const rawNotesVal = notesInput ? notesInput.value.trim() : '';
-    const rpeVal = rpeInput ? rpeInput.value.trim() : '';
+    const rpeVal = String(exCustomMeta.rpe || ex.rpe || '').trim();
 
     let notesVal = rawNotesVal;
     if (rpeVal) {
@@ -1095,27 +1365,25 @@ window.submitAtvCardLog = function(cardIndex) {
         }
     }
 
-    const isCardio = isCardioExercise(chosenName, ex.muscle);
     const habit = habits.find(h => h.planId === selectedWorkoutPlanId || h.name === workout.name);
 
-    const editedSets = !isCardio && setsInput ? (parseInt(setsInput.value, 10) || ex.sets || 3) : 1;
-    const editedReps = repsInput && repsInput.value.trim() ? repsInput.value.trim() : (ex.reps || (isCardio ? '20 min' : '10'));
-    const editedRest = !isCardio && restInput && restInput.value.trim() ? restInput.value.trim() : (isCardio ? '-' : (ex.rest || '90s'));
+    const editedSets = !isCardio ? (parseInt(exCustomMeta.sets || ex.sets || 3, 10) || 3) : 1;
+    const editedReps = String(exCustomMeta.reps || ex.reps || (isCardio ? '20 min' : '8-12'));
+    const editedRest = !isCardio ? String(exCustomMeta.rest || ex.rest || '90s') : '-';
 
-    // Persiste os parâmetros editados no card em execução
-    ex.sets = isCardio ? 1 : editedSets;
-    ex.reps = editedReps;
-    ex.rest = isCardio ? '-' : editedRest;
+    // Persiste a última carga executada como referência do card
     if (!isCardio) {
         if (weightVal > 0) {
             ex.load = parseFloat(weightVal.toFixed(2));
         }
         if (!ex.customMeta || typeof ex.customMeta !== 'object') ex.customMeta = {};
         ex.customMeta[chosenName] = {
+            ...(ex.customMeta[chosenName] || {}),
             sets: editedSets,
             reps: editedReps,
             rest: editedRest,
-            load: weightVal > 0 ? parseFloat(weightVal.toFixed(2)) : (ex.load || 0),
+            rpe: rpeVal || undefined,
+            load: weightVal > 0 ? parseFloat(weightVal.toFixed(2)) : (exCustomMeta.load || ex.load || 0),
             updatedAt: selectedAtvDate || getLocalISODate()
         };
     }
@@ -1205,9 +1473,8 @@ window.submitAtvCardLog = function(cardIndex) {
         });
     }
 
-    if (weightInput) weightInput.value = '';
+    if (weightInput && weightVal > 0) weightInput.value = formatWeightNumber(weightVal);
     if (notesInput) notesInput.value = '';
-    if (rpeInput) rpeInput.value = '';
 
     const track = document.getElementById('atv-carousel-track');
     if (track) atvUiState.carouselScrollLeft = track.scrollLeft;
@@ -1317,6 +1584,14 @@ window.submitCustomAtvLog = function(event) {
     const loadEl = document.getElementById('atv-custom-load');
     const loadVal = loadEl ? getWeightNumericValue(loadEl.value) : 0;
 
+    const isCustomBw = !!document.getElementById('atv-custom-is-bw')?.checked;
+    const bwKgVal = getWeightNumericValue(document.getElementById('atv-custom-bw-kg')?.value || '0');
+    const bwFactorVal = parseFloat(document.getElementById('atv-custom-bw-factor')?.value || '0.65') || 0.65;
+    const bwExtraVal = getWeightNumericValue(document.getElementById('atv-custom-bw-extra')?.value || '0');
+    if (bwKgVal > 0) {
+        SafeStorage.setItem('hq_user_bodyweight_kg', formatWeightNumber(bwKgVal));
+    }
+
     const role = atvUiState.customInputs.role === 'main' ? 'main' : 'variation';
 
     if (!Array.isArray(targetCard.variations)) targetCard.variations = [];
@@ -1329,10 +1604,17 @@ window.submitCustomAtvLog = function(event) {
         reps,
         rest,
         load: loadVal > 0 ? parseFloat(loadVal.toFixed(2)) : (targetCard.load || 0),
+        isBodyweight: isCustomBw,
+        bodyweightKg: isCustomBw ? bwKgVal : undefined,
+        bwFactor: isCustomBw ? bwFactorVal : undefined,
+        bwExtraLoad: isCustomBw ? bwExtraVal : undefined,
         updatedAt: selectedAtvDate || getLocalISODate()
     };
     if (loadVal > 0 && !isCardioSlot) {
         targetCard.load = parseFloat(loadVal.toFixed(2));
+    }
+    if (isCustomBw && !isCardioSlot) {
+        targetCard.isBodyweight = true;
     }
 
     if (role === 'main') {
@@ -2208,7 +2490,7 @@ function populateEditExerciseDropdownForSlot(card, currentExerciseName) {
     }
 
     const existsInList = allCardNames.some(n => n.toLowerCase() === cleanCurrent.toLowerCase());
-    let optionsHtml = '';
+    let optionsHtml = '<optgroup label="Exercícios deste Card">';
     if (!existsInList && cleanCurrent) {
         optionsHtml += `<option value="${cleanCurrent.replace(/"/g, '&quot;')}" selected>📌 ${cleanCurrent} (Cadastrar no card)</option>`;
     }
@@ -2217,6 +2499,29 @@ function populateEditExerciseDropdownForSlot(card, currentExerciseName) {
         const prefix = idx === 0 ? '⭐ ' : '↳ ';
         optionsHtml += `<option value="${name.replace(/"/g, '&quot;')}" ${isSel ? 'selected' : ''}>${prefix}${name}</option>`;
     });
+    optionsHtml += '</optgroup>';
+
+    if (!isCardio && typeof getUpperAAndCatalogExerciseOptions === 'function') {
+        const catalogList = getUpperAAndCatalogExerciseOptions(false);
+        const upperAList = catalogList.filter(item => item.planId === 'upper_a' && !allCardNames.some(n => n.toLowerCase() === item.name.toLowerCase()));
+        const otherList = catalogList.filter(item => item.planId !== 'upper_a' && !allCardNames.some(n => n.toLowerCase() === item.name.toLowerCase()));
+        if (upperAList.length > 0) {
+            optionsHtml += '<optgroup label="Substituir por Exercício do Upper A">';
+            upperAList.forEach(item => {
+                const prefix = item.isMain ? '⭐' : '↳';
+                optionsHtml += `<option value="${item.name.replace(/"/g, '&quot;')}">${prefix} ${item.name} (${item.muscle})</option>`;
+            });
+            optionsHtml += '</optgroup>';
+        }
+        if (otherList.length > 0) {
+            optionsHtml += '<optgroup label="Substituir de Outros Treinos">';
+            otherList.forEach(item => {
+                const prefix = item.isMain ? '⭐' : '↳';
+                optionsHtml += `<option value="${item.name.replace(/"/g, '&quot;')}">[${item.planName}] ${prefix} ${item.name} (${item.muscle})</option>`;
+            });
+            optionsHtml += '</optgroup>';
+        }
+    }
 
     container.innerHTML = `
         <select id="atv-edit-exercise-select" onchange="onEditAtvExerciseSelectChange()" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white">
@@ -3189,23 +3494,20 @@ function renderAtvFisicaInteractiveView() {
         const unitShort = isCardio ? 'km/h' : 'kg';
         const inputLabelText = isCardio ? 'Velocidade (km/h)' : 'Carga (kg)';
 
-        const weightedRef = calcWeightedExerciseRefLoad([selectedExName, ex.name, ...(ex.variations || [])], ex.load);
+        const exCustomMeta = (ex.customMeta && ex.customMeta[selectedExName]) ? ex.customMeta[selectedExName] : {};
+        const fallbackLoadForSelected = exCustomMeta.load !== undefined ? exCustomMeta.load : ex.load;
+        const weightedRef = calcWeightedExerciseRefLoad([selectedExName, ex.name, ...(ex.variations || [])], fallbackLoadForSelected);
         const suggestedLoad = weightedRef !== null ? formatWeightNumber(weightedRef) : '';
 
         const weightValueToUse = savedCardState.weight !== undefined && savedCardState.weight !== ''
             ? savedCardState.weight
             : (suggestedLoad || '');
         const notesValueToUse = savedCardState.notes || '';
-        const setsValueToUse = savedCardState.sets !== undefined && savedCardState.sets !== ''
-            ? savedCardState.sets
-            : String(ex.sets || 3);
-        const repsValueToUse = savedCardState.reps !== undefined && savedCardState.reps !== ''
-            ? savedCardState.reps
-            : String(ex.reps || (isCardio ? '15-20 min' : '8-12'));
-        const restValueToUse = savedCardState.rest !== undefined && savedCardState.rest !== ''
-            ? savedCardState.rest
-            : String(ex.rest || '90s');
-        const rpeValueToUse = savedCardState.rpe || '';
+        const setsValueToUse = String(exCustomMeta.sets || ex.sets || 3);
+        const repsValueToUse = String(exCustomMeta.reps || ex.reps || (isCardio ? '15-20 min' : '8-12'));
+        const restValueToUse = String(exCustomMeta.rest || ex.rest || '90s');
+        const rpeValueToUse = String(exCustomMeta.rpe || ex.rpe || '');
+        const isBwEx = !!(exCustomMeta.isBodyweight || ex.isBodyweight);
 
         // Na lista do dropdown do exercício, a ref da carga fica OCULTA e aparece só no título do exercício quando selecionado
         // Para o card de Cardio Zona 2, desassocia de Upper/Lower e mostra simplesmente 'Cardio Zona 2'
@@ -3226,59 +3528,32 @@ function renderAtvFisicaInteractiveView() {
         const cardBadgesHTML = isCardio
             ? `
                 <span id="atv-card-target-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">⏱️ ${repsValueToUse || '15-20 min'}</span>
+                ${rpeValueToUse ? `<span id="atv-card-rpe-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-bold">RPE ${rpeValueToUse}</span>` : `<span id="atv-card-rpe-badge-${idx}" class="hidden px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-bold"></span>`}
                 <span id="atv-card-ref-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold">🏃 ${suggestedLoad ? `ref: ${suggestedLoad} km/h` : 'km/h'}</span>
             `
             : `
                 <span id="atv-card-target-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-800 font-semibold">🎯 ${setsValueToUse}× ${repsValueToUse}</span>
                 <span id="atv-card-rest-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-700">⏱️ ${restValueToUse}</span>
-                <span id="atv-card-ref-badge-${idx}" class="${suggestedLoad ? '' : 'hidden '}px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 font-bold">ref: ${suggestedLoad} ${unitShort}</span>
-            `;
-
-        const editableExecParamsHTML = isCardio
-            ? `
-                <div class="grid grid-cols-2 gap-1.5">
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Duração / Alvo</label>
-                        <input type="text" id="atv-card-reps-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${repsValueToUse.replace(/"/g, '&quot;')}" placeholder="15-20 min" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold text-zinc-800 focus:bg-white focus:border-black transition">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">RPE (Esforço)</label>
-                        <input type="text" id="atv-card-rpe-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${rpeValueToUse.replace(/"/g, '&quot;')}" placeholder="Ex: 7" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 text-xs font-mono text-center font-semibold text-indigo-700 focus:bg-white focus:border-indigo-500 transition">
-                    </div>
-                </div>
-            `
-            : `
-                <div class="grid grid-cols-4 gap-1.5">
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Séries</label>
-                        <input type="number" id="atv-card-sets-${idx}" min="1" max="20" oninput="onAtvCardFieldChange(${idx}, false)" value="${setsValueToUse.replace(/"/g, '&quot;')}" placeholder="3" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold text-zinc-900 focus:bg-white focus:border-black transition">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">REPS</label>
-                        <input type="text" id="atv-card-reps-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${repsValueToUse.replace(/"/g, '&quot;')}" placeholder="8-12" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold text-zinc-800 focus:bg-white focus:border-black transition">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">Descanso</label>
-                        <input type="text" id="atv-card-rest-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${restValueToUse.replace(/"/g, '&quot;')}" placeholder="90s" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold text-zinc-700 focus:bg-white focus:border-black transition">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-400 mb-0.5">RPE</label>
-                        <input type="text" id="atv-card-rpe-${idx}" oninput="onAtvCardFieldChange(${idx}, false)" value="${rpeValueToUse.replace(/"/g, '&quot;')}" placeholder="Ex: 8" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold text-indigo-700 focus:bg-white focus:border-indigo-500 transition">
-                    </div>
-                </div>
+                ${rpeValueToUse ? `<span id="atv-card-rpe-badge-${idx}" class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-bold">RPE ${rpeValueToUse}</span>` : `<span id="atv-card-rpe-badge-${idx}" class="hidden px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-bold"></span>`}
+                <span id="atv-card-ref-badge-${idx}" class="${suggestedLoad ? '' : 'hidden '}px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 font-bold">${isBwEx ? '🤸 ' : ''}ref: ${suggestedLoad} ${unitShort}</span>
             `;
 
         return `
             <div class="w-[310px] sm:w-[350px] shrink-0 snap-center bg-white border border-zinc-200/90 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-zinc-300 transition">
                 <div class="space-y-2.5">
-                    <div class="flex items-start gap-3">
-                        <div class="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center text-xl shrink-0">
-                            ${muscleEmoji}
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-start gap-3 min-w-0 flex-1">
+                            <div class="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center text-xl shrink-0">
+                                ${muscleEmoji}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block truncate" title="${ex.muscle}">${ex.muscle}</span>
+                                <h4 id="atv-card-title-${idx}" class="text-xs sm:text-sm font-bold text-zinc-900 line-clamp-2 leading-snug" title="${cardTitleText}">${cardTitleText}</h4>
+                            </div>
                         </div>
-                        <div class="min-w-0 flex-1">
-                            <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block truncate" title="${ex.muscle}">${ex.muscle}</span>
-                            <h4 id="atv-card-title-${idx}" class="text-xs sm:text-sm font-bold text-zinc-900 line-clamp-2 leading-snug" title="${cardTitleText}">${cardTitleText}</h4>
-                        </div>
+                        <button type="button" onclick="openAtvCardConfigModal(${idx})" class="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-black flex items-center justify-center shrink-0 transition" title="Configurar séries, descanso, RPE, carga/peso corporal ou substituir exercício">
+                            <i data-lucide="settings" class="w-4 h-4"></i>
+                        </button>
                     </div>
 
                     <div class="flex flex-wrap gap-1.5 text-[11px] font-mono">
@@ -3291,8 +3566,6 @@ function renderAtvFisicaInteractiveView() {
                             ${selectOptionsHTML}
                         </select>
                     </div>
-
-                    ${editableExecParamsHTML}
 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -3319,25 +3592,49 @@ function renderAtvFisicaInteractiveView() {
 
     const ci = atvUiState.customInputs || {};
     const curRole = ci.role === 'main' ? 'main' : 'variation';
+    const isCurrentLowerWorkout = currentWorkout.planId === 'lower_a' || currentWorkout.planId === 'lower_b';
     const hasCardioSlotInWorkout = currentWorkout.exercises.some(ex => isCardioExercise(ex.name, ex.muscle));
     let muscleSlotOptionsHTML = currentWorkout.exercises.map((ex, sIdx) => {
         const isSel = String(ci.slotIndex || '0') === String(sIdx);
         return `<option value="${sIdx}" ${isSel ? 'selected' : ''}>${ex.muscle} (Atual: ${ex.name})</option>`;
     }).join('');
-    if (!hasCardioSlotInWorkout) {
+    if (!hasCardioSlotInWorkout && !isCurrentLowerWorkout) {
         const isCardioSel = String(ci.slotIndex) === 'cardio';
         muscleSlotOptionsHTML += `<option value="cardio" ${isCardioSel ? 'selected' : ''}>Sistema Cardiovascular / Resistência (Cardio)</option>`;
     }
 
     const isCustomCardioSelected = isSelectedCustomSlotCardio(ci.slotIndex || '0');
+    const isCustomBw = !!ci.isBodyweight;
+    const savedBwVal = SafeStorage.getItem('hq_user_bodyweight_kg') || '75,00';
+    const curBwVal = ci.bodyweightKg || savedBwVal;
+    const curBwFactor = ci.bwFactor || '0.65';
+    const curBwExtra = ci.bwExtraLoad || '';
+
+    // Monta lista de exercícios existentes (especialmente do Upper A e demais grupos) para reutilizar sem digitar
+    const allExistingStrengthNames = [];
+    const seenStrengthLower = new Set();
+    WORKOUT_PLAN.forEach(w => {
+        (w.exercises || []).forEach(ex => {
+            if (!ex || isCardioExercise(ex.name, ex.muscle)) return;
+            [ex.name, ...(ex.variations || [])].forEach(nm => {
+                const clean = String(nm || '').trim();
+                if (!clean) return;
+                const low = clean.toLowerCase();
+                if (!seenStrengthLower.has(low)) {
+                    seenStrengthLower.add(low);
+                    allExistingStrengthNames.push({ name: clean, planName: w.name, muscle: ex.muscle });
+                }
+            });
+        });
+    });
+    const reuseOptionsHTML = allExistingStrengthNames.map(item =>
+        `<option value="${item.name.replace(/"/g, '&quot;')}">${item.planName} • ${item.name}</option>`
+    ).join('');
 
     // Card de Cadastro de Exercício associado ao Grupo Muscular (Principal ou Substituto/Variação)
-    // Item 1: 'REPS' apenas
-    // Item 2: se for selecionado cardiovascular, aparecer somente Duração, sem REPS e nem Séries
-    // Item 3: campos vazios para preenchimento
     const customExerciseCardHTML = `
         <div class="w-[315px] sm:w-[350px] shrink-0 snap-center bg-zinc-50/90 border-2 border-dashed border-zinc-300 rounded-3xl p-5 flex flex-col justify-between space-y-3">
-            <form onsubmit="submitCustomAtvLog(event)" class="space-y-3">
+            <form onsubmit="submitCustomAtvLog(event)" class="space-y-2.5">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-zinc-100 border border-zinc-200 flex items-center justify-center text-lg shrink-0">
                         ➕
@@ -3346,6 +3643,14 @@ function renderAtvFisicaInteractiveView() {
                         <span class="text-[10px] font-mono uppercase tracking-wider text-rose-600 font-bold block">CADASTRAR NO GRUPO MUSCULAR</span>
                         <h4 class="text-sm font-bold text-zinc-900">Novo Exercício (${currentWorkout.name})</h4>
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-indigo-700 mb-1">Reaproveitar Exercício Existente (Upper A / Outros)</label>
+                    <select id="atv-custom-reuse-select" onchange="onAtvCustomReuseSelect(this.value)" class="w-full bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-zinc-900">
+                        <option value="">— Digitar novo ou escolher existente —</option>
+                        ${reuseOptionsHTML}
+                    </select>
                 </div>
 
                 <div>
@@ -3360,23 +3665,55 @@ function renderAtvFisicaInteractiveView() {
                     </select>
                 </div>
 
-                <!-- Campos para grupos musculares de Força (Séries, REPS, Descanso, Carga) - vazios para preenchimento -->
-                <div id="atv-custom-strength-fields" class="${isCustomCardioSelected ? 'hidden ' : ''}grid grid-cols-4 gap-1.5">
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Séries</label>
-                        <input type="number" id="atv-custom-sets" oninput="onAtvCustomFieldChange(false)" value="${(ci.sets || '').replace(/"/g, '&quot;')}" min="1" max="20" placeholder="Ex: 3" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold">
+                <!-- Campos para grupos musculares de Força (Séries, REPS, Descanso, Carga) -->
+                <div id="atv-custom-strength-fields" class="${isCustomCardioSelected ? 'hidden ' : ''}space-y-2">
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <div>
+                            <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Séries</label>
+                            <input type="number" id="atv-custom-sets" oninput="onAtvCustomFieldChange(false)" value="${(ci.sets || '').replace(/"/g, '&quot;')}" min="1" max="20" placeholder="Ex: 3" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">REPS</label>
+                            <input type="text" id="atv-custom-reps" oninput="onAtvCustomFieldChange(false)" value="${(ci.reps || '').replace(/"/g, '&quot;')}" placeholder="Ex: 8-12" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Descanso</label>
+                            <input type="text" id="atv-custom-rest" oninput="onAtvCustomFieldChange(false)" value="${(ci.rest || '').replace(/"/g, '&quot;')}" placeholder="Ex: 90s" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Carga (kg)</label>
+                            <input type="text" id="atv-custom-load" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvCustomFieldChange(false)" value="${(ci.load || '').replace(/"/g, '&quot;')}" placeholder="0,00" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold text-rose-600">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">REPS</label>
-                        <input type="text" id="atv-custom-reps" oninput="onAtvCustomFieldChange(false)" value="${(ci.reps || '').replace(/"/g, '&quot;')}" placeholder="Ex: 8-12" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Descanso</label>
-                        <input type="text" id="atv-custom-rest" oninput="onAtvCustomFieldChange(false)" value="${(ci.rest || '').replace(/"/g, '&quot;')}" placeholder="Ex: 90s" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-semibold">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] uppercase font-bold text-zinc-500 mb-0.5">Carga (kg)</label>
-                        <input type="text" id="atv-custom-load" inputmode="numeric" oninput="handleWeightInputMask(this); onAtvCustomFieldChange(false)" value="${(ci.load || '').replace(/"/g, '&quot;')}" placeholder="0,00" class="w-full bg-white border border-zinc-200 rounded-xl px-1.5 py-1.5 text-xs font-mono text-center font-bold text-rose-600">
+
+                    <!-- Calculadora de Carga por Peso Corporal (Ex: Agachamento Búlgaro, Flexão, Barra Fixa) -->
+                    <div class="bg-white/90 border border-zinc-200 rounded-2xl p-2.5 space-y-2">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-[10px] font-bold uppercase text-rose-700 font-mono">🤸 Usa Peso Corporal? (Ex: Búlgaro)</span>
+                            <input type="checkbox" id="atv-custom-is-bw" onchange="onAtvCustomBodyweightToggle()" ${isCustomBw ? 'checked' : ''} class="w-3.5 h-3.5 accent-black rounded">
+                        </label>
+                        <div id="atv-custom-bw-box" class="${isCustomBw ? '' : 'hidden '}space-y-1.5 pt-1 border-t border-zinc-100">
+                            <div class="grid grid-cols-3 gap-1.5">
+                                <div>
+                                    <label class="block text-[8px] uppercase font-bold text-zinc-500">Seu Peso (kg)</label>
+                                    <input type="text" id="atv-custom-bw-kg" inputmode="numeric" oninput="handleWeightInputMask(this); updateAtvCustomBodyweightCalc()" value="${curBwVal.replace(/"/g, '&quot;')}" placeholder="75,00" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-1.5 py-1 text-[11px] font-mono text-center font-bold">
+                                </div>
+                                <div>
+                                    <label class="block text-[8px] uppercase font-bold text-zinc-500">% Biomec.</label>
+                                    <select id="atv-custom-bw-factor" onchange="updateAtvCustomBodyweightCalc()" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-1 py-1 text-[10px] font-mono font-semibold">
+                                        <option value="0.65" ${curBwFactor === '0.65' ? 'selected' : ''}>65% Búlgaro</option>
+                                        <option value="0.75" ${curBwFactor === '0.75' ? 'selected' : ''}>75% Flexão</option>
+                                        <option value="0.85" ${curBwFactor === '0.85' ? 'selected' : ''}>85% Barra</option>
+                                        <option value="0.50" ${curBwFactor === '0.50' ? 'selected' : ''}>50% Core</option>
+                                        <option value="1.00" ${curBwFactor === '1.00' ? 'selected' : ''}>100% Total</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[8px] uppercase font-bold text-zinc-500">Extra (kg)</label>
+                                    <input type="text" id="atv-custom-bw-extra" inputmode="numeric" oninput="handleWeightInputMask(this); updateAtvCustomBodyweightCalc()" value="${curBwExtra.replace(/"/g, '&quot;')}" placeholder="0,00" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-1.5 py-1 text-[11px] font-mono text-center font-semibold">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

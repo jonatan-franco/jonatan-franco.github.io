@@ -480,12 +480,124 @@ function calcWeeklyLoadMetrics() {
     };
 }
 
-/* Verifica se em uma data ISO o usuário cumpriu 100% das atividades registradas */
+const STREAK_CONFIG_KEY = 'hq_streak_config_v1';
+
+function getStreakConfig() {
+    const defaultCfg = {
+        atvMode: 'pct',      // 'pct' | 'full_all'
+        minAtvPct: 80,       // % mínimo de cards concluídos do treino do dia
+        minSleepHours: 7.0   // horas mínimas dormidas
+    };
+    try {
+        if (typeof SafeStorage !== 'undefined') {
+            const raw = SafeStorage.getItem(STREAK_CONFIG_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') {
+                    return {
+                        atvMode: parsed.atvMode === 'full_all' ? 'full_all' : 'pct',
+                        minAtvPct: Math.min(100, Math.max(10, Number(parsed.minAtvPct) || 80)),
+                        minSleepHours: Math.max(0, Number(parsed.minSleepHours) !== undefined && !isNaN(Number(parsed.minSleepHours)) ? Number(parsed.minSleepHours) : 7.0)
+                    };
+                }
+            }
+        }
+    } catch (e) {}
+    return defaultCfg;
+}
+
+function saveStreakConfig(cfg) {
+    try {
+        if (typeof SafeStorage !== 'undefined') {
+            SafeStorage.setItem(STREAK_CONFIG_KEY, JSON.stringify({
+                atvMode: cfg.atvMode === 'full_all' ? 'full_all' : 'pct',
+                minAtvPct: Math.min(100, Math.max(10, Number(cfg.minAtvPct) || 80)),
+                minSleepHours: Math.max(0, Number(cfg.minSleepHours) || 0)
+            }));
+        }
+    } catch (e) {}
+}
+
+/* Avalia o percentual e completude do treino de uma data ISO */
+function evaluateDayWorkoutCompletion(dateIso, dayOfWeekIdx, logsMap) {
+    const dayLogs = Array.isArray(logsMap[dateIso]) ? logsMap[dateIso] : [];
+    let dowIdx = dayOfWeekIdx;
+    if (dowIdx === undefined) {
+        const d = new Date(dateIso + 'T12:00:00');
+        dowIdx = (d.getDay() + 6) % 7;
+    }
+
+    const hasHabitCheck = typeof habits !== 'undefined' && Array.isArray(habits) && habits.some(h =>
+        h && h.category === 'atv_fisica' && Array.isArray(h.checks) && h.checks[dowIdx] === true &&
+        (typeof weekDays !== 'undefined' && weekDays[dowIdx] && weekDays[dowIdx].iso === dateIso)
+    );
+
+    if (dayLogs.length === 0) {
+        if (hasHabitCheck) {
+            return { hasActivity: true, pct: 100, isFullAll: true };
+        }
+        return { hasActivity: false, pct: 0, isFullAll: false };
+    }
+
+    // Identifica qual treino do WORKOUT_PLAN foi executado na data
+    let targetPlanId = null;
+    for (const item of dayLogs) {
+        if (!isMathItemCardio(item)) {
+            targetPlanId = resolveLogGroupPlanId(item);
+            if (targetPlanId && targetPlanId !== 'cardio_z2') break;
+        }
+    }
+    if (!targetPlanId) targetPlanId = 'upper_a';
+
+    const workout = (typeof WORKOUT_PLAN !== 'undefined' && Array.isArray(WORKOUT_PLAN))
+        ? (WORKOUT_PLAN.find(w => w.planId === targetPlanId) || WORKOUT_PLAN[0])
+        : null;
+
+    if (!workout || !Array.isArray(workout.exercises) || workout.exercises.length === 0) {
+        return { hasActivity: true, pct: 100, isFullAll: true };
+    }
+
+    const requiresCardio = workout.planId === 'upper_a' || workout.planId === 'upper_b';
+    const strengthCards = workout.exercises.filter(ex => !isMathItemCardio({ exerciseName: ex.name, muscle: ex.muscle }));
+    const totalStrength = strengthCards.length || 1;
+
+    let completedStrength = 0;
+    strengthCards.forEach(ex => {
+        const allNames = [ex.name, ...(ex.variations || [])].map(s => String(s).trim().toLowerCase());
+        const matched = dayLogs.some(l => l && !isMathItemCardio(l) && allNames.includes(String(l.exerciseName || '').trim().toLowerCase()));
+        if (matched) completedStrength++;
+    });
+
+    // Caso o usuário tenha registrado exercícios customizados fora da lista padrão naquele dia
+    const distinctLoggedStrength = new Set(
+        dayLogs.filter(l => l && !isMathItemCardio(l)).map(l => String(l.exerciseName || '').trim().toLowerCase())
+    ).size;
+    completedStrength = Math.min(totalStrength, Math.max(completedStrength, distinctLoggedStrength));
+
+    const hasCardioLog = dayLogs.some(l => isMathItemCardio(l));
+    const totalExpectedItems = totalStrength + (requiresCardio ? 1 : 0);
+    const completedItems = completedStrength + (requiresCardio && hasCardioLog ? 1 : 0);
+
+    const pct = totalExpectedItems > 0 ? Math.round((completedItems / totalExpectedItems) * 100) : 100;
+    const isFullAll = (completedStrength >= totalStrength) && (!requiresCardio || hasCardioLog);
+
+    return {
+        hasActivity: true,
+        pct,
+        isFullAll
+    };
+}
+
+/* Verifica se em uma data ISO o usuário cumpriu as metas configuradas de Streak */
 function isDay100Percent(dateIso, dayOfWeekIdx) {
-    // 1. Sono: deve ter registro no Diário do Sono com sono > 0
-    const sleepEntry = (typeof sleepJournal === 'object' && sleepJournal !== null) ? sleepJournal[dateIso] : null;
+    const cfg = getStreakConfig();
+
+    // 1. Sono: verifica horas dormidas >= cfg.minSleepHours
+    const sleepMap = (typeof sleepJournal === 'object' && sleepJournal !== null) ? sleepJournal : {};
+    const hasAnySleepInApp = Object.keys(sleepMap).some(k => calcSleepJournalEntry(sleepMap[k]).sleptH > 0);
+    const sleepEntry = sleepMap[dateIso] || null;
     const entry = calcSleepJournalEntry(sleepEntry);
-    const hasSleep = entry.sleptH > 0;
+    const sleepMet = entry.sleptH >= cfg.minSleepHours && entry.sleptH > 0;
 
     // 2. Atividade Física:
     let logs = {};
@@ -495,22 +607,20 @@ function isDay100Percent(dateIso, dayOfWeekIdx) {
         else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
     } catch (e) { logs = {}; }
 
-    let dowIdx = dayOfWeekIdx;
-    if (dowIdx === undefined) {
-        const d = new Date(dateIso + 'T12:00:00');
-        dowIdx = (d.getDay() + 6) % 7;
+    const hasAnyAtvInApp = Object.keys(logs).some(k => Array.isArray(logs[k]) && logs[k].length > 0);
+    const wEval = evaluateDayWorkoutCompletion(dateIso, dayOfWeekIdx, logs);
+    const atvMet = wEval.hasActivity && (cfg.atvMode === 'full_all' ? wEval.isFullAll : (wEval.pct >= cfg.minAtvPct));
+
+    if (hasAnySleepInApp && hasAnyAtvInApp) {
+        return sleepMet && atvMet;
     }
-
-    const hasWorkoutLog = Array.isArray(logs[dateIso]) && logs[dateIso].length > 0;
-    const hasHabitCheck = typeof habits !== 'undefined' && Array.isArray(habits) && habits.some(h =>
-        h && h.category === 'atv_fisica' && Array.isArray(h.checks) && h.checks[dowIdx] === true &&
-        (typeof weekDays !== 'undefined' && weekDays[dowIdx] && weekDays[dowIdx].iso === dateIso)
-    );
-
-    const hasWorkout = hasWorkoutLog || hasHabitCheck;
-
-    // Um dia só é 100% completo se cumprir ambas as atividades monitoradas (Sono e Atividade Física)
-    return hasSleep && hasWorkout;
+    if (hasAnyAtvInApp && !hasAnySleepInApp) {
+        return atvMet;
+    }
+    if (hasAnySleepInApp && !hasAnyAtvInApp) {
+        return sleepMet;
+    }
+    return false;
 }
 
 /* Calcula o streak de dias consecutivos com 100% das atividades */

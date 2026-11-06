@@ -208,6 +208,18 @@ function buildGistPayload() {
         if (rawProf) profileData = JSON.parse(rawProf);
     } catch (e) { profileData = null; }
 
+    let streakConfigData = null;
+    try {
+        const rawStreak = SafeStorage.getItem('hq_streak_config_v1');
+        if (rawStreak) streakConfigData = JSON.parse(rawStreak);
+    } catch (e) { streakConfigData = null; }
+
+    let workoutCatalogData = null;
+    try {
+        const rawCat = SafeStorage.getItem('hq_workout_catalog_v2');
+        if (rawCat) workoutCatalogData = JSON.parse(rawCat);
+    } catch (e) { workoutCatalogData = null; }
+
     const mutationTs = Number(SafeStorage.getItem('hq_last_mutation_at')) || Date.now();
     return {
         updatedAt: mutationTs,
@@ -216,7 +228,9 @@ function buildGistPayload() {
         timerConfig,
         sleepJournal,
         atvLogs: atvLogsData,
-        profile: profileData
+        profile: profileData,
+        streakConfig: streakConfigData,
+        workoutCatalog: workoutCatalogData
     };
 }
 
@@ -293,6 +307,13 @@ async function autoPullFromGist(forceManual = false) {
             if (content.profile && typeof content.profile === 'object') {
                 SafeStorage.setItem('hq_profile_v1', JSON.stringify(content.profile));
                 if (typeof window.loadProfile === 'function') window.loadProfile();
+            }
+            if (content.streakConfig && typeof content.streakConfig === 'object') {
+                SafeStorage.setItem('hq_streak_config_v1', JSON.stringify(content.streakConfig));
+            }
+            if (content.workoutCatalog && typeof content.workoutCatalog === 'object') {
+                SafeStorage.setItem('hq_workout_catalog_v2', JSON.stringify(content.workoutCatalog));
+                if (typeof loadWorkoutCatalogCustomizations === 'function') loadWorkoutCatalogCustomizations();
             }
             if (content.updatedAt) {
                 SafeStorage.setItem('hq_last_mutation_at', String(content.updatedAt));
