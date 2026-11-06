@@ -632,17 +632,22 @@ function renderDashboardView() {
         }
     }
 
-    /* 3. KPI: Streak Configurável (Apenas Foguinho + Dias Consecutivos) */
+    /* 3. KPI: Streak Configurável (Apenas Foguinho + Dias Consecutivos ou d/semana) */
     const hasAnyData = s.activeDays > 0 || loadM.activeDays > 0;
     const streakData = calcConsecutiveFullDaysStreak();
-    const streakCfg = typeof getStreakConfig === 'function' ? getStreakConfig() : { atvMode: 'pct', minAtvPct: 80, minSleepHours: 7.0 };
+    const streakCfg = typeof getStreakConfig === 'function'
+        ? getStreakConfig()
+        : { atvMode: 'pct', minAtvPct: 80, atvFreqMode: 'weekly', weeklyTargetDays: 4, minSleepHours: 7.0 };
     const streakEl = document.getElementById('kpi-streak');
     const streakLeaderEl = document.getElementById('kpi-streak-leader');
     const streakLabelEl = document.getElementById('kpi-streak-label');
 
+    const freqPrefix = streakCfg.atvFreqMode === 'consecutive'
+        ? 'Consec.'
+        : `${streakCfg.weeklyTargetDays || 4}d/sem`;
     const atvRuleText = streakCfg.atvMode === 'full_all'
-        ? 'Treino 100% (+Cardio)'
-        : `Atv ≥${streakCfg.minAtvPct}%`;
+        ? `Atv ${freqPrefix} (100%)`
+        : `Atv ${freqPrefix} (≥${streakCfg.minAtvPct}%)`;
     const sleepRuleText = `Sono ≥${String(streakCfg.minSleepHours).replace('.', ',')}h`;
 
     if (!hasAnyData) {
@@ -771,9 +776,10 @@ function renderProgressList(sData, loadData) {
         else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
     } catch (e) { logs = {}; }
 
-    // 1. Atividade Física (meta 4d)
+    // 1. Atividade Física (meta configurável no Streak: d/semana ou 7d se consecutivo)
     const completedDays = weekDays.filter(d => Array.isArray(logs[d.iso]) && logs[d.iso].length > 0).length;
-    const targetDays = 4;
+    const stCfgForProg = typeof getStreakConfig === 'function' ? getStreakConfig() : { atvFreqMode: 'weekly', weeklyTargetDays: 4 };
+    const targetDays = stCfgForProg.atvFreqMode === 'consecutive' ? 7 : (stCfgForProg.weeklyTargetDays || 4);
     const atvPct = Math.min(100, Math.round((completedDays / targetDays) * 100));
     const hasAtv = loadM.activeDays > 0 || completedDays > 0;
 
@@ -802,7 +808,7 @@ function renderProgressList(sData, loadData) {
                 </div>
                 <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden"><div class="h-full rounded-full bg-pink-500 transition-all" style="width:${atvPct}%"></div></div>
                 <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-zinc-500">
-                    <span>Meta semanal: <strong>4 dias</strong></span>
+                    <span>Meta semanal: <strong>${targetDays} dias</strong></span>
                     <span>Cumpridos: <strong class="text-pink-600">${completedDays} dias</strong></span>
                 </div>
             </div>`;
@@ -1671,21 +1677,53 @@ window.initSobreSimulators = function() {
  * Modal de Configuração de Streak (Engrenagem do KPI de Streak)
  * ------------------------------------------------------------------ */
 let streakModalCurrentAtvMode = 'pct';
+let streakModalCurrentFreqMode = 'weekly';
+
+window.setStreakModalAtvFreqMode = function(freqMode) {
+    streakModalCurrentFreqMode = freqMode === 'consecutive' ? 'consecutive' : 'weekly';
+    const btnWeekly = document.getElementById('btn-streak-freq-weekly');
+    const btnConsec = document.getElementById('btn-streak-freq-consecutive');
+    const weeklyBox = document.getElementById('streak-atv-weekly-box');
+    const freqHint = document.getElementById('streak-atv-freq-hint');
+
+    if (btnWeekly && btnConsec) {
+        btnWeekly.className = streakModalCurrentFreqMode === 'weekly'
+            ? "py-2 px-2.5 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
+            : "py-2 px-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition";
+        btnConsec.className = streakModalCurrentFreqMode === 'consecutive'
+            ? "py-2 px-2.5 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
+            : "py-2 px-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition";
+    }
+    if (weeklyBox) {
+        if (streakModalCurrentFreqMode === 'weekly') {
+            weeklyBox.classList.remove('hidden');
+            weeklyBox.classList.add('flex');
+        } else {
+            weeklyBox.classList.add('hidden');
+            weeklyBox.classList.remove('flex');
+        }
+    }
+    if (freqHint) {
+        freqHint.innerHTML = streakModalCurrentFreqMode === 'weekly'
+            ? 'No modo <strong>d/semana</strong>, dias de descanso entre os treinos não quebram seu streak desde que você cumpra a meta semanal.'
+            : 'No modo <strong>Dias Consecutivos</strong>, exige treinar todos os dias seguidos sem intervalos.';
+    }
+};
 
 window.setStreakModalAtvMode = function(mode) {
     streakModalCurrentAtvMode = mode === 'full_all' ? 'full_all' : 'pct';
-    const btnPct = document.getElementById('streak-mode-pct');
-    const btnFull = document.getElementById('streak-mode-full');
+    const btnPct = document.getElementById('btn-streak-atv-pct');
+    const btnFull = document.getElementById('btn-streak-atv-full');
     const pctBox = document.getElementById('streak-atv-pct-box');
     const fullBox = document.getElementById('streak-atv-full-box');
 
     if (btnPct && btnFull) {
         btnPct.className = streakModalCurrentAtvMode === 'pct'
-            ? "flex-1 py-2 px-3 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
-            : "flex-1 py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-xs font-semibold transition";
+            ? "py-2 px-2.5 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
+            : "py-2 px-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition";
         btnFull.className = streakModalCurrentAtvMode === 'full_all'
-            ? "flex-1 py-2 px-3 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
-            : "flex-1 py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:text-black text-xs font-semibold transition";
+            ? "py-2 px-2.5 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs"
+            : "py-2 px-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition";
     }
     if (pctBox && fullBox) {
         if (streakModalCurrentAtvMode === 'pct') {
@@ -1699,11 +1737,16 @@ window.setStreakModalAtvMode = function(mode) {
 };
 
 window.openStreakConfigModal = function() {
-    const cfg = typeof getStreakConfig === 'function' ? getStreakConfig() : { atvMode: 'pct', minAtvPct: 80, minSleepHours: 7.0 };
-    window.setStreakModalAtvMode(cfg.atvMode);
+    const cfg = typeof getStreakConfig === 'function'
+        ? getStreakConfig()
+        : { atvMode: 'pct', minAtvPct: 80, atvFreqMode: 'weekly', weeklyTargetDays: 4, minSleepHours: 7.0 };
+    window.setStreakModalAtvFreqMode(cfg.atvFreqMode || 'weekly');
+    window.setStreakModalAtvMode(cfg.atvMode || 'pct');
 
+    const weeklyInput = document.getElementById('streak-atv-weekly-days');
     const pctInput = document.getElementById('streak-atv-pct-input');
     const sleepInput = document.getElementById('streak-sleep-min-hours');
+    if (weeklyInput) weeklyInput.value = cfg.weeklyTargetDays || 4;
     if (pctInput) pctInput.value = cfg.minAtvPct;
     if (sleepInput) sleepInput.value = cfg.minSleepHours;
 
@@ -1723,10 +1766,13 @@ window.closeStreakConfigModal = function() {
     }
 };
 
-window.saveStreakConfigFromModal = function() {
+window.saveStreakConfigFromModal = function(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const weeklyInput = document.getElementById('streak-atv-weekly-days');
     const pctInput = document.getElementById('streak-atv-pct-input');
     const sleepInput = document.getElementById('streak-sleep-min-hours');
 
+    const weeklyTargetDays = Math.min(7, Math.max(1, parseInt(weeklyInput ? weeklyInput.value : '4', 10) || 4));
     const minAtvPct = Math.min(100, Math.max(10, parseInt(pctInput ? pctInput.value : '80', 10) || 80));
     const minSleepHours = Math.max(0, parseFloat(String(sleepInput ? sleepInput.value : '7.0').replace(',', '.')) || 0);
 
@@ -1734,6 +1780,8 @@ window.saveStreakConfigFromModal = function() {
         saveStreakConfig({
             atvMode: streakModalCurrentAtvMode,
             minAtvPct,
+            atvFreqMode: streakModalCurrentFreqMode,
+            weeklyTargetDays,
             minSleepHours
         });
     }

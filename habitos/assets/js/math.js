@@ -484,9 +484,11 @@ const STREAK_CONFIG_KEY = 'hq_streak_config_v1';
 
 function getStreakConfig() {
     const defaultCfg = {
-        atvMode: 'pct',      // 'pct' | 'full_all'
-        minAtvPct: 80,       // % mínimo de cards concluídos do treino do dia
-        minSleepHours: 7.0   // horas mínimas dormidas
+        atvMode: 'pct',        // 'pct' | 'full_all'
+        minAtvPct: 80,         // % mínimo de cards concluídos do treino do dia
+        atvFreqMode: 'weekly', // 'weekly' (d/semana) | 'consecutive' (dias consecutivos)
+        weeklyTargetDays: 4,   // meta de dias de treino por semana quando atvFreqMode === 'weekly'
+        minSleepHours: 7.0     // horas mínimas dormidas
     };
     try {
         if (typeof SafeStorage !== 'undefined') {
@@ -497,6 +499,8 @@ function getStreakConfig() {
                     return {
                         atvMode: parsed.atvMode === 'full_all' ? 'full_all' : 'pct',
                         minAtvPct: Math.min(100, Math.max(10, Number(parsed.minAtvPct) || 80)),
+                        atvFreqMode: parsed.atvFreqMode === 'consecutive' ? 'consecutive' : 'weekly',
+                        weeklyTargetDays: Math.min(7, Math.max(1, parseInt(parsed.weeklyTargetDays, 10) || 4)),
                         minSleepHours: Math.max(0, Number(parsed.minSleepHours) !== undefined && !isNaN(Number(parsed.minSleepHours)) ? Number(parsed.minSleepHours) : 7.0)
                     };
                 }
@@ -512,6 +516,8 @@ function saveStreakConfig(cfg) {
             SafeStorage.setItem(STREAK_CONFIG_KEY, JSON.stringify({
                 atvMode: cfg.atvMode === 'full_all' ? 'full_all' : 'pct',
                 minAtvPct: Math.min(100, Math.max(10, Number(cfg.minAtvPct) || 80)),
+                atvFreqMode: cfg.atvFreqMode === 'consecutive' ? 'consecutive' : 'weekly',
+                weeklyTargetDays: Math.min(7, Math.max(1, parseInt(cfg.weeklyTargetDays, 10) || 4)),
                 minSleepHours: Math.max(0, Number(cfg.minSleepHours) || 0)
             }));
         }
@@ -588,8 +594,32 @@ function evaluateDayWorkoutCompletion(dateIso, dayOfWeekIdx, logsMap) {
     };
 }
 
+/* Verifica se o treino de uma data ISO cumpriu o critério diário de Atividade Física */
+function isAtvDayMet(dateIso, dayOfWeekIdx, logsMap, cfg) {
+    const c = cfg || getStreakConfig();
+    const wEval = evaluateDayWorkoutCompletion(dateIso, dayOfWeekIdx, logsMap);
+    return wEval.hasActivity && (c.atvMode === 'full_all' ? wEval.isFullAll : (wEval.pct >= c.minAtvPct));
+}
+
+/* Retorna todas as 7 datas ISO (Seg..Dom) da semana correspondente a uma data ISO */
+function getWeekIsoDatesForIso(dateIso) {
+    const [y, m, d] = String(dateIso).split('-').map(Number);
+    const dt = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0);
+    const dow = (dt.getDay() + 6) % 7; // 0 = Seg .. 6 = Dom
+    const mon = new Date(dt);
+    mon.setDate(dt.getDate() - dow);
+    const list = [];
+    const pad = n => String(n).padStart(2, '0');
+    for (let i = 0; i < 7; i++) {
+        const cur = new Date(mon);
+        cur.setDate(mon.getDate() + i);
+        list.push(`${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`);
+    }
+    return { weekIsoDates: list, dayIndexInWeek: dow };
+}
+
 /* Verifica se em uma data ISO o usuário cumpriu as metas configuradas de Streak */
-function isDay100Percent(dateIso, dayOfWeekIdx) {
+function isDay100Percent(dateIso, dayOfWeekIdx, preloadedLogs) {
     const cfg = getStreakConfig();
 
     // 1. Sono: verifica horas dormidas >= cfg.minSleepHours
@@ -600,16 +630,55 @@ function isDay100Percent(dateIso, dayOfWeekIdx) {
     const sleepMet = entry.sleptH >= cfg.minSleepHours && entry.sleptH > 0;
 
     // 2. Atividade Física:
-    let logs = {};
-    try {
-        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
-        if (raw) logs = JSON.parse(raw) || {};
-        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
-    } catch (e) { logs = {}; }
+    let logs = preloadedLogs;
+    if (!logs) {
+        logs = {};
+        try {
+            const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+            if (raw) logs = JSON.parse(raw) || {};
+            else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+        } catch (e) { logs = {}; }
+    }
 
     const hasAnyAtvInApp = Object.keys(logs).some(k => Array.isArray(logs[k]) && logs[k].length > 0);
-    const wEval = evaluateDayWorkoutCompletion(dateIso, dayOfWeekIdx, logs);
-    const atvMet = wEval.hasActivity && (cfg.atvMode === 'full_all' ? wEval.isFullAll : (wEval.pct >= cfg.minAtvPct));
+    const directAtvMet = isAtvDayMet(dateIso, dayOfWeekIdx, logs, cfg);
+
+    let atvMet = directAtvMet;
+
+    if (cfg.atvFreqMode === 'weekly') {
+        // Modo d/semana: avalia se a semana da data está no ritmo ou cumpriu a meta semanal (ex: 4 d/sem)
+        const { weekIsoDates, dayIndexInWeek } = getWeekIsoDatesForIso(dateIso);
+        const todayIso = (typeof weekDays !== 'undefined' && weekDays[todayIndex !== -1 ? todayIndex : 0])
+            ? weekDays[todayIndex !== -1 ? todayIndex : 0].iso
+            : dateIso;
+
+        // Quantos dias desta semana já cumpriram o treino até hoje (ou na semana toda se semana passada)
+        let validDaysInWeek = 0;
+        let validDaysUpToDate = 0;
+        weekIsoDates.forEach((wIso, idx) => {
+            if (isAtvDayMet(wIso, idx, logs, cfg)) {
+                validDaysInWeek++;
+                if (idx <= dayIndexInWeek) validDaysUpToDate++;
+            }
+        });
+
+        const isCurrentOrFutureWeek = weekIsoDates[6] >= todayIso;
+        const target = cfg.weeklyTargetDays || 4;
+        const restDaysAllowed = Math.max(0, 7 - target);
+        const missedDaysUpToDate = (dayIndexInWeek + 1) - validDaysUpToDate;
+
+        // A semana está "viva/cumprida" se já bateu a meta semanal OU se ainda está na semana corrente dentro da margem de descanso
+        const weekOnTrack = validDaysInWeek >= target || (isCurrentOrFutureWeek && validDaysInWeek > 0 && missedDaysUpToDate <= restDaysAllowed);
+
+        if (hasAnySleepInApp && hasAnyAtvInApp) {
+            // Quando há Sono + Atv Física: nos dias de descanso da semana dentro da meta semanal, o Sono >= Xh mantém e soma o dia no streak
+            return sleepMet && (directAtvMet || weekOnTrack);
+        }
+        if (hasAnyAtvInApp && !hasAnySleepInApp) {
+            // Quando o usuário só usa Atv Física: conta o dia se treinou nele OU se é um dia de descanso coberto pela meta semanal (desde que já tenha iniciado os treinos)
+            return directAtvMet || (weekOnTrack && validDaysUpToDate > 0);
+        }
+    }
 
     if (hasAnySleepInApp && hasAnyAtvInApp) {
         return sleepMet && atvMet;
@@ -623,72 +692,93 @@ function isDay100Percent(dateIso, dayOfWeekIdx) {
     return false;
 }
 
-/* Calcula o streak de dias consecutivos com 100% das atividades */
+/* Calcula o streak de dias consecutivos ou d/semana com 100% das metas */
 function calcConsecutiveFullDaysStreak() {
-    // 1. Status dos 7 dias da semana corrente (para os dots)
-    const weekStatus = weekDays.map((d, i) => {
-        if (isFutureDay(i)) return null;
-        return isDay100Percent(d.iso, i);
-    });
-
-    const fullDaysThisWeek = weekStatus.filter(v => v === true).length;
-
-    // 2. Histórico completo para o Maior Streak
-    const allDatesSet = new Set();
-    if (typeof sleepJournal === 'object' && sleepJournal !== null) {
-        Object.keys(sleepJournal).forEach(k => allDatesSet.add(k));
-    }
     let logs = {};
     try {
         const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
         if (raw) logs = JSON.parse(raw) || {};
-    } catch(e) {}
-    Object.keys(logs).forEach(k => allDatesSet.add(k));
-    weekDays.forEach(d => { if (!isFutureDay(d.index)) allDatesSet.add(d.iso); });
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch(e) { logs = {}; }
 
-    const sortedDates = Array.from(allDatesSet).sort();
+    // 1. Status dos 7 dias da semana corrente
+    const weekStatus = weekDays.map((d, i) => {
+        if (isFutureDay(i)) return null;
+        return isDay100Percent(d.iso, i, logs);
+    });
+
+    const fullDaysThisWeek = weekStatus.filter(v => v === true).length;
+
+    // 2. Histórico completo contínuo (da primeira data efetivamente registrada até hoje) para o Maior Streak
+    const dataDatesSet = new Set();
+    if (typeof sleepJournal === 'object' && sleepJournal !== null) {
+        Object.keys(sleepJournal).forEach(k => {
+            if (calcSleepJournalEntry(sleepJournal[k]).sleptH > 0) dataDatesSet.add(k);
+        });
+    }
+    Object.keys(logs).forEach(k => {
+        if (Array.isArray(logs[k]) && logs[k].length > 0) dataDatesSet.add(k);
+    });
+
+    const todayIso = weekDays[todayIndex !== -1 ? todayIndex : 0].iso;
+    const rawSorted = Array.from(dataDatesSet).sort();
+
+    if (rawSorted.length === 0) {
+        return {
+            maxStreak: 0,
+            currentStreak: 0,
+            fullDaysThisWeek,
+            weekStatus
+        };
+    }
+
+    // Preenche todos os dias do calendário entre a primeira data com registro real e hoje
+    const earliestIso = rawSorted[0];
+    const continuousDates = [];
+    const [sy, sm, sd] = earliestIso.split('-').map(Number);
+    const [ey, em, ed] = todayIso.split('-').map(Number);
+    const cur = new Date(sy, (sm || 1) - 1, sd || 1, 12, 0, 0);
+    const end = new Date(ey, (em || 1) - 1, ed || 1, 12, 0, 0);
+    const pad = n => String(n).padStart(2, '0');
+    let safety = 0;
+    while (cur <= end && safety < 1500) {
+        continuousDates.push(`${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`);
+        cur.setDate(cur.getDate() + 1);
+        safety++;
+    }
+
     let maxStreak = 0;
     let runningStreak = 0;
-    let prevDateObj = null;
 
-    sortedDates.forEach(dateStr => {
-        const [y, m, d] = dateStr.split('-').map(Number);
-        const curDateObj = new Date(y, m - 1, d, 12, 0, 0);
-        const is100 = isDay100Percent(dateStr);
-
-        if (prevDateObj) {
-            const diffDays = Math.round((curDateObj - prevDateObj) / 86400000);
-            if (diffDays > 1) {
-                runningStreak = 0; // Se houve salto entre datas no histórico, o streak é quebrado
-            }
-        }
-
+    continuousDates.forEach(dateStr => {
+        const is100 = isDay100Percent(dateStr, undefined, logs);
         if (is100) {
             runningStreak++;
             if (runningStreak > maxStreak) maxStreak = runningStreak;
         } else {
             runningStreak = 0;
         }
-        prevDateObj = curDateObj;
     });
 
     // Streak atual terminando no dia de hoje (ou ontem se hoje ainda não foi registrado)
-    const todayIso = weekDays[todayIndex !== -1 ? todayIndex : 0].iso;
     const [ty, tm, td] = todayIso.split('-').map(Number);
     let checkDate = new Date(ty, tm - 1, td, 12, 0, 0);
     let curCheck = 0;
 
-    const today100 = isDay100Percent(todayIso, todayIndex !== -1 ? todayIndex : undefined);
+    const today100 = isDay100Percent(todayIso, todayIndex !== -1 ? todayIndex : undefined, logs);
     if (!today100) {
-        // Se hoje ainda não atingiu 100%, verifica o streak consecutivo que vinha até ontem
+        // Se hoje ainda não atingiu a meta, verifica o streak que vinha até ontem
         checkDate.setDate(checkDate.getDate() - 1);
     }
 
-    while (true) {
+    let safetyBack = 0;
+    while (safetyBack < 1500) {
         const checkIso = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-        if (isDay100Percent(checkIso)) {
+        if (checkIso < earliestIso) break;
+        if (isDay100Percent(checkIso, undefined, logs)) {
             curCheck++;
             checkDate.setDate(checkDate.getDate() - 1);
+            safetyBack++;
         } else {
             break;
         }

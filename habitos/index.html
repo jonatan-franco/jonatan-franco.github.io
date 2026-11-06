@@ -1732,32 +1732,60 @@
 
             <form onsubmit="saveStreakConfigFromModal(event)" class="space-y-4">
                 <!-- 1. Critério de Atividade Física -->
-                <div class="space-y-2.5 bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
+                <div class="space-y-3 bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
                     <label class="block text-xs font-bold uppercase text-zinc-800 font-mono">🏋️ 1. Critério para Atividade Física</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btn-streak-atv-pct" onclick="setStreakModalAtvMode('pct')" class="py-2.5 px-3 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs">
-                            📊 % da Atv. Física
-                        </button>
-                        <button type="button" id="btn-streak-atv-full" onclick="setStreakModalAtvMode('full_all')" class="py-2.5 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition">
-                            ✅ Todo o Exercício (+Cardio)
-                        </button>
-                    </div>
 
-                    <div id="streak-atv-pct-box" class="space-y-1.5 pt-1">
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-zinc-600 font-medium">Porcentagem mínima concluída no dia:</span>
-                            <div class="flex items-center gap-1">
-                                <input type="number" id="streak-atv-pct-input" min="10" max="100" step="5" value="80" class="w-16 bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono font-bold text-center text-rose-600">
-                                <span class="text-xs font-mono font-bold text-zinc-700">%</span>
+                    <!-- 1A. Frequência: Dias por Semana vs Dias Consecutivos -->
+                    <div class="space-y-1.5">
+                        <span class="block text-[10px] font-mono uppercase text-zinc-500 font-bold">Frequência da Meta (Como contabilizar)</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="btn-streak-freq-weekly" onclick="setStreakModalAtvFreqMode('weekly')" class="py-2 px-2.5 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs">
+                                📅 Dias / Semana (d/sem)
+                            </button>
+                            <button type="button" id="btn-streak-freq-consecutive" onclick="setStreakModalAtvFreqMode('consecutive')" class="py-2 px-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition">
+                                🔗 Dias Consecutivos
+                            </button>
+                        </div>
+                        <div id="streak-atv-weekly-box" class="flex items-center justify-between text-xs bg-white border border-zinc-200 rounded-xl px-3 py-2 mt-1">
+                            <span class="text-zinc-700 font-medium">Meta de treinos por semana:</span>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="streak-atv-weekly-days" min="1" max="7" step="1" value="4" class="w-14 bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-center text-rose-600">
+                                <span class="text-xs font-mono font-bold text-zinc-600">d/semana</span>
                             </div>
                         </div>
-                        <p class="text-[10px] text-zinc-500 leading-snug">Conta o dia se você atingir pelo menos essa % dos exercícios do treino do dia.</p>
+                        <p id="streak-atv-freq-hint" class="text-[10px] text-zinc-500 leading-snug">
+                            No modo <strong>d/semana</strong>, dias de descanso entre os treinos não quebram seu streak desde que você cumpra a meta semanal.
+                        </p>
                     </div>
 
-                    <div id="streak-atv-full-box" class="hidden pt-1">
-                        <p class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 leading-snug">
-                            <strong>100% Completo:</strong> Exige concluir todos os exercícios de força do treino do dia (e também o <strong>Cardio</strong> nos dias de Upper A / Upper B; dias de Lower não possuem cardio).
-                        </p>
+                    <!-- 1B. Completude do Treino no Dia -->
+                    <div class="space-y-1.5 pt-2 border-t border-zinc-200/70">
+                        <span class="block text-[10px] font-mono uppercase text-zinc-500 font-bold">O que valida o treino do dia</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="btn-streak-atv-pct" onclick="setStreakModalAtvMode('pct')" class="py-2 px-2.5 rounded-xl bg-black text-white text-xs font-bold transition shadow-xs">
+                                📊 % da Atv. Física
+                            </button>
+                            <button type="button" id="btn-streak-atv-full" onclick="setStreakModalAtvMode('full_all')" class="py-2 px-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 hover:text-black text-xs font-semibold transition">
+                                ✅ Todo o Exercício (+Cardio)
+                            </button>
+                        </div>
+
+                        <div id="streak-atv-pct-box" class="space-y-1.5 pt-1">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-zinc-600 font-medium">Porcentagem mínima concluída no dia:</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="streak-atv-pct-input" min="10" max="100" step="5" value="80" class="w-16 bg-white border border-zinc-200 rounded-xl px-2 py-1 text-xs font-mono font-bold text-center text-rose-600">
+                                    <span class="text-xs font-mono font-bold text-zinc-700">%</span>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-zinc-500 leading-snug">Valida o treino se você concluir pelo menos essa % dos exercícios do treino do dia.</p>
+                        </div>
+
+                        <div id="streak-atv-full-box" class="hidden pt-1">
+                            <p class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 leading-snug">
+                                <strong>100% Completo:</strong> Exige concluir todos os exercícios de força do treino do dia (e também o <strong>Cardio</strong> nos dias de Upper A / Upper B; dias de Lower não possuem cardio).
+                            </p>
+                        </div>
                     </div>
                 </div>
 
