@@ -3436,7 +3436,7 @@ function renderAtvFisicaInteractiveView() {
     const isYesterdaySelected = selectedAtvDate === yesterdayIso;
 
     const dow = new Date(selectedAtvDate + 'T12:00:00').getDay();
-    const dayIndex = (dow + 6) % 7;
+    const dayIndex = dow; // 0 = Dom .. 6 = Sáb
     const dayRef = weekDays[dayIndex] || weekDays[0];
 
     const scheduledEvents = Array.isArray(calendarEvents) ? calendarEvents.filter(ev => ev.dayIndex === dayIndex) : [];

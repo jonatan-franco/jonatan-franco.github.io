@@ -2,6 +2,8 @@ let metricsMuscleChartInstance = null;
 let metricsCorrChartInstance = null;
 let metricsCircadianChartInstance = null;
 let metricsMuscleMode = 'sets'; // 'sets' | 'volume'
+let metricsCorrScope = 'all';   // 'all' | 'type' | 'muscle' | 'exercise'
+let metricsCorrTarget = '';
 
 function hexToRgba(hex, alpha) {
     const clean = hex.replace('#', '');
@@ -29,6 +31,25 @@ window.setMetricsMuscleMode = function(mode) {
             ? "px-3 py-1 rounded-full bg-black text-white font-semibold transition"
             : "px-3 py-1 rounded-full text-zinc-600 hover:text-black transition";
     }
+    renderMetricsView();
+};
+
+window.setMetricsCorrScope = function(scope) {
+    metricsCorrScope = ['all', 'type', 'muscle', 'exercise'].includes(scope) ? scope : 'all';
+    ['all', 'type', 'muscle', 'exercise'].forEach(sc => {
+        const btn = document.getElementById('btn-corr-scope-' + sc);
+        if (btn) {
+            btn.className = (sc === metricsCorrScope)
+                ? "px-2.5 py-1 rounded-full bg-black text-white font-semibold transition"
+                : "px-2.5 py-1 rounded-full text-zinc-600 hover:text-black transition";
+        }
+    });
+    metricsCorrTarget = '';
+    renderMetricsView();
+};
+
+window.onMetricsCorrTargetChange = function(val) {
+    metricsCorrTarget = String(val || '');
     renderMetricsView();
 };
 
@@ -77,24 +98,90 @@ function renderMetricsView() {
         }
     }
 
+    // Prepara filtro e cálculo da Correlação Sono × Carga (Geral, Tipo Upper/Lower, Grupo Muscular ou Exercício)
+    const corrSelectEl = document.getElementById('metrics-corr-target-select');
+    const baseCorrMeta = typeof calcSleepLoadCorrelationByScope === 'function'
+        ? calcSleepLoadCorrelationByScope('all', '')
+        : { availableExercises: [], availableMuscles: [] };
+
+    if (corrSelectEl) {
+        if (metricsCorrScope === 'all') {
+            corrSelectEl.classList.add('hidden');
+            corrSelectEl.innerHTML = '';
+            metricsCorrTarget = '';
+        } else {
+            corrSelectEl.classList.remove('hidden');
+            let options = [];
+            if (metricsCorrScope === 'type') {
+                options = [
+                    { value: 'upper', label: 'Upper (Superior — Upper A + B)' },
+                    { value: 'lower', label: 'Lower (Inferior — Lower A + B)' },
+                    { value: 'upper_a', label: 'Treino Upper A' },
+                    { value: 'lower_a', label: 'Treino Lower A' },
+                    { value: 'upper_b', label: 'Treino Upper B' },
+                    { value: 'lower_b', label: 'Treino Lower B' }
+                ];
+            } else if (metricsCorrScope === 'muscle') {
+                const muscles = baseCorrMeta.availableMuscles && baseCorrMeta.availableMuscles.length > 0
+                    ? baseCorrMeta.availableMuscles
+                    : ['Peitoral', 'Costas', 'Quadríceps', 'Posterior / Glúteos', 'Ombros', 'Bíceps', 'Tríceps', 'Panturrilhas', 'Abdômen'];
+                options = muscles.map(m => ({ value: m, label: m }));
+            } else if (metricsCorrScope === 'exercise') {
+                const exs = baseCorrMeta.availableExercises && baseCorrMeta.availableExercises.length > 0
+                    ? baseCorrMeta.availableExercises
+                    : data.exercisePRs.map(e => e.name);
+                options = exs.map(e => ({ value: e, label: e }));
+            }
+
+            if (options.length > 0) {
+                if (!metricsCorrTarget || !options.some(o => o.value === metricsCorrTarget)) {
+                    metricsCorrTarget = options[0].value;
+                }
+                corrSelectEl.innerHTML = options.map(o =>
+                    `<option value="${o.value.replace(/"/g, '&quot;')}" ${o.value === metricsCorrTarget ? 'selected' : ''}>${o.label}</option>`
+                ).join('');
+            } else {
+                corrSelectEl.innerHTML = `<option value="">Sem registros</option>`;
+                metricsCorrTarget = '';
+            }
+        }
+    }
+
+    const corrFiltered = (typeof calcSleepLoadCorrelationByScope === 'function')
+        ? calcSleepLoadCorrelationByScope(metricsCorrScope, metricsCorrTarget)
+        : {
+            correlationPoints: data.correlationPoints,
+            pearsonR: data.pearsonR,
+            regSlope: data.regSlope,
+            regIntercept: data.regIntercept
+        };
+
+    const scopeLabelMap = {
+        all: 'Geral',
+        type: metricsCorrTarget === 'upper' ? 'Upper (A+B)' : metricsCorrTarget === 'lower' ? 'Lower (A+B)' : (metricsCorrTarget || 'Tipo').toUpperCase().replace('_', ' '),
+        muscle: metricsCorrTarget || 'Grupo Muscular',
+        exercise: metricsCorrTarget || 'Exercício'
+    };
+    const activeScopeLabel = scopeLabelMap[metricsCorrScope] || 'Geral';
+
     const kpiCorr = document.getElementById('metrics-kpi-corr');
     const kpiCorrSub = document.getElementById('metrics-kpi-corr-sub');
     const corrBadge = document.getElementById('metrics-corr-badge');
     if (kpiCorr && kpiCorrSub) {
-        if (data.pearsonR !== null) {
-            const rStr = (data.pearsonR >= 0 ? '+' : '') + data.pearsonR.toFixed(2);
+        if (corrFiltered.pearsonR !== null) {
+            const rStr = (corrFiltered.pearsonR >= 0 ? '+' : '') + corrFiltered.pearsonR.toFixed(2);
             kpiCorr.textContent = `r = ${rStr}`;
-            const absR = Math.abs(data.pearsonR);
+            const absR = Math.abs(corrFiltered.pearsonR);
             const strength = absR >= 0.6 ? 'Forte' : absR >= 0.3 ? 'Moderada' : 'Fraca / Neutra';
-            const dir = data.pearsonR > 0.1 ? 'positiva' : data.pearsonR < -0.1 ? 'inversa' : 'estável';
-            kpiCorrSub.textContent = `Relação ${strength.toLowerCase()} ${dir} (${data.correlationPoints.length} dias c/ treino + sono)`;
+            const dir = corrFiltered.pearsonR > 0.1 ? 'positiva' : corrFiltered.pearsonR < -0.1 ? 'inversa' : 'estável';
+            kpiCorrSub.textContent = `[${activeScopeLabel}] Relação ${strength.toLowerCase()} ${dir} (${corrFiltered.correlationPoints.length} dias c/ treino + sono)`;
             if (corrBadge) corrBadge.textContent = `r = ${rStr} (${strength})`;
         } else {
             kpiCorr.textContent = 'N/A';
-            kpiCorrSub.textContent = data.correlationPoints.length === 1
-                ? '1 dia combinado (mín. 2 dias p/ correlação)'
-                : 'Registre sono e treino nas mesmas datas';
-            if (corrBadge) corrBadge.textContent = 'r = N/A';
+            kpiCorrSub.textContent = corrFiltered.correlationPoints.length === 1
+                ? `[${activeScopeLabel}] 1 dia combinado (mín. 2 dias p/ correlação)`
+                : `[${activeScopeLabel}] Registre sono e treino em pelo menos 2 datas`;
+            if (corrBadge) corrBadge.textContent = `r = N/A (${corrFiltered.correlationPoints.length}/2 dias)`;
         }
     }
 
@@ -189,7 +276,7 @@ function renderMetricsView() {
         metricsCorrChartInstance = null;
     }
     if (corrCanvas) {
-        const pts = data.correlationPoints;
+        const pts = corrFiltered.correlationPoints;
         const hasCorr = pts.length > 0;
         if (corrEmpty) {
             corrEmpty.classList.toggle('hidden', hasCorr);
@@ -199,7 +286,7 @@ function renderMetricsView() {
             const scatterData = pts.map(p => ({ x: p.sleptH, y: p.volume, date: p.date, maxWeight: p.maxWeight }));
             const datasets = [{
                 type: 'scatter',
-                label: 'Sessão (Sono × Volume)',
+                label: `Sessão (${activeScopeLabel}: Sono × Volume)`,
                 data: scatterData,
                 backgroundColor: '#4f46e5',
                 borderColor: '#ffffff',
@@ -208,13 +295,13 @@ function renderMetricsView() {
                 pointHoverRadius: 8
             }];
 
-            if (pts.length >= 2 && data.regSlope !== null && data.regIntercept !== null) {
+            if (pts.length >= 2 && corrFiltered.regSlope !== null && corrFiltered.regIntercept !== null) {
                 const xs = pts.map(p => p.sleptH);
                 const minX = Math.min(...xs);
                 const maxX = Math.max(...xs);
                 if (maxX > minX) {
-                    const y1 = Math.max(0, data.regIntercept + data.regSlope * minX);
-                    const y2 = Math.max(0, data.regIntercept + data.regSlope * maxX);
+                    const y1 = Math.max(0, corrFiltered.regIntercept + corrFiltered.regSlope * minX);
+                    const y2 = Math.max(0, corrFiltered.regIntercept + corrFiltered.regSlope * maxX);
                     datasets.push({
                         type: 'line',
                         label: 'Tendência Linear',
@@ -409,9 +496,14 @@ function renderMetricsView() {
                         progBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">${ex.progressionPct.toFixed(1)}%</span>`;
                     }
                 } else if (ex.sessionsCount === 1) {
-                    progBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono text-zinc-400 bg-zinc-50 border border-zinc-200">1ª sessão</span>`;
+                    progBadge = `<div class="inline-flex flex-col items-center leading-tight" title="Este exercício foi registrado em apenas 1 dia até agora (carga inicial de referência). A evolução em % será calculada automaticamente a partir do 2º treino registrado.">
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold text-zinc-600 bg-zinc-100 border border-zinc-200">1º registro (Base)</span>
+                        <span class="text-[10px] text-zinc-400 mt-0.5">Falta 2º treino p/ %</span>
+                    </div>`;
                 } else {
-                    progBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono text-amber-700 bg-amber-50 border border-amber-200">Novo / Editado</span>`;
+                    progBadge = `<div class="inline-flex flex-col items-center leading-tight" title="Exercício cadastrado ou editado no catálogo, ainda sem sessões concluídas no histórico.">
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-mono text-amber-700 bg-amber-50 border border-amber-200">Catálogo (0 treinos)</span>
+                    </div>`;
                 }
 
                 const rmDisplay = ex.best1RM > 0 ? `${rmFmt} kg` : '— (informe carga)';

@@ -530,7 +530,7 @@ function evaluateDayWorkoutCompletion(dateIso, dayOfWeekIdx, logsMap) {
     let dowIdx = dayOfWeekIdx;
     if (dowIdx === undefined) {
         const d = new Date(dateIso + 'T12:00:00');
-        dowIdx = (d.getDay() + 6) % 7;
+        dowIdx = d.getDay(); // 0 = Dom .. 6 = Sáb
     }
 
     const hasHabitCheck = typeof habits !== 'undefined' && Array.isArray(habits) && habits.some(h =>
@@ -601,24 +601,24 @@ function isAtvDayMet(dateIso, dayOfWeekIdx, logsMap, cfg) {
     return wEval.hasActivity && (c.atvMode === 'full_all' ? wEval.isFullAll : (wEval.pct >= c.minAtvPct));
 }
 
-/* Retorna todas as 7 datas ISO (Seg..Dom) da semana correspondente a uma data ISO */
+/* Retorna todas as 7 datas ISO (Dom..Sáb) da semana correspondente a uma data ISO */
 function getWeekIsoDatesForIso(dateIso) {
     const [y, m, d] = String(dateIso).split('-').map(Number);
     const dt = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0);
-    const dow = (dt.getDay() + 6) % 7; // 0 = Seg .. 6 = Dom
-    const mon = new Date(dt);
-    mon.setDate(dt.getDate() - dow);
+    const dow = dt.getDay(); // 0 = Dom .. 6 = Sáb
+    const sun = new Date(dt);
+    sun.setDate(dt.getDate() - dow);
     const list = [];
     const pad = n => String(n).padStart(2, '0');
     for (let i = 0; i < 7; i++) {
-        const cur = new Date(mon);
-        cur.setDate(mon.getDate() + i);
+        const cur = new Date(sun);
+        cur.setDate(sun.getDate() + i);
         list.push(`${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`);
     }
     return { weekIsoDates: list, dayIndexInWeek: dow };
 }
 
-/* Verifica se em uma data ISO o usuário cumpriu as metas configuradas de Streak */
+/* Verifica se em uma data ISO o usuário cumpriu as metas configuradas de Streak (Semana Dom..Sáb) */
 function isDay100Percent(dateIso, dayOfWeekIdx, preloadedLogs) {
     const cfg = getStreakConfig();
 
@@ -627,7 +627,8 @@ function isDay100Percent(dateIso, dayOfWeekIdx, preloadedLogs) {
     const hasAnySleepInApp = Object.keys(sleepMap).some(k => calcSleepJournalEntry(sleepMap[k]).sleptH > 0);
     const sleepEntry = sleepMap[dateIso] || null;
     const entry = calcSleepJournalEntry(sleepEntry);
-    const sleepMet = entry.sleptH >= cfg.minSleepHours && entry.sleptH > 0;
+    const hasSleepOnDay = entry.sleptH > 0;
+    const sleepMet = hasSleepOnDay && entry.sleptH >= cfg.minSleepHours;
 
     // 2. Atividade Física:
     let logs = preloadedLogs;
@@ -643,48 +644,48 @@ function isDay100Percent(dateIso, dayOfWeekIdx, preloadedLogs) {
     const hasAnyAtvInApp = Object.keys(logs).some(k => Array.isArray(logs[k]) && logs[k].length > 0);
     const directAtvMet = isAtvDayMet(dateIso, dayOfWeekIdx, logs, cfg);
 
-    let atvMet = directAtvMet;
-
     if (cfg.atvFreqMode === 'weekly') {
-        // Modo d/semana: avalia se a semana da data está no ritmo ou cumpriu a meta semanal (ex: 4 d/sem)
+        // Modo d/semana (Dom..Sáb):
         const { weekIsoDates, dayIndexInWeek } = getWeekIsoDatesForIso(dateIso);
         const todayIso = (typeof weekDays !== 'undefined' && weekDays[todayIndex !== -1 ? todayIndex : 0])
             ? weekDays[todayIndex !== -1 ? todayIndex : 0].iso
             : dateIso;
 
-        // Quantos dias desta semana já cumpriram o treino até hoje (ou na semana toda se semana passada)
-        let validDaysInWeek = 0;
-        let validDaysUpToDate = 0;
+        let validAtvDaysInWeek = 0;
+        let firstValidAtvIdx = -1;
         weekIsoDates.forEach((wIso, idx) => {
             if (isAtvDayMet(wIso, idx, logs, cfg)) {
-                validDaysInWeek++;
-                if (idx <= dayIndexInWeek) validDaysUpToDate++;
+                validAtvDaysInWeek++;
+                if (firstValidAtvIdx === -1) firstValidAtvIdx = idx;
             }
         });
 
-        const isCurrentOrFutureWeek = weekIsoDates[6] >= todayIso;
+        const isCurrentWeek = weekIsoDates[0] <= todayIso && todayIso <= weekIsoDates[6];
         const target = cfg.weeklyTargetDays || 4;
-        const restDaysAllowed = Math.max(0, 7 - target);
-        const missedDaysUpToDate = (dayIndexInWeek + 1) - validDaysUpToDate;
-
-        // A semana está "viva/cumprida" se já bateu a meta semanal OU se ainda está na semana corrente dentro da margem de descanso
-        const weekOnTrack = validDaysInWeek >= target || (isCurrentOrFutureWeek && validDaysInWeek > 0 && missedDaysUpToDate <= restDaysAllowed);
+        const remainingDaysInWeekFromToday = isCurrentWeek
+            ? Math.max(0, 6 - (todayIndex !== -1 ? todayIndex : dayIndexInWeek))
+            : 0;
+        // A semana está ativa/cumprida se já atingiu a meta semanal OU se está na semana atual com pelo menos 1 treino válido (ou hábito de sono) dentro da margem
+        const weekAtvAlive = validAtvDaysInWeek >= target || (isCurrentWeek && (validAtvDaysInWeek + remainingDaysInWeekFromToday) >= target && validAtvDaysInWeek > 0);
 
         if (hasAnySleepInApp && hasAnyAtvInApp) {
-            // Quando há Sono + Atv Física: nos dias de descanso da semana dentro da meta semanal, o Sono >= Xh mantém e soma o dia no streak
-            return sleepMet && (directAtvMet || weekOnTrack);
+            // Se treinou neste dia e bateu a meta do treino (e ou cumpriu o sono do dia, ou não registrou sono naquele dia específico)
+            if (directAtvMet && (sleepMet || !hasSleepOnDay)) return true;
+            // Se é dia de descanso na semana ativa e cumpriu a meta de sono
+            if (sleepMet && (weekAtvAlive || isCurrentWeek)) return true;
+            return false;
         }
         if (hasAnyAtvInApp && !hasAnySleepInApp) {
-            // Quando o usuário só usa Atv Física: conta o dia se treinou nele OU se é um dia de descanso coberto pela meta semanal (desde que já tenha iniciado os treinos)
-            return directAtvMet || (weekOnTrack && validDaysUpToDate > 0);
+            return directAtvMet || (weekAtvAlive && firstValidAtvIdx !== -1 && dayIndexInWeek >= firstValidAtvIdx);
         }
     }
 
     if (hasAnySleepInApp && hasAnyAtvInApp) {
-        return sleepMet && atvMet;
+        if (directAtvMet && (sleepMet || !hasSleepOnDay)) return true;
+        return sleepMet && directAtvMet;
     }
     if (hasAnyAtvInApp && !hasAnySleepInApp) {
-        return atvMet;
+        return directAtvMet;
     }
     if (hasAnySleepInApp && !hasAnyAtvInApp) {
         return sleepMet;
@@ -692,7 +693,7 @@ function isDay100Percent(dateIso, dayOfWeekIdx, preloadedLogs) {
     return false;
 }
 
-/* Calcula o streak de dias consecutivos ou d/semana com 100% das metas */
+/* Calcula o streak desta semana (Dom..Sáb) e o recorde histórico */
 function calcConsecutiveFullDaysStreak() {
     let logs = {};
     try {
@@ -701,15 +702,16 @@ function calcConsecutiveFullDaysStreak() {
         else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
     } catch(e) { logs = {}; }
 
-    // 1. Status dos 7 dias da semana corrente
+    // 1. Status dos 7 dias da semana corrente (Domingo = 0 .. Sábado = 6)
     const weekStatus = weekDays.map((d, i) => {
         if (isFutureDay(i)) return null;
         return isDay100Percent(d.iso, i, logs);
     });
 
+    // Streak desta semana (Dom..Sáb): quantidade de dias cumpridos na semana atual (sempre iniciando no domingo e terminando no sábado)
     const fullDaysThisWeek = weekStatus.filter(v => v === true).length;
 
-    // 2. Histórico completo contínuo (da primeira data efetivamente registrada até hoje) para o Maior Streak
+    // 2. Histórico completo para o Recorde
     const dataDatesSet = new Set();
     if (typeof sleepJournal === 'object' && sleepJournal !== null) {
         Object.keys(sleepJournal).forEach(k => {
@@ -727,12 +729,11 @@ function calcConsecutiveFullDaysStreak() {
         return {
             maxStreak: 0,
             currentStreak: 0,
-            fullDaysThisWeek,
+            fullDaysThisWeek: 0,
             weekStatus
         };
     }
 
-    // Preenche todos os dias do calendário entre a primeira data com registro real e hoje
     const earliestIso = rawSorted[0];
     const continuousDates = [];
     const [sy, sm, sd] = earliestIso.split('-').map(Number);
@@ -760,30 +761,8 @@ function calcConsecutiveFullDaysStreak() {
         }
     });
 
-    // Streak atual terminando no dia de hoje (ou ontem se hoje ainda não foi registrado)
-    const [ty, tm, td] = todayIso.split('-').map(Number);
-    let checkDate = new Date(ty, tm - 1, td, 12, 0, 0);
-    let curCheck = 0;
-
-    const today100 = isDay100Percent(todayIso, todayIndex !== -1 ? todayIndex : undefined, logs);
-    if (!today100) {
-        // Se hoje ainda não atingiu a meta, verifica o streak que vinha até ontem
-        checkDate.setDate(checkDate.getDate() - 1);
-    }
-
-    let safetyBack = 0;
-    while (safetyBack < 1500) {
-        const checkIso = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-        if (checkIso < earliestIso) break;
-        if (isDay100Percent(checkIso, undefined, logs)) {
-            curCheck++;
-            checkDate.setDate(checkDate.getDate() - 1);
-            safetyBack++;
-        } else {
-            break;
-        }
-    }
-    const currentStreak = curCheck;
+    // O Streak exibido no card principal é o Streak DESTA SEMANA (Dom..Sáb)
+    const currentStreak = fullDaysThisWeek;
 
     return {
         maxStreak: Math.max(maxStreak, currentStreak),
@@ -1299,5 +1278,159 @@ function calcAdvancedAnalytics() {
         wakeSdMinutes,
         avgSleptClock,
         avgWakeClock
+    };
+}
+
+
+/* Calcula a Correlação Sono x Carga filtrada por Escopo:
+ * scope: 'all' (Geral) | 'type' (Upper / Lower / Treino) | 'muscle' (Grupo Muscular) | 'exercise' (Exercício específico)
+ * target: valor selecionado no filtro
+ */
+function calcSleepLoadCorrelationByScope(scope, target) {
+    let logs = {};
+    try {
+        const raw = typeof SafeStorage !== 'undefined' ? SafeStorage.getItem('hq_atv_logs_v1') : null;
+        if (raw) logs = JSON.parse(raw) || {};
+        else if (typeof atvLogs !== 'undefined') logs = atvLogs || {};
+    } catch (e) { logs = {}; }
+
+    const sc = scope || 'all';
+    const tgt = String(target || '').trim();
+
+    const availableExercisesSet = new Set();
+    const availableMusclesSet = new Set([
+        'Peitoral', 'Costas', 'Quadríceps', 'Posterior / Glúteos',
+        'Ombros', 'Bíceps', 'Tríceps', 'Panturrilhas', 'Abdômen'
+    ]);
+
+    const dailyFilteredSummary = {}; // { 'YYYY-MM-DD': { volume, maxWeight } }
+
+    Object.keys(logs).sort().forEach(dateIso => {
+        const list = logs[dateIso];
+        if (!Array.isArray(list) || list.length === 0) return;
+
+        let dayVol = 0;
+        let dayMaxW = 0;
+
+        list.forEach(item => {
+            if (!item || !item.exerciseName) return;
+            const exName = String(item.exerciseName).trim();
+            const isCardio = item.unit === 'km/h' || (typeof isCardioExercise === 'function' && isCardioExercise(exName, item.muscle));
+            if (isCardio) return;
+
+            availableExercisesSet.add(exName);
+            const meta = findExerciseMeta(exName, item.habitId);
+            const muscleCat = categorizeMuscleGroup(item.muscle || (meta && meta.muscle), exName);
+            if (muscleCat && muscleCat !== 'Cardio') availableMusclesSet.add(muscleCat);
+
+            const planId = resolveLogGroupPlanId(item); // 'upper_a' | 'lower_a' | 'upper_b' | 'lower_b'
+            const isUpper = planId === 'upper_a' || planId === 'upper_b' || ['Peitoral', 'Costas', 'Ombros', 'Bíceps', 'Tríceps'].includes(muscleCat);
+            const isLower = planId === 'lower_a' || planId === 'lower_b' || ['Quadríceps', 'Posterior / Glúteos', 'Panturrilhas'].includes(muscleCat);
+
+            let matches = true;
+            if (sc === 'type' && tgt) {
+                if (tgt === 'upper') matches = isUpper;
+                else if (tgt === 'lower') matches = isLower;
+                else matches = (planId === tgt);
+            } else if (sc === 'muscle' && tgt) {
+                matches = (muscleCat === tgt);
+            } else if (sc === 'exercise' && tgt) {
+                matches = (exName.toLowerCase() === tgt.toLowerCase());
+            }
+
+            if (!matches) return;
+
+            const w = parseFloat(item.weight) || 0;
+            const vol = calcLogEntryVolume(item);
+            dayVol += vol;
+            if (w > dayMaxW) dayMaxW = w;
+        });
+
+        if (dayVol > 0) {
+            dailyFilteredSummary[dateIso] = { volume: dayVol, maxWeight: dayMaxW };
+        }
+    });
+
+    // Adiciona também exercícios do WORKOUT_PLAN na lista de opções de exercício
+    if (typeof WORKOUT_PLAN !== 'undefined' && Array.isArray(WORKOUT_PLAN)) {
+        WORKOUT_PLAN.forEach(w => {
+            if (!w || !Array.isArray(w.exercises)) return;
+            w.exercises.forEach(ex => {
+                if (ex && ex.name && !(typeof isCardioExercise === 'function' && isCardioExercise(ex.name, ex.muscle))) {
+                    availableExercisesSet.add(String(ex.name).trim());
+                }
+            });
+        });
+    }
+
+    const correlationPoints = [];
+    Object.keys(dailyFilteredSummary).sort().forEach(dateIso => {
+        const { volume: vol, maxWeight } = dailyFilteredSummary[dateIso];
+        let sleepEntry = (typeof sleepJournal === 'object' && sleepJournal !== null) ? sleepJournal[dateIso] : null;
+
+        if (!sleepEntry || !sleepEntry.bed || sleepEntry.bed === '—') {
+            const [y, m, d] = dateIso.split('-').map(Number);
+            if (y && m && d) {
+                const prevDt = new Date(y, m - 1, d, 12, 0, 0);
+                prevDt.setDate(prevDt.getDate() - 1);
+                const prevIso = `${prevDt.getFullYear()}-${String(prevDt.getMonth() + 1).padStart(2, '0')}-${String(prevDt.getDate()).padStart(2, '0')}`;
+                if (sleepJournal && sleepJournal[prevIso] && sleepJournal[prevIso].bed && sleepJournal[prevIso].bed !== '—') {
+                    sleepEntry = sleepJournal[prevIso];
+                }
+            }
+        }
+
+        let sleptH = 0;
+        let eff = 0;
+        if (sleepEntry && sleepEntry.bed && sleepEntry.bed !== '—') {
+            const parsed = calcSleepJournalEntry(sleepEntry);
+            sleptH = parsed.sleptH;
+            eff = parsed.eff;
+        }
+
+        if (sleptH > 0) {
+            const parts = dateIso.split('-');
+            const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateIso;
+            correlationPoints.push({
+                date: dateIso,
+                dateIso,
+                label,
+                sleptH: parseFloat(sleptH.toFixed(2)),
+                volume: parseFloat(vol.toFixed(2)),
+                maxWeight: parseFloat(maxWeight.toFixed(2)),
+                eff: Math.round(eff)
+            });
+        }
+    });
+
+    let pearsonR = null;
+    let regSlope = null;
+    let regIntercept = null;
+    if (correlationPoints.length >= 2) {
+        const n = correlationPoints.length;
+        const meanX = correlationPoints.reduce((a, p) => a + p.sleptH, 0) / n;
+        const meanY = correlationPoints.reduce((a, p) => a + p.volume, 0) / n;
+        let num = 0, denX = 0, denY = 0;
+        correlationPoints.forEach(p => {
+            const dx = p.sleptH - meanX;
+            const dy = p.volume - meanY;
+            num += dx * dy;
+            denX += dx * dx;
+            denY += dy * dy;
+        });
+        if (denX > 0 && denY > 0) {
+            pearsonR = num / Math.sqrt(denX * denY);
+            regSlope = num / denX;
+            regIntercept = meanY - regSlope * meanX;
+        }
+    }
+
+    return {
+        correlationPoints,
+        pearsonR,
+        regSlope,
+        regIntercept,
+        availableExercises: Array.from(availableExercisesSet).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        availableMuscles: Array.from(availableMusclesSet)
     };
 }

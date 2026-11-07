@@ -783,10 +783,10 @@ function renderProgressList(sData, loadData) {
     const atvPct = Math.min(100, Math.round((completedDays / targetDays) * 100));
     const hasAtv = loadM.activeDays > 0 || completedDays > 0;
 
-    // 2. Sono: meta de 8h/dia, restrito a seg a sab (6 dias * 8h = 48.0h)
+    // 2. Sono: meta de 8h/dia, restrito a seg a sab (6 dias * 8h = 48.0h; na semana Dom-Sáb são os índices 1 a 6)
     const sleepTargetHours = 48.0;
     let totalSleptMonSat = 0;
-    weekDays.slice(0, 6).forEach(d => {
+    weekDays.slice(1, 7).forEach(d => {
         const entry = calcSleepJournalEntry(sleepJournal[d.iso]);
         if (entry.sleptH > 0) totalSleptMonSat += entry.sleptH;
     });
@@ -831,19 +831,18 @@ function renderProgressList(sData, loadData) {
     list.innerHTML = html;
 }
 
-/* Calcula o intervalo Seg-Dom (DD/MM-DD/MM) a partir de uma data ISO YYYY-MM-DD */
+/* Calcula o intervalo Dom-Sáb (DD/MM-DD/MM) a partir de uma data ISO YYYY-MM-DD */
 function getWeekRangeFromIsoDate(isoStr) {
     const [y, m, d] = String(isoStr).split('-').map(Number);
     const dt = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
-    const dow = dt.getDay();
-    const diffToMonday = dow === 0 ? -6 : 1 - dow;
-    const mon = new Date(dt);
-    mon.setDate(dt.getDate() + diffToMonday);
-    const sun = new Date(mon);
-    sun.setDate(mon.getDate() + 6);
+    const dow = dt.getDay(); // 0 = Dom .. 6 = Sáb
+    const sun = new Date(dt);
+    sun.setDate(dt.getDate() - dow);
+    const sat = new Date(sun);
+    sat.setDate(sun.getDate() + 6);
     const pad = n => String(n).padStart(2, '0');
-    const weekKey = `${mon.getFullYear()}-${pad(mon.getMonth() + 1)}-${pad(mon.getDate())}`;
-    const rangeLabel = `${pad(mon.getDate())}/${pad(mon.getMonth() + 1)}-${pad(sun.getDate())}/${pad(sun.getMonth() + 1)}`;
+    const weekKey = `${sun.getFullYear()}-${pad(sun.getMonth() + 1)}-${pad(sun.getDate())}`;
+    const rangeLabel = `${pad(sun.getDate())}/${pad(sun.getMonth() + 1)}-${pad(sat.getDate())}/${pad(sat.getMonth() + 1)}`;
     return { weekKey, rangeLabel };
 }
 

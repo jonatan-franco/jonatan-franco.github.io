@@ -41,14 +41,13 @@ function getCurrentWeekDays() {
     const today = new Date();
     const todayStr = formatLocalISO(today);
     const base = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
-    const dow = base.getDay();
-    const diffToMonday = dow === 0 ? -6 : 1 - dow;
-    const monday = new Date(base);
-    monday.setDate(base.getDate() + diffToMonday);
-    const shortNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+    const dow = base.getDay(); // 0 = Domingo .. 6 = Sábado
+    const sunday = new Date(base);
+    sunday.setDate(base.getDate() - dow);
+    const shortNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
+        const d = new Date(sunday);
+        d.setDate(sunday.getDate() + i);
         const iso = formatLocalISO(d);
         return {
             index: i,
